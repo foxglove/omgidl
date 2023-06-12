@@ -431,14 +431,14 @@
   resolved "https://registry.yarnpkg.com/@eslint/js/-/js-8.38.0.tgz#73a8a0d8aa8a8e6fe270431c5e72ae91b5337892"
   integrity sha512-IoD2MfUnOV58ghIHCiil01PcohxjbYR/qCxsoC+xNgUwh1EY8jOOrYmu3d3a71+tJJ23uscEV4X2HJWMsPJu4g==
 
-"@foxglove/eslint-plugin@0.20.0":
-  version "0.20.0"
-  resolved "https://registry.yarnpkg.com/@foxglove/eslint-plugin/-/eslint-plugin-0.20.0.tgz#386933c44b38ba1deccb345e9941f65c040ae063"
-  integrity sha512-/rSWnqworu9kGd1bnfijF/aRof+hc4XmVyVLi46GKBYbeNAloh1IhZ0w8cXsio7uqIc2fxaEJvSXIrtV3cBMRA==
+"@foxglove/eslint-plugin@0.22.1":
+  version "0.22.1"
+  resolved "https://registry.yarnpkg.com/@foxglove/eslint-plugin/-/eslint-plugin-0.22.1.tgz#34e47f6c51c1248c0eb33daf359551bd26c38f62"
+  integrity sha512-rPuCV17tlwdt3Fcv3ZrFhlv4gxrXtn3f9igm3NU3Imb/EQ5wovh6nI7+2ep3rYDMeLETuyFZGi07K6vdWnOkYg==
   dependencies:
     "@typescript-eslint/utils" "^5"
     tsutils "^3"
-    typescript "^4"
+    typescript "^4 || ^5"
 
 "@foxglove/tsconfig@1.1.0":
   version "1.1.0"
@@ -3564,10 +3564,10 @@ typescript@5.0.2:
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.0.2.tgz#891e1a90c5189d8506af64b9ef929fca99ba1ee5"
   integrity sha512-wVORMBGO/FAs/++blGNeAVdbNKtIh1rbBL2EyQ1+J9lClJ93KiiKe8PmFIVdXhHcyv44SL9oglmfeSsndo0jRw==
 
-typescript@^4:
-  version "4.9.4"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.9.4.tgz#a2a3d2756c079abda241d75f149df9d561091e78"
-  integrity sha512-Uz+dTXYzxXXbsFpM86Wh3dKCxrQqUcVMxwU54orwlJjOpO3ao8L7j5lH+dWfTwgCwIuM9GQ2kvVotzYJMXTBZg==
+"typescript@^4 || ^5":
+  version "5.1.3"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.1.3.tgz#8d84219244a6b40b6fb2b33cc1c062f715b9e826"
+  integrity sha512-XH627E9vkeqhlZFQuL+UsyAXEnibT0kWR2FWONlr4sTjvxyJYnyefgrkyECLzM5NenmKzRAy2rR/OlYLA1HkZw==
 
 unbox-primitive@^1.0.2:
   version "1.0.2"
