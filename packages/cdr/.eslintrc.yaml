@@ -1,0 +1,16 @@
+extends:
+  - plugin:@foxglove/base
+  - plugin:@foxglove/jest
+  - plugin:@foxglove/typescript
+
+env:
+  node: true
+
+ignorePatterns:
+  - dist
+
+overrides:
+  - files: ["*.ts", "*.tsx"]
+    parserOptions:
+      project: "./*/tsconfig.json"
+      tsconfigRootDir: __dirname
