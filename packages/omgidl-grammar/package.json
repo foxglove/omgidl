@@ -64,7 +64,7 @@
     "nearley-loader": "^2.0.0",
     "prettier": "2.8.8",
     "rimraf": "5.0.0",
-    "ts-jest": "29.0.3",
+    "ts-jest": "29.1.0",
     "ts-loader": "^9.4.3",
     "typescript": "5.0.2",
     "webpack": "^5.86.0",
