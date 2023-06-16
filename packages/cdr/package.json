@@ -29,14 +29,15 @@
     "src"
   ],
   "scripts": {
-    "build": "yarn clean && tsc -b",
-    "clean": "rimraf dist *.tsbuildinfo",
+    "build": "yarn clean && tsc -b ./tsconfig.build.json ",
+    "clean": "rimraf dist",
     "lint:ci": "eslint --report-unused-disable-directives .",
     "lint": "eslint --report-unused-disable-directives --fix .",
     "prepack": "yarn build",
     "prepublishOnly": "yarn lint:ci && yarn test",
     "test": "jest"
   },
+  "packageManager": "yarn@3.3.1",
   "engines": {
     "node": ">= 14"
   },
@@ -57,6 +58,5 @@
     "rimraf": "3.0.2",
     "ts-jest": "29.0.3",
     "typescript": "4.4.3"
-  },
-  "dependencies": {}
+  }
 }

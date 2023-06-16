@@ -32,13 +32,14 @@
     "src"
   ],
   "scripts": {
-    "clean": "rimraf dist *.tsbuildinfo",
+    "clean": "rimraf dist",
     "prepack": "yarn build",
-    "build": "webpack",
+    "build": "yarn clean && webpack",
     "lint": "eslint --report-unused-disable-directives --fix .",
     "lint:ci": "eslint --report-unused-disable-directives .",
     "test": "jest"
   },
+  "packageManager": "yarn@3.3.1",
   "dependencies": {
     "tslib": "^2"
   },
@@ -58,11 +59,13 @@
     "eslint-plugin-jest": "27.2.1",
     "eslint-plugin-prettier": "4.2.1",
     "jest": "29.4.2",
+    "moo": "^0.5.2",
     "nearley": "^2.20.1",
     "nearley-loader": "^2.0.0",
     "prettier": "2.8.8",
     "rimraf": "5.0.0",
     "ts-jest": "29.0.3",
+    "ts-loader": "^9.4.3",
     "typescript": "5.0.2",
     "webpack": "^5.86.0",
     "webpack-cli": "^5.1.4"

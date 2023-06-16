@@ -9,24 +9,30 @@
     "url": "https://github.com/foxglove/omgidl-grammar.git"
   },
   "scripts": {
+    "test": "yarn workspaces foreach run test",
+    "lint": "yarn workspaces foreach run lint",
+    "build": "yarn workspaces foreach run build",
     "cdr:test": "yarn workspace @foxglove/cdr test",
     "cdr:build": "yarn workspace @foxglove/cdr build",
     "grammar:test": "yarn workspace @foxglove/omgidl-grammar test",
-    "grammar:build": "yarn workspace @foxglove/omgidl-grammar build"
+    "grammar:build": "yarn workspace @foxglove/omgidl-grammar build",
+    "ros2idl:test": "yarn workspace @foxglove/ros2idl-parser test",
+    "ros2idl:build": "yarn workspace @foxglove/ros2idl-parser build"
   },
   "workspaces": [
-    "packages/cdr",
-    "packages/grammar"
+    "packages/*"
   ],
   "jest": {
     "projects": [
       "packages/cdr/jest.config.json",
-      "packages/grammar/jest.config.js"
+      "packages/grammar/jest.config.js",
+      "packages/ros2idl/jest.config.js"
     ]
   },
   "author": {
     "name": "Foxglove",
     "email": "contact@foxglove.dev",
     "url": "https://foxglove.dev/"
-  }
+  },
+  "packageManager": "yarn@3.3.1"
 }

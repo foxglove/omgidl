@@ -1,10 +1,10 @@
 module.exports = {
-  target: "web",
+  target: "node",
   mode: "production",
-  entry: "./src/index.ts",
+  entry: "./src/gendeps2.ts",
   output: {
     path: require("path").resolve(__dirname, "dist"),
-    filename: "index.js",
+    filename: "gendeps2.js",
     libraryTarget: "commonjs2",
   },
   devtool: "source-map",

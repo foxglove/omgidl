@@ -1,4 +1,4 @@
-import { parse } from "./parser";
+import { parseIdl } from "./parser";
 
 describe("IDL grammar", () => {
   it("parses a simple IDL", () => {
@@ -8,7 +8,7 @@ describe("IDL grammar", () => {
         };
     `;
 
-    expect(parse(schema)).toEqual([
+    expect(parseIdl(schema)).toEqual([
       [
         {
           definitionType: "struct",
@@ -34,7 +34,7 @@ describe("IDL grammar", () => {
     };
     `;
 
-    expect(parse(schema)).toEqual([
+    expect(parseIdl(schema)).toEqual([
       [
         {
           definitionType: "module",
