@@ -591,9 +591,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@foxglove/omgidl-grammar@workspace:*, @foxglove/omgidl-grammar@workspace:packages/grammar":
+"@foxglove/omgidl-grammar@workspace:*, @foxglove/omgidl-grammar@workspace:packages/omgidl-grammar":
   version: 0.0.0-use.local
-  resolution: "@foxglove/omgidl-grammar@workspace:packages/grammar"
+  resolution: "@foxglove/omgidl-grammar@workspace:packages/omgidl-grammar"
   dependencies:
     "@foxglove/eslint-plugin": 0.22.1
     "@foxglove/message-definition": ^0.2.0
@@ -624,9 +624,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@foxglove/ros2idl-parser@workspace:packages/ros2idl":
+"@foxglove/ros2idl-parser@workspace:packages/ros2idl-parser":
   version: 0.0.0-use.local
-  resolution: "@foxglove/ros2idl-parser@workspace:packages/ros2idl"
+  resolution: "@foxglove/ros2idl-parser@workspace:packages/ros2idl-parser"
   dependencies:
     "@foxglove/eslint-plugin": 0.20.0
     "@foxglove/message-definition": ^0.2.0

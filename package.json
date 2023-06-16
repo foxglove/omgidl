@@ -25,8 +25,8 @@
   "jest": {
     "projects": [
       "packages/cdr/jest.config.json",
-      "packages/grammar/jest.config.js",
-      "packages/ros2idl/jest.config.js"
+      "packages/omgidl-grammar/jest.config.js",
+      "packages/ros2idl-parser/jest.config.js"
     ]
   },
   "author": {
