@@ -650,8 +650,6 @@ __metadata:
     typescript: 4.8.3
     webpack: 5.74.0
     webpack-cli: 4.10.0
-  bin:
-    gendeps2: ./bin/gendeps2
   languageName: unknown
   linkType: soft
 

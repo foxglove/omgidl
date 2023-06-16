@@ -1,9 +1,8 @@
 {
   "name": "@foxglove/omgidl-grammar",
-  "private": true,
   "version": "0.0.1",
-  "description": "",
-  "license": "",
+  "description": "OMG IDL grammar implemented in `nearley` for parsing IDL files into an AST",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/foxglove/omgidl-grammar.git"
