@@ -8,5 +8,12 @@ export function parseIdl(definition: string): RawIdlDefinition[][] {
   const parser = new Parser(IDL_GRAMMAR);
   parser.feed(definition);
   parser.finish();
-  return parser.results as RawIdlDefinition[][];
+
+  const results = parser.results as RawIdlDefinition[][];
+  if (results.length === 0) {
+    throw new Error(
+      `Could not parse message definition (unexpected end of input): '${definition}'`,
+    );
+  }
+  return results;
 }
