@@ -14,6 +14,8 @@
     "build": "yarn workspaces foreach run build",
     "grammar:test": "yarn workspace @foxglove/omgidl-grammar test",
     "grammar:build": "yarn workspace @foxglove/omgidl-grammar build",
+    "omgidl:test": "yarn workspace @foxglove/omgidl-parser test",
+    "omgidl:build": "yarn workspace @foxglove/omgidl-parser build",
     "ros2idl:test": "yarn workspace @foxglove/ros2idl-parser test",
     "ros2idl:build": "yarn workspace @foxglove/ros2idl-parser build"
   },
@@ -23,6 +25,7 @@
   "jest": {
     "projects": [
       "packages/omgidl-grammar/jest.config.js",
+      "packages/omgidl-parser/jest.config.js",
       "packages/ros2idl-parser/jest.config.js"
     ]
   },
