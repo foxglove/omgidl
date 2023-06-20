@@ -10,19 +10,19 @@ import { RawIdlDefinition, RawIdlFieldDefinition, parseIdl } from "@foxglove/omg
  * @param messageDefinition - ros2idl decoded message definition string
  * @returns - parsed message definition
  */
-
 export function parseRos2idl(messageDefinition: string): MessageDefinition[] {
   return buildRos2idlType(messageDefinition);
 }
 
-function buildRos2idlType(messageDefinition: string): MessageDefinition[] {
-  const results = parseIdl(messageDefinition);
+const ROS2IDL_HEADER = /={80}\nIDL: [a-zA-Z][\w]+(?:\/[a-zA-Z][\w]+)*/g;
 
-  if (results.length === 0) {
-    throw new Error(
-      `Could not parse message definition (unexpected end of input): '${messageDefinition}'`,
-    );
-  }
+function buildRos2idlType(messageDefinition: string): MessageDefinition[] {
+  // instead of splitting and reading them in individually we just replace the header to ignore it make it
+  // conform to conforming idl and just read it all in a single parse so that we don't have to call parse multiple times
+  const idlConformedDef = messageDefinition.replaceAll(ROS2IDL_HEADER, "");
+
+  const results = parseIdl(idlConformedDef);
+
   const result = results[0] as RawIdlDefinition[];
   const processedResult = postProcessIdlDefinitions(result);
   for (const { definitions } of processedResult) {

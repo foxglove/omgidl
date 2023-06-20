@@ -69,8 +69,6 @@ const lexer = moo.compile({
   PT: ".",
   '/': "/",
   SIGN: /[+-]/,
-  // ROS2IDL Specific
-  HEADER: /={80}\nIDL: [a-zA-Z][\w]+(?:\/[a-zA-Z][\w]+)*/,
   EQ: /=[^\n]*?/,
   NAME: {match: /[a-zA-Z_][a-zA-Z0-9_]*(?:\:\:[a-zA-Z][a-zA-Z0-9_]*)*/, type: moo.keywords(kwObject)},
 });
@@ -136,12 +134,11 @@ function aggregateConstantUsage(dcl) {
 
 @lexer lexer
 
-main -> (header:? importDcl:* definition:+):+ {% d => {
-  return d[0].flatMap(inner => inner[2].flat());
+main -> (importDcl:* definition:+):+ {% d => {
+  return d[0].flatMap(inner => inner[1].flat());
 }
 %}
 
-header -> %HEADER {% noop %}
 
 # support <import> or "import" includes - just ignored
 importDcl -> "#" "include" (%STRING | "<" %NAME ("/" %NAME):* "." "idl" ">") {% noop %}
