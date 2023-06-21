@@ -21,6 +21,7 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: yarn
 
+      - run: corepack enable yarn
       - run: yarn install --frozen-lockfile
 
       - run: yarn run build
