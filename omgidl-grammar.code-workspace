@@ -1,5 +1,5 @@
 {
-	"folders": [
+  "folders": [
     {
       "path": "."
     },
@@ -14,14 +14,11 @@
     {
       "name": "omgidl-grammar",
       "path": "packages/omgidl-grammar"
+    },
+    {
+      "name": "omgidl-serialization",
+      "path": "packages/omgidl-serialization"
     }
   ],
-  "settings": {
-    "jest.disabledWorkspaceFolders": [
-      "omgidl-grammar",
-      "omgidl-parser",
-      "ros2idl-parser",
-      "omgidl-grammar"
-    ]
-  }
+  "settings": {}
 }

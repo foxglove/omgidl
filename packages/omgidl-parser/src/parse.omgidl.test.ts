@@ -433,6 +433,7 @@ module rosidl_parser {
             wstring<UNSIGNED_LONG_CONSTANT> constant_bounded_wstring_value;
             sequence<short> unbounded_short_values;
             sequence<short, 5> bounded_short_values;
+            sequence<string> unbounded_values_of_unbounded_strings;
             sequence<string<3>> unbounded_values_of_bounded_strings;
             sequence<string<3>, 4> bounded_values_of_bounded_strings;
             short array_short_values[23];
@@ -492,6 +493,12 @@ module rosidl_parser {
             isArray: true,
             arrayUpperBound: 5,
             name: "bounded_short_values",
+            isComplex: false,
+          },
+          {
+            type: "string",
+            isArray: true,
+            name: "unbounded_values_of_unbounded_strings",
             isComplex: false,
           },
           {

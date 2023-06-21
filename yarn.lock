@@ -452,6 +452,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@foxglove/cdr@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "@foxglove/cdr@npm:2.0.0"
+  checksum: 2a42f9bc04a04078573c18060a173079db213818a739ea7e93b1701394336bc86a5e7ccbcdf93d747f15a734ea6da5250932a475a55593285a496badddddd450
+  languageName: node
+  linkType: hard
+
 "@foxglove/eslint-plugin@npm:^0.22.1":
   version: 0.22.1
   resolution: "@foxglove/eslint-plugin@npm:0.22.1"
@@ -523,7 +530,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@foxglove/omgidl-parser@workspace:packages/omgidl-parser":
+"@foxglove/omgidl-parser@workspace:*, @foxglove/omgidl-parser@workspace:packages/omgidl-parser":
   version: 0.0.0-use.local
   resolution: "@foxglove/omgidl-parser@workspace:packages/omgidl-parser"
   dependencies:
@@ -539,6 +546,23 @@ __metadata:
     typescript: 4.8.3
     webpack: 5.74.0
     webpack-cli: 4.10.0
+  languageName: unknown
+  linkType: soft
+
+"@foxglove/omgidl-serialization@workspace:packages/omgidl-serialization":
+  version: 0.0.0-use.local
+  resolution: "@foxglove/omgidl-serialization@workspace:packages/omgidl-serialization"
+  dependencies:
+    "@foxglove/cdr": ^2.0.0
+    "@foxglove/message-definition": ^0.2.0
+    "@foxglove/omgidl-parser": "workspace:*"
+    "@foxglove/rosmsg": 4.2.1
+    "@foxglove/rostime": ^1.1.2
+    "@sounisi5011/jest-binary-data-matchers": 1.2.1
+    "@types/jest": ^28.0.0
+    jest: 28.1.3
+    ts-jest: 29.0.5
+    typescript: 4.9.5
   languageName: unknown
   linkType: soft
 
@@ -560,6 +584,25 @@ __metadata:
     webpack-cli: 4.10.0
   languageName: unknown
   linkType: soft
+
+"@foxglove/rosmsg@npm:4.2.1":
+  version: 4.2.1
+  resolution: "@foxglove/rosmsg@npm:4.2.1"
+  dependencies:
+    "@foxglove/message-definition": ^0.2.0
+    md5-typescript: ^1.0.5
+  bin:
+    gendeps2: bin/gendeps2
+  checksum: 68477e61f5a8aeb722465e2d89c09038a21ca848aa281224f67bce28d1a0328aa19fa3acbb2256bcdf54854abeffebfeefbac026ca0cd97b58318576f8409683
+  languageName: node
+  linkType: hard
+
+"@foxglove/rostime@npm:^1.1.2":
+  version: 1.1.2
+  resolution: "@foxglove/rostime@npm:1.1.2"
+  checksum: a4f93001ccfa011f679af9a3d1e04c2d3c499848a9845856bf17f23cf9369ab975b27cd9fd048187002468de6852861bfb2292d5cfcbd85ff43afc274e1279e8
+  languageName: node
+  linkType: hard
 
 "@foxglove/tsconfig@npm:2.0.0":
   version: 2.0.0
@@ -1244,6 +1287,25 @@ __metadata:
   dependencies:
     "@sinonjs/commons": ^1.7.0
   checksum: 7d3aef54e17c1073101cb64d953157c19d62a40e261a30923fa1ee337b049c5f29cc47b1f0c477880f42b5659848ba9ab897607ac8ea4acd5c30ddcfac57fca6
+  languageName: node
+  linkType: hard
+
+"@sounisi5011/jest-binary-data-matchers@npm:1.2.1":
+  version: 1.2.1
+  resolution: "@sounisi5011/jest-binary-data-matchers@npm:1.2.1"
+  dependencies:
+    "@sounisi5011/ts-type-util-is-readonly-array": ^1.0.0
+    jest-diff: ^28.0.0
+  peerDependencies:
+    jest: 27.x || 28.x
+  checksum: 6cf1b2ef69a0df0d17f1ebb81f3dc6302f0485381c5cd6ac894f588db565be4dbfe483f24aa19b30be4ad953ee1ada43508ec1cb0283829d5cebde83f5d48623
+  languageName: node
+  linkType: hard
+
+"@sounisi5011/ts-type-util-is-readonly-array@npm:^1.0.0":
+  version: 1.0.2
+  resolution: "@sounisi5011/ts-type-util-is-readonly-array@npm:1.0.2"
+  checksum: 82c1eb4a00bfb5943f88b8b4b12cf1a316427a0678d30cc6bdcb2cc2ada6f7b84a0f093a586a69b16183c9083b4b334a8b39598ffc94fcb4b69de16762e63741
   languageName: node
   linkType: hard
 
@@ -4443,7 +4505,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jest-diff@npm:^28.1.3":
+"jest-diff@npm:^28.0.0, jest-diff@npm:^28.1.3":
   version: 28.1.3
   resolution: "jest-diff@npm:28.1.3"
   dependencies:
@@ -5189,7 +5251,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"json5@npm:^2.2.1, json5@npm:^2.2.2":
+"json5@npm:^2.2.1, json5@npm:^2.2.2, json5@npm:^2.2.3":
   version: 2.2.3
   resolution: "json5@npm:2.2.3"
   bin:
@@ -6775,6 +6837,39 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ts-jest@npm:29.0.5":
+  version: 29.0.5
+  resolution: "ts-jest@npm:29.0.5"
+  dependencies:
+    bs-logger: 0.x
+    fast-json-stable-stringify: 2.x
+    jest-util: ^29.0.0
+    json5: ^2.2.3
+    lodash.memoize: 4.x
+    make-error: 1.x
+    semver: 7.x
+    yargs-parser: ^21.0.1
+  peerDependencies:
+    "@babel/core": ">=7.0.0-beta.0 <8"
+    "@jest/types": ^29.0.0
+    babel-jest: ^29.0.0
+    jest: ^29.0.0
+    typescript: ">=4.3"
+  peerDependenciesMeta:
+    "@babel/core":
+      optional: true
+    "@jest/types":
+      optional: true
+    babel-jest:
+      optional: true
+    esbuild:
+      optional: true
+  bin:
+    ts-jest: cli.js
+  checksum: f60f129c2287f4c963d9ee2677132496c5c5a5d39c27ad234199a1140c26318a7d5bda34890ab0e30636ec42a8de28f84487c09e9dcec639c9c67812b3a38373
+  languageName: node
+  linkType: hard
+
 "ts-loader@npm:9.3.1":
   version: 9.3.1
   resolution: "ts-loader@npm:9.3.1"
@@ -6893,6 +6988,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"typescript@npm:4.9.5":
+  version: 4.9.5
+  resolution: "typescript@npm:4.9.5"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: ee000bc26848147ad423b581bd250075662a354d84f0e06eb76d3b892328d8d4440b7487b5a83e851b12b255f55d71835b008a66cbf8f255a11e4400159237db
+  languageName: node
+  linkType: hard
+
 "typescript@npm:5.0.2":
   version: 5.0.2
   resolution: "typescript@npm:5.0.2"
@@ -6920,6 +7025,16 @@ __metadata:
     tsc: bin/tsc
     tsserver: bin/tsserver
   checksum: 2222d2382fb3146089b1d27ce2b55e9d1f99cc64118f1aba75809b693b856c5d3c324f052f60c75b577947fc538bc1c27bad0eb76cbdba9a63a253489504ba7e
+  languageName: node
+  linkType: hard
+
+"typescript@patch:typescript@4.9.5#~builtin<compat/typescript>":
+  version: 4.9.5
+  resolution: "typescript@patch:typescript@npm%3A4.9.5#~builtin<compat/typescript>::version=4.9.5&hash=ad5954"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: 8f6260acc86b56bfdda6004bc53f32ea548f543e8baef7071c8e34d29d292f3e375c8416556c8de10b24deef6933cd1c16a8233dc84a3dd43a13a13265d0faab
   languageName: node
   linkType: hard
 

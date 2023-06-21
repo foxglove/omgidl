@@ -24,8 +24,9 @@
     "forceConsistentCasingInFileNames": true
   },
   "references": [
-    { "path": "packages/omgid-grammar" },
-    { "path": "packages/omgid-parser" },
+    { "path": "packages/omgidl-grammar" },
+    { "path": "packages/omgidl-parser" },
+    { "path": "packages/omgidl-serialization" },
     { "path": "packages/ros2idl-parser" }
   ]
 }
