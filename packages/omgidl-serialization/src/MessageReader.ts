@@ -1,8 +1,7 @@
 import { CdrReader } from "@foxglove/cdr";
 import { MessageDefinition, MessageDefinitionField } from "@foxglove/message-definition";
-import { Time } from "@foxglove/rostime";
 
-export type Deserializer = (reader: CdrReader) => boolean | number | bigint | string | Time;
+export type Deserializer = (reader: CdrReader) => boolean | number | bigint | string;
 export type ArrayDeserializer = (
   reader: CdrReader,
   count: number,
@@ -18,8 +17,7 @@ export type ArrayDeserializer = (
   | BigUint64Array
   | Float32Array
   | Float64Array
-  | string[]
-  | Time[];
+  | string[];
 
 export class MessageReader<T = unknown> {
   rootDefinition: MessageDefinitionField[];
@@ -107,8 +105,6 @@ const deserializers = new Map<string, Deserializer>([
   ["float32", (reader) => reader.float32()],
   ["float64", (reader) => reader.float64()],
   ["string", (reader) => reader.string()],
-  ["time", (reader) => ({ sec: reader.int32(), nsec: reader.uint32() })],
-  ["duration", (reader) => ({ sec: reader.int32(), nsec: reader.uint32() })],
 ]);
 
 const typedArrayDeserializers = new Map<string, ArrayDeserializer>([
@@ -124,8 +120,6 @@ const typedArrayDeserializers = new Map<string, ArrayDeserializer>([
   ["float32", (reader, count) => reader.float32Array(count)],
   ["float64", (reader, count) => reader.float64Array(count)],
   ["string", readStringArray],
-  ["time", readTimeArray],
-  ["duration", readTimeArray],
 ]);
 
 function readBoolArray(reader: CdrReader, count: number): boolean[] {
@@ -140,16 +134,6 @@ function readStringArray(reader: CdrReader, count: number): string[] {
   const array = new Array<string>(count);
   for (let i = 0; i < count; i++) {
     array[i] = reader.string();
-  }
-  return array;
-}
-
-function readTimeArray(reader: CdrReader, count: number): Time[] {
-  const array = new Array<Time>(count);
-  for (let i = 0; i < count; i++) {
-    const sec = reader.int32();
-    const nsec = reader.uint32();
-    array[i] = { sec, nsec };
   }
   return array;
 }
