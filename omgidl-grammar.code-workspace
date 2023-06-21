@@ -1,0 +1,27 @@
+{
+	"folders": [
+    {
+      "path": "."
+    },
+    {
+      "name": "omgidl-parser",
+      "path": "packages/omgidl-parser"
+    },
+    {
+      "name": "ros2idl-parser",
+      "path": "packages/ros2idl-parser"
+    },
+    {
+      "name": "omgidl-grammar",
+      "path": "packages/omgidl-grammar"
+    }
+  ],
+  "settings": {
+    "jest.disabledWorkspaceFolders": [
+      "omgidl-grammar",
+      "omgidl-parser",
+      "ros2idl-parser",
+      "omgidl-grammar"
+    ]
+  }
+}

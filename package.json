@@ -9,6 +9,7 @@
     "url": "https://github.com/foxglove/omgidl-grammar.git"
   },
   "scripts": {
+    "clean": "yarn workspaces foreach run clean",
     "test": "yarn workspaces foreach run test --color",
     "lint": "yarn workspaces foreach run lint --color",
     "lint:ci": "yarn workspaces foreach run lint:ci",

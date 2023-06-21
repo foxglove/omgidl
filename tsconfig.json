@@ -22,5 +22,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "forceConsistentCasingInFileNames": true
-  }
+  },
+  "references": [
+    { "path": "packages/omgid-grammar" },
+    { "path": "packages/omgid-parser" },
+    { "path": "packages/ros2idl-parser" }
+  ]
 }
