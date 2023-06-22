@@ -1,7 +1,7 @@
 module.exports = {
   root: true,
   extends: ["plugin:@foxglove/base", "plugin:@foxglove/jest"],
-  env: { es2020: true },
+  env: { es2020: true, node: true },
   ignorePatterns: ["dist"],
   overrides: [
     {
