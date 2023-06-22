@@ -62,7 +62,8 @@ export class MessageWriter {
   definitions: Map<string, MessageDefinitionField[]>;
 
   constructor(definitions: MessageDefinition[]) {
-    const rootDefinition = definitions[0];
+    // use first not entirely constant module as root
+    const rootDefinition = definitions.find((def) => !isConstantModule(def));
     if (rootDefinition == undefined) {
       throw new Error("MessageReader initialized with no root MessageDefinition");
     }
@@ -237,6 +238,10 @@ export class MessageWriter {
     }
     return writer;
   }
+}
+
+function isConstantModule(def: MessageDefinition): boolean {
+  return def.definitions.every((field) => field.isConstant);
 }
 
 function fieldLength(value: unknown): number {

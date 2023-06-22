@@ -202,18 +202,17 @@ describe("MessageWriter", () => {
       },
     ],
     // ignore constants
-    // ********* bring back
-    // [
-    //   `module a {
-    //     struct c { int8 status; };
-    //     module b {
-    //       int8 STATUS_ONE = 1;
-    //       int8 STATUS_TWO = 2;
-    //     }
-    //   };`,
-    //   [0x02],
-    //   { status: 2 },
-    // ],
+    [
+      `module a {
+        module b {
+          const int8 STATUS_ONE = 1;
+          const int8 STATUS_TWO = 2;
+        };
+        struct c { int8 status; };
+      };`,
+      [0x02],
+      { status: 2 },
+    ],
     // An array of custom types which themselves have a custom type
     // This tests an array's ability to properly size custom types
     [
