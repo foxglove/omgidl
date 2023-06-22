@@ -8,16 +8,16 @@
       "path": "packages/omgidl-parser"
     },
     {
-      "name": "ros2idl-parser",
-      "path": "packages/ros2idl-parser"
-    },
-    {
       "name": "omgidl-grammar",
       "path": "packages/omgidl-grammar"
     },
     {
       "name": "omgidl-serialization",
       "path": "packages/omgidl-serialization"
+    },
+    {
+      "name": "ros2idl-parser",
+      "path": "packages/ros2idl-parser"
     }
   ],
   "settings": {}
