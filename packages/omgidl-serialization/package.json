@@ -41,7 +41,6 @@
   "packageManager": "yarn@3.3.1",
   "devDependencies": {
     "@foxglove/omgidl-parser": "workspace:*",
-    "@foxglove/rosmsg": "4.2.1",
     "@sounisi5011/jest-binary-data-matchers": "1.2.1",
     "@types/jest": "^28.0.0",
     "jest": "28.1.3",
@@ -50,7 +49,6 @@
   },
   "dependencies": {
     "@foxglove/cdr": "^2.0.0",
-    "@foxglove/message-definition": "^0.2.0",
-    "@foxglove/rostime": "^1.1.2"
+    "@foxglove/message-definition": "^0.2.0"
   }
 }
