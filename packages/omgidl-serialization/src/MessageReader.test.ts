@@ -26,41 +26,61 @@ describe("MessageReader", () => {
     expect(ast).not.toBeUndefined();
   });
   it.each([
-    [`struct a {int8 sample; /** lowest */};`, [0x80], { sample: -128 }],
-    [`struct a {int8 sample; /** highest */};`, [0x7f], { sample: 127 }],
-    [`struct a {uint8 sample; /** lowest */};`, [0x00], { sample: 0 }],
-    [`struct a {uint8 sample; /** highest */};`, [0xff], { sample: 255 }],
-    [`struct a {int16 sample; /** lowest */};`, [0x00, 0x80], { sample: -32768 }],
-    [`struct a {int16 sample; /** highest */};`, [0xff, 0x7f], { sample: 32767 }],
-    [`struct a {uint16 sample; /** lowest */};`, [0x00, 0x00], { sample: 0 }],
-    [`struct a {uint16 sample; /** highest */};`, [0xff, 0xff], { sample: 65535 }],
-    [`struct a {int32 sample; /** lowest */};`, [0x00, 0x00, 0x00, 0x80], { sample: -2147483648 }],
-    [`struct a {int32 sample; /** highest */};`, [0xff, 0xff, 0xff, 0x7f], { sample: 2147483647 }],
-    [`struct a {uint32 sample; /** lowest */};`, [0x00, 0x00, 0x00, 0x00], { sample: 0 }],
-    [`struct a {uint32 sample; /** highest */};`, [0xff, 0xff, 0xff, 0xff], { sample: 4294967295 }],
+    [`struct a {int8 sample; /** lowest */};`, "a", [0x80], { sample: -128 }],
+    [`struct a {int8 sample; /** highest */};`, "a", [0x7f], { sample: 127 }],
+    [`struct a {uint8 sample; /** lowest */};`, "a", [0x00], { sample: 0 }],
+    [`struct a {uint8 sample; /** highest */};`, "a", [0xff], { sample: 255 }],
+    [`struct a {int16 sample; /** lowest */};`, "a", [0x00, 0x80], { sample: -32768 }],
+    [`struct a {int16 sample; /** highest */};`, "a", [0xff, 0x7f], { sample: 32767 }],
+    [`struct a {uint16 sample; /** lowest */};`, "a", [0x00, 0x00], { sample: 0 }],
+    [`struct a {uint16 sample; /** highest */};`, "a", [0xff, 0xff], { sample: 65535 }],
+    [
+      `struct a {int32 sample; /** lowest */};`,
+      "a",
+      [0x00, 0x00, 0x00, 0x80],
+      { sample: -2147483648 },
+    ],
+    [
+      `struct a {int32 sample; /** highest */};`,
+      "a",
+      [0xff, 0xff, 0xff, 0x7f],
+      { sample: 2147483647 },
+    ],
+    [`struct a {uint32 sample; /** lowest */};`, "a", [0x00, 0x00, 0x00, 0x00], { sample: 0 }],
+    [
+      `struct a {uint32 sample; /** highest */};`,
+      "a",
+      [0xff, 0xff, 0xff, 0xff],
+      { sample: 4294967295 },
+    ],
     [
       `struct a {int64 sample; /** lowest */};`,
+      "a",
       [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80],
       { sample: -9223372036854775808n },
     ],
     [
       `struct a {int64 sample; /** highest */};`,
+      "a",
       [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f],
       { sample: 9223372036854775807n },
     ],
     [
       `struct a {uint64 sample; /** lowest */};`,
+      "a",
       [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
       { sample: 0n },
     ],
     [
       `struct a {uint64 sample; /** highest */};`,
+      "a",
       [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
       { sample: 18446744073709551615n },
     ],
-    [`struct a {float32 sample; };`, float32Buffer([5.5]), { sample: 5.5 }],
+    [`struct a {float32 sample; };`, "a", float32Buffer([5.5]), { sample: 5.5 }],
     [
       `struct a {float64 sample; };`,
+      "a",
       // eslint-disable-next-line @typescript-eslint/no-loss-of-precision
       new Uint8Array(Float64Array.of(0.123456789121212121212).buffer),
       // eslint-disable-next-line @typescript-eslint/no-loss-of-precision
@@ -68,6 +88,7 @@ describe("MessageReader", () => {
     ],
     [
       `struct a {sequence<int32> arr; };`,
+      "a",
       [
         ...[0x02, 0x00, 0x00, 0x00], // length
         ...new Uint8Array(Int32Array.of(3, 7).buffer),
@@ -77,6 +98,7 @@ describe("MessageReader", () => {
     // unaligned access
     [
       `struct a {uint8 blank;sequence<int32> arr;};`,
+      "a",
       [
         0x00,
         ...[0x00, 0x00, 0x00], // alignment
@@ -87,11 +109,13 @@ describe("MessageReader", () => {
     ],
     [
       `struct a {float32 arr[2];};`,
+      "a",
       float32Buffer([5.5, 6.5]),
       { arr: Float32Array.from([5.5, 6.5]) },
     ],
     [
       `struct a {uint8 blank; float32 arr[2]; };`,
+      "a",
       [
         0x00,
         ...[0x00, 0x00, 0x00], // alignment
@@ -101,6 +125,7 @@ describe("MessageReader", () => {
     ],
     [
       `struct a {sequence<float32> arr;};`,
+      "a",
       [
         ...[0x02, 0x00, 0x00, 0x00], // length
         ...float32Buffer([5.5, 6.5]),
@@ -109,6 +134,7 @@ describe("MessageReader", () => {
     ],
     [
       `struct a {uint8 blank; sequence<float32> arr;};`,
+      "a",
       [
         0x00,
         ...[0x00, 0x00, 0x00], // alignment
@@ -119,6 +145,7 @@ describe("MessageReader", () => {
     ],
     [
       `struct a {sequence<float32> first; sequence<float32> second;};`,
+      "a",
       [
         ...[0x02, 0x00, 0x00, 0x00], // length
         ...float32Buffer([5.5, 6.5]),
@@ -130,19 +157,22 @@ describe("MessageReader", () => {
         second: Float32Array.from([5.5, 6.5]),
       },
     ],
-    [`struct a {string sample; /** empty string */ };`, serializeString(""), { sample: "" }],
+    [`struct a {string sample; /** empty string */ };`, "a", serializeString(""), { sample: "" }],
     [
       `struct a {string sample; /** some  string */};`,
+      "a",
       serializeString("some string"),
       { sample: "some string" },
     ],
     [
       `struct a {int8 first[4];};`,
+      "a",
       [0x00, 0xff, 0x80, 0x7f],
       { first: new Int8Array([0, -1, -128, 127]) },
     ],
     [
       `struct a {sequence<int8> first;};`,
+      "a",
       [
         ...[0x04, 0x00, 0x00, 0x00], // length
         0x00,
@@ -154,16 +184,19 @@ describe("MessageReader", () => {
     ],
     [
       `struct a {uint8 first[4];};`,
+      "a",
       [0x00, 0xff, 0x80, 0x7f],
       { first: new Uint8Array([0, -1, -128, 127]) },
     ],
     [
       `struct a {string first[2];};`,
+      "a",
       [...serializeString("one"), ...serializeString("longer string")],
       { first: ["one", "longer string"] },
     ],
     [
       `struct a {sequence<string> first;};`,
+      "a",
       [
         ...[0x02, 0x00, 0x00, 0x00], // length
         ...serializeString("one"),
@@ -172,9 +205,10 @@ describe("MessageReader", () => {
       { first: ["one", "longer string"] },
     ],
     // first size value after fixed size value
-    [`struct a {int8 first; int8 second;};`, [0x80, 0x7f], { first: -128, second: 127 }],
+    [`struct a {int8 first; int8 second;};`, "a", [0x80, 0x7f], { first: -128, second: 127 }],
     [
       `struct a {string first; int8 second;};`,
+      "a",
       [...serializeString("some string"), 0x80],
       { first: "some string", second: -128 },
     ],
@@ -183,6 +217,7 @@ describe("MessageReader", () => {
     struct a { custom_type::CustomType custom; };
     module custom_type { struct CustomType { uint8 first; }; };
     `,
+      "a",
       [0x02],
       {
         custom: { first: 0x02 },
@@ -194,6 +229,7 @@ describe("MessageReader", () => {
       uint8 first;
     };};
     `,
+      "a",
       [0x02, 0x03, 0x04],
       {
         custom: [{ first: 0x02 }, { first: 0x03 }, { first: 0x04 }],
@@ -202,6 +238,7 @@ describe("MessageReader", () => {
     [
       `struct a { sequence<custom_type::CustomType> custom; };
     module custom_type { struct CustomType { uint8 first; }; };`,
+      "a",
       [
         ...[0x03, 0x00, 0x00, 0x00], // length
         0x02,
@@ -221,6 +258,7 @@ describe("MessageReader", () => {
         };
         struct c { int8 status; };
       };`,
+      "a::c",
       [0x02],
       { status: 2 },
     ],
@@ -235,6 +273,7 @@ describe("MessageReader", () => {
     module custom_type { struct MoreCustom {
         uint8 field;
     };};`,
+      "a",
       [
         ...[0x03, 0x00, 0x00, 0x00], // length
         0x02,
@@ -251,9 +290,9 @@ describe("MessageReader", () => {
     ],
   ])(
     "should deserialize %s",
-    (msgDef: string, arr: Iterable<number>, expected: Record<string, unknown>) => {
+    (msgDef: string, rootDef: string, arr: Iterable<number>, expected: Record<string, unknown>) => {
       const buffer = Uint8Array.from([0, 1, 0, 0, ...arr]);
-      const reader = new MessageReader(parseOmgidl(msgDef));
+      const reader = new MessageReader(rootDef, parseOmgidl(msgDef));
       const read = reader.readMessage(buffer);
 
       // check that our message matches the object
@@ -337,7 +376,7 @@ module builtin_interfaces {
   };
 };
     `;
-    const reader = new MessageReader(parseOmgidl(msgDef));
+    const reader = new MessageReader("geometry_msgs::msg::Transforms", parseOmgidl(msgDef));
     const read = reader.readMessage(buffer);
 
     expect(read).toEqual({
@@ -355,5 +394,11 @@ module builtin_interfaces {
         },
       ],
     });
+  });
+  it("throws if rootDef is not found", () => {
+    const msgDef = `
+    struct a { int8 sample; };
+    `;
+    expect(() => new MessageReader("b", parseOmgidl(msgDef))).toThrow(/"b" not found/i);
   });
 });

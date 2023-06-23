@@ -23,10 +23,12 @@ export class MessageReader<T = unknown> {
   rootDefinition: MessageDefinitionField[];
   definitions: Map<string, MessageDefinitionField[]>;
 
-  constructor(definitions: MessageDefinition[]) {
-    const rootDefinition = definitions.find((def) => !isConstantModule(def));
+  constructor(rootDefinitionName: string, definitions: MessageDefinition[]) {
+    const rootDefinition = definitions.find((def) => def.name === rootDefinitionName);
     if (rootDefinition == undefined) {
-      throw new Error("MessageReader initialized with no root MessageDefinition");
+      throw new Error(
+        `Root definition name "${rootDefinitionName}" not found in schema definitions.`,
+      );
     }
     this.rootDefinition = rootDefinition.definitions;
     this.definitions = new Map<string, MessageDefinitionField[]>(
@@ -90,10 +92,6 @@ export class MessageReader<T = unknown> {
     }
     return msg;
   }
-}
-
-function isConstantModule(def: MessageDefinition): boolean {
-  return def.definitions.every((field) => field.isConstant);
 }
 
 const deserializers = new Map<string, Deserializer>([
