@@ -5,6 +5,7 @@
 const keywords = [
   , "struct"
   , "module"
+  , "enum"
   , "const"
   , "include"
   , "typedef"
@@ -165,12 +166,33 @@ definition -> (
 typeDcl -> (
     structWithAnnotations
   | typedefWithAnnotations
+  | enumWithAnnotations
 ) {% d => d[0][0] %}
 
 structWithAnnotations -> multiAnnotations struct {%
  // default values don't apply to structs so we can just ignore all annotations on structs
  d => d[1]
 %}
+
+enumWithAnnotations -> multiAnnotations enum {%
+ // default values don't apply to enums so we can just ignore all annotations on enums
+ d => d[1]
+%}
+
+enum ->  "enum" fieldName "{" fieldName ("," fieldName):* "}" {% d => {
+  const name = d[1].name;
+  const firstMember = d[3].name;
+  const members = d[4]
+    .flat(2)
+    .filter(d => !!d?.name)
+    .map(({name}) => name);
+
+  return {
+    definitionType: 'enum',
+    name,
+    members: [firstMember, ...members],
+  };
+} %}
 
 struct -> "struct" fieldName "{" (member):+ "}" {% d => {
   const name = d[1].name;

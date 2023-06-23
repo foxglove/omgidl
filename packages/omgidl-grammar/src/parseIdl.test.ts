@@ -1076,6 +1076,52 @@ module idl_parser {
       ],
     ]);
   });
+  it("parses enums", () => {
+    const msgDef = `
+      enum COLORS {
+        RED,
+        GREEN,
+        BLUE
+      };
+    `;
+    const types = parseIdl(msgDef);
+    expect(types).toEqual([
+      [
+        {
+          definitionType: "enum",
+          name: "COLORS",
+          members: ["RED", "GREEN", "BLUE"],
+        },
+      ],
+    ]);
+  });
+  it("parses enums in modules", () => {
+    const msgDef = `
+    module Scene {
+      enum COLORS {
+        RED,
+        GREEN,
+        BLUE
+      };
+    };
+    `;
+    const types = parseIdl(msgDef);
+    expect(types).toEqual([
+      [
+        {
+          definitionType: "module",
+          name: "Scene",
+          definitions: [
+            {
+              definitionType: "enum",
+              name: "COLORS",
+              members: ["RED", "GREEN", "BLUE"],
+            },
+          ],
+        },
+      ],
+    ]);
+  });
   /****************  Not supported by IDL (as far as I can tell) */
   it("cannot parse multiple const declarations in a single line", () => {
     const msgDef = `
@@ -1085,7 +1131,14 @@ module idl_parser {
         };
       };
     `;
-    expect(() => parseIdl(msgDef)).toThrow(/unexpected , token: ","/i);
+    expect(() => parseIdl(msgDef)).toThrow(/unexpected , token/i);
+  });
+  it("cannot parse empty struct", () => {
+    const msgDef = `
+      struct a {
+      };
+    `;
+    expect(() => parseIdl(msgDef)).toThrow(/unexpected RCBR token/i);
   });
   /****************  Syntax Errors */
   it("missing bracket at the end will result in end of input error", () => {
