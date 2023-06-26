@@ -126,7 +126,7 @@ function aggregateConstantUsage(dcl) {
   const entries = Object.entries(dcl).filter(
     ([key, value]) => value?.usesConstant === true
   ).map(([key, {name}]) => ([key, name]));
-  if(entries.length === 0) {
+  if (entries.length === 0) {
     return dcl;
   }
   return {
@@ -187,8 +187,8 @@ enum ->  "enum" fieldName "{" fieldName ("," fieldName):* "}" {% d => {
   const firstMember = d[3].name;
   const members = d[4]
     .flat(2)
-    .filter(d => !!d?.name)
-    .map(({name}) => name);
+    .map((m) => m?.name)
+    .filter(Boolean);
 
   return {
     definitionType: 'enum',

@@ -197,7 +197,7 @@ function flattenIdlNamespaces(definition: RawIdlDefinition): MessageDefinition[]
           isConstant: true,
           value: i as ConstantValue,
           isComplex: false,
-        })) as MessageDefinitionField[],
+        })),
       });
     }
   });
