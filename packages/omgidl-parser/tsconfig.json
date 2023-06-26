@@ -4,8 +4,8 @@
   "compilerOptions": {
     "composite": true,
     "module": "commonjs",
-    "target": "es2020",
-    "lib": ["es2020", "es2021.string"],
+    "target": "es2022",
+    "lib": ["es2022"],
     "rootDir": "./src",
     "outDir": "./dist"
   }

@@ -5,6 +5,7 @@
 const keywords = [
   , "struct"
   , "module"
+  , "enum"
   , "const"
   , "include"
   , "typedef"
@@ -125,6 +126,9 @@ function aggregateConstantUsage(dcl) {
   const entries = Object.entries(dcl).filter(
     ([key, value]) => value?.usesConstant === true
   ).map(([key, {name}]) => ([key, name]));
+  if (entries.length === 0) {
+    return dcl;
+  }
   return {
     ...dcl,
     constantUsage: entries,
@@ -134,8 +138,8 @@ function aggregateConstantUsage(dcl) {
 
 @lexer lexer
 
-main -> (importDcl:* definition:+):+ {% d => {
-  return d[0].flatMap(inner => inner[1].flat());
+main -> (importDcl:* definition):+ {% d => {
+  return d[0].flatMap(inner => inner[1]);
 }
 %}
 
@@ -165,12 +169,33 @@ definition -> (
 typeDcl -> (
     structWithAnnotations
   | typedefWithAnnotations
+  | enumWithAnnotations
 ) {% d => d[0][0] %}
 
 structWithAnnotations -> multiAnnotations struct {%
  // default values don't apply to structs so we can just ignore all annotations on structs
  d => d[1]
 %}
+
+enumWithAnnotations -> multiAnnotations enum {%
+ // default values don't apply to enums so we can just ignore all annotations on enums
+ d => d[1]
+%}
+
+enum ->  "enum" fieldName "{" fieldName ("," fieldName):* "}" {% d => {
+  const name = d[1].name;
+  const firstMember = d[3].name;
+  const members = d[4]
+    .flat(2)
+    .map((m) => m?.name)
+    .filter(Boolean);
+
+  return {
+    definitionType: 'enum',
+    name,
+    members: [firstMember, ...members],
+  };
+} %}
 
 struct -> "struct" fieldName "{" (member):+ "}" {% d => {
   const name = d[1].name;
@@ -256,10 +281,9 @@ constType -> (
    | constKeyword numericType fieldName intAssignment simple
    | constKeyword stringType fieldName stringAssignment simple
    | constKeyword booleanType fieldName booleanAssignment simple
+   | constKeyword customType fieldName variableAssignment simple
 ) {% d => {
-  const def = extend(d[0]);
-  const name = def.name;
-  const value = def.value;
+  const def = aggregateConstantUsage(extend(d[0]));
   return def;
 } %}
 

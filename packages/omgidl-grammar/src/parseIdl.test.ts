@@ -12,9 +12,7 @@ describe("IDL grammar", () => {
       [
         {
           definitionType: "struct",
-          definitions: [
-            { constantUsage: [], isComplex: false, name: "input_value", type: "int32" },
-          ],
+          definitions: [{ isComplex: false, name: "input_value", type: "int32" }],
           name: "MyAction_Goal",
         },
       ],
@@ -62,9 +60,7 @@ describe("IDL grammar", () => {
                 {
                   name: "MyAction_Goal",
                   definitionType: "struct",
-                  definitions: [
-                    { constantUsage: [], isComplex: false, name: "input_value", type: "int32" },
-                  ],
+                  definitions: [{ isComplex: false, name: "input_value", type: "int32" }],
                 },
               ],
             },
@@ -105,115 +101,96 @@ describe("IDL grammar", () => {
           definitionType: "struct",
           definitions: [
             {
-              constantUsage: [],
               type: "uint16",
               name: "unsigned_short_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "int32",
               name: "long_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "uint32",
               name: "unsigned_long_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "int64",
               name: "long_long_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "uint64",
               name: "unsigned_long_long_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "float32",
               name: "float_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "float64",
               name: "double_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "char",
               name: "char_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "char",
               name: "wchar_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "bool",
               name: "boolean_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "byte",
               name: "octet_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "int8",
               name: "int8_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "uint8",
               name: "uint8_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "int16",
               name: "int16_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "uint16",
               name: "uint16_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "int32",
               name: "int32_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "uint32",
               name: "uint32_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "int64",
               name: "int64_value",
               isComplex: false,
             },
             {
-              constantUsage: [],
               type: "uint64",
               name: "uint64_value",
               isComplex: false,
@@ -342,91 +319,78 @@ module idl_parser {
                   definitionType: "struct",
                   definitions: [
                     {
-                      constantUsage: [],
                       defaultValue: 19000000000,
                       isComplex: false,
                       name: "int_and_frac_with_positive_scientific",
                       type: "float32",
                     },
                     {
-                      constantUsage: [],
                       defaultValue: 19000000000,
                       isComplex: false,
                       name: "int_and_frac_with_explicit_positive_scientific",
                       type: "float32",
                     },
                     {
-                      constantUsage: [],
                       defaultValue: 1.1e-10,
                       isComplex: false,
                       name: "int_and_frac_with_negative_scientific",
                       type: "float32",
                     },
                     {
-                      constantUsage: [],
                       defaultValue: 0.00009,
                       isComplex: false,
                       name: "int_and_frac",
                       type: "float32",
                     },
                     {
-                      constantUsage: [],
                       defaultValue: 1,
                       isComplex: false,
                       name: "int_with_empty_frac",
                       type: "float32",
                     },
                     {
-                      constantUsage: [],
                       defaultValue: 0.1,
                       isComplex: false,
                       name: "frac_only",
                       type: "float32",
                     },
                     {
-                      constantUsage: [],
                       defaultValue: 900000,
                       isComplex: false,
                       name: "int_with_positive_scientific",
                       type: "float32",
                     },
                     {
-                      constantUsage: [],
                       defaultValue: 900000,
                       isComplex: false,
                       name: "int_with_explicit_positive_scientific",
                       type: "float32",
                     },
                     {
-                      constantUsage: [],
                       defaultValue: 0.00009,
                       isComplex: false,
                       name: "int_with_negative_scientific",
                       type: "float32",
                     },
                     {
-                      constantUsage: [],
                       defaultValue: 8.7,
                       isComplex: false,
                       name: "fixed_int_and_frac",
                       type: "float32",
                     },
                     {
-                      constantUsage: [],
                       defaultValue: 4,
                       isComplex: false,
                       name: "fixed_int_with_dot_only",
                       type: "float32",
                     },
                     {
-                      constantUsage: [],
                       defaultValue: 0.3,
                       isComplex: false,
                       name: "fixed_frac_only",
                       type: "float32",
                     },
                     {
-                      constantUsage: [],
                       defaultValue: 7,
                       isComplex: false,
                       name: "fixed_int_only",
@@ -470,14 +434,12 @@ module idl_parser {
                   definitionType: "struct",
                   definitions: [
                     {
-                      constantUsage: [],
                       isComplex: true,
                       name: "single_point",
                       type: "geometry::msg::Point",
                     },
                     {
                       arrayLength: 10,
-                      constantUsage: [],
                       isArray: true,
                       isComplex: true,
                       name: "points_with_length",
@@ -485,7 +447,6 @@ module idl_parser {
                     },
                     {
                       arrayUpperBound: undefined,
-                      constantUsage: [],
                       isArray: true,
                       isComplex: true,
                       name: "points_with_length_sequence",
@@ -536,15 +497,13 @@ module idl_parser {
                   definitionType: "struct",
                   definitions: [
                     {
-                      constantUsage: [],
                       defaultValue: 123,
                       isComplex: false,
                       name: "unsigned_short_value",
                       type: "uint16",
                     },
-                    { constantUsage: [], isComplex: false, name: "long_value", type: "int32" },
+                    { isComplex: false, name: "long_value", type: "int32" },
                     {
-                      constantUsage: [],
                       isComplex: false,
                       name: "unsigned_long_value",
                       type: "uint32",
@@ -587,7 +546,6 @@ module idl_parser {
               definitions: [
                 {
                   arrayUpperBound: 10,
-                  constantUsage: [],
                   definitionType: "typedef",
                   isArray: true,
                   isComplex: false,
@@ -595,7 +553,6 @@ module idl_parser {
                   type: "int32",
                 },
                 {
-                  constantUsage: [],
                   defaultValue: 5,
                   definitionType: "typedef",
                   isComplex: false,
@@ -605,9 +562,8 @@ module idl_parser {
                 {
                   definitionType: "struct",
                   definitions: [
-                    { constantUsage: [], isComplex: false, name: "intArray", type: "int32arr" },
+                    { isComplex: false, name: "intArray", type: "int32arr" },
                     {
-                      constantUsage: [],
                       isComplex: false,
                       name: "short5",
                       type: "shortWithDefault",
@@ -675,9 +631,7 @@ module idl_parser {
                 },
                 {
                   definitionType: "struct",
-                  definitions: [
-                    { constantUsage: [], isComplex: false, name: "input_value", type: "int32" },
-                  ],
+                  definitions: [{ isComplex: false, name: "input_value", type: "int32" }],
                   name: "MyAction_Goal",
                 },
                 {
@@ -696,9 +650,7 @@ module idl_parser {
                 },
                 {
                   definitionType: "struct",
-                  definitions: [
-                    { constantUsage: [], isComplex: false, name: "output_value", type: "uint32" },
-                  ],
+                  definitions: [{ isComplex: false, name: "output_value", type: "uint32" }],
                   name: "MyAction_Result",
                 },
                 {
@@ -719,7 +671,6 @@ module idl_parser {
                   definitionType: "struct",
                   definitions: [
                     {
-                      constantUsage: [],
                       isComplex: false,
                       name: "progress_value",
                       type: "float32",
@@ -781,9 +732,7 @@ module idl_parser {
                 },
                 {
                   definitionType: "struct",
-                  definitions: [
-                    { constantUsage: [], isComplex: false, name: "input_value", type: "int32" },
-                  ],
+                  definitions: [{ isComplex: false, name: "input_value", type: "int32" }],
                   name: "MyAction_Goal",
                 },
               ],
@@ -919,21 +868,18 @@ module idl_parser {
                   definitionType: "struct",
                   definitions: [
                     {
-                      constantUsage: [],
                       isComplex: false,
                       name: "bounded_string_value",
                       type: "string",
                       upperBound: 5,
                     },
                     {
-                      constantUsage: [],
                       isComplex: false,
                       name: "wstring_value",
                       type: "string",
                       upperBound: undefined,
                     },
                     {
-                      constantUsage: [],
                       isComplex: false,
                       name: "bounded_wstring_value",
                       type: "string",
@@ -948,7 +894,6 @@ module idl_parser {
                     },
                     {
                       arrayUpperBound: undefined,
-                      constantUsage: [],
                       isArray: true,
                       isComplex: false,
                       name: "unbounded_short_values",
@@ -956,7 +901,6 @@ module idl_parser {
                     },
                     {
                       arrayUpperBound: 5,
-                      constantUsage: [],
                       isArray: true,
                       isComplex: false,
                       name: "bounded_short_values",
@@ -964,7 +908,6 @@ module idl_parser {
                     },
                     {
                       arrayUpperBound: undefined,
-                      constantUsage: [],
                       isArray: true,
                       isComplex: false,
                       name: "unbounded_values_of_bounded_strings",
@@ -973,7 +916,6 @@ module idl_parser {
                     },
                     {
                       arrayUpperBound: 4,
-                      constantUsage: [],
                       isArray: true,
                       isComplex: false,
                       name: "bounded_values_of_bounded_strings",
@@ -982,7 +924,6 @@ module idl_parser {
                     },
                     {
                       arrayLength: 23,
-                      constantUsage: [],
                       isArray: true,
                       isComplex: false,
                       name: "array_short_values",
@@ -1044,9 +985,7 @@ module idl_parser {
             },
             {
               definitionType: "struct",
-              definitions: [
-                { constantUsage: [], isComplex: false, name: "input_value", type: "int32" },
-              ],
+              definitions: [{ isComplex: false, name: "input_value", type: "int32" }],
               name: "MyAction_Goal",
             },
           ],
@@ -1068,10 +1007,125 @@ module idl_parser {
         {
           definitionType: "struct",
           definitions: [
-            { constantUsage: [], defaultValue: 5, isComplex: false, name: "int1", type: "int32" },
-            { constantUsage: [], defaultValue: 5, isComplex: false, name: "int2", type: "int32" },
+            { defaultValue: 5, isComplex: false, name: "int1", type: "int32" },
+            { defaultValue: 5, isComplex: false, name: "int2", type: "int32" },
           ],
           name: "MyAction_Goal",
+        },
+      ],
+    ]);
+  });
+  it("parses enums", () => {
+    const msgDef = `
+      enum COLORS {
+        RED,
+        GREEN,
+        BLUE
+      };
+    `;
+    const types = parseIdl(msgDef);
+    expect(types).toEqual([
+      [
+        {
+          definitionType: "enum",
+          name: "COLORS",
+          members: ["RED", "GREEN", "BLUE"],
+        },
+      ],
+    ]);
+  });
+  it("parses enums in modules", () => {
+    const msgDef = `
+    module Scene {
+      enum COLORS {
+        RED,
+        GREEN,
+        BLUE
+      };
+    };
+    `;
+    const types = parseIdl(msgDef);
+    expect(types).toEqual([
+      [
+        {
+          definitionType: "module",
+          name: "Scene",
+          definitions: [
+            {
+              definitionType: "enum",
+              name: "COLORS",
+              members: ["RED", "GREEN", "BLUE"],
+            },
+          ],
+        },
+      ],
+    ]);
+  });
+  it("parses enums used as constants", () => {
+    const msgDef = `
+    enum COLORS {
+      RED,
+      GREEN,
+      BLUE
+    };
+ 
+    module Scene {
+      module DefaultColors {
+        const COLORS red = COLORS::RED;
+      };
+      struct Line {
+        @default(value=COLORS::GREEN)
+        COLORS color;
+      };
+    };
+    `;
+    const types = parseIdl(msgDef);
+    expect(types).toEqual([
+      [
+        {
+          definitionType: "enum",
+          name: "COLORS",
+          members: ["RED", "GREEN", "BLUE"],
+        },
+        {
+          definitionType: "module",
+          name: "Scene",
+          definitions: [
+            {
+              name: "DefaultColors",
+              definitionType: "module",
+              definitions: [
+                {
+                  isComplex: false,
+                  isConstant: true,
+                  name: "red",
+                  type: "COLORS",
+                  value: {
+                    name: "COLORS::RED",
+                    usesConstant: true,
+                  },
+                  valueText: "COLORS::RED",
+                  constantUsage: [["value", "COLORS::RED"]],
+                },
+              ],
+            },
+            {
+              name: "Line",
+              definitionType: "struct",
+              definitions: [
+                {
+                  defaultValue: {
+                    name: "COLORS::GREEN",
+                    usesConstant: true,
+                  },
+                  isComplex: false,
+                  name: "color",
+                  type: "COLORS",
+                  constantUsage: [["defaultValue", "COLORS::GREEN"]],
+                },
+              ],
+            },
+          ],
         },
       ],
     ]);
@@ -1085,7 +1139,14 @@ module idl_parser {
         };
       };
     `;
-    expect(() => parseIdl(msgDef)).toThrow(/unexpected , token: ","/i);
+    expect(() => parseIdl(msgDef)).toThrow(/unexpected , token/i);
+  });
+  it("cannot parse empty struct", () => {
+    const msgDef = `
+      struct a {
+      };
+    `;
+    expect(() => parseIdl(msgDef)).toThrow(/unexpected RCBR token/i);
   });
   /****************  Syntax Errors */
   it("missing bracket at the end will result in end of input error", () => {

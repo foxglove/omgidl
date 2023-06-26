@@ -33,17 +33,7 @@ function buildRos2idlType(messageDefinition: string): MessageDefinition[] {
 
   return processedResult;
 }
-function traverseIdl(
-  path: (RawIdlDefinition | RawIdlFieldDefinition)[],
-  processNode: (path: (RawIdlDefinition | RawIdlFieldDefinition)[]) => void,
-) {
-  const currNode = path[path.length - 1]!;
-  const children: (RawIdlDefinition | RawIdlFieldDefinition)[] | undefined = currNode.definitions;
-  if (children) {
-    children.forEach((n) => traverseIdl([...path, n], processNode));
-  }
-  processNode(path);
-}
+
 function postProcessIdlDefinitions(definitions: RawIdlDefinition[]): MessageDefinition[] {
   const finalDefs: MessageDefinition[] = [];
   // Need to update the names of modules and structs to be in their respective namespaces
@@ -56,9 +46,9 @@ function postProcessIdlDefinitions(definitions: RawIdlDefinition[]): MessageDefi
       if (node.definitionType === "typedef") {
         // typedefs must have a name
         const { definitionType: _definitionType, name: _name, ...partialDef } = node;
-        typedefMap.set(node.name!, partialDef);
+        typedefMap.set(node.name, partialDef);
       } else if (node.isConstant === true) {
-        constantValueMap.set(node.name!, node.value);
+        constantValueMap.set(node.name, node.value);
       }
     });
 
@@ -66,7 +56,9 @@ function postProcessIdlDefinitions(definitions: RawIdlDefinition[]): MessageDefi
     // also fix up names to use ros package resource names
     traverseIdl([definition], (path) => {
       const node = path[path.length - 1]!;
-      if (node.definitions != undefined) {
+
+      // only run on fields
+      if (node.definitionType != undefined) {
         return;
       }
       // replace field definition with corresponding typedef aliased definition
@@ -96,21 +88,44 @@ function postProcessIdlDefinitions(definitions: RawIdlDefinition[]): MessageDefi
     const flattened = flattenIdlNamespaces(definition);
     finalDefs.push(...flattened);
   }
-
   return finalDefs;
 }
+
+/**
+ * Iterates through IDL tree and calls `processNode` function on each node.
+ * NOTE: Does not process enum members
+ */
+function traverseIdl(
+  path: (RawIdlDefinition | RawIdlFieldDefinition)[],
+  processNode: (path: (RawIdlDefinition | RawIdlFieldDefinition)[]) => void,
+) {
+  const currNode = path[path.length - 1]!;
+  if ("definitions" in currNode) {
+    currNode.definitions.forEach((n) => traverseIdl([...path, n], processNode));
+  }
+  processNode(path);
+}
+
 function flattenIdlNamespaces(definition: RawIdlDefinition): MessageDefinition[] {
   const flattened: MessageDefinition[] = [];
 
   traverseIdl([definition], (path) => {
     const node = path[path.length - 1] as RawIdlDefinition;
     if (node.definitionType === "module") {
-      const moduleDefs = node.definitions.filter((d) => d.definitionType !== "typedef");
-      // only add modules if all fields are constants (complex leaf)
-      if (moduleDefs.every((child) => (child as RawIdlFieldDefinition).isConstant)) {
+      const constantDefs: MessageDefinitionField[] = [];
+      for (const def of node.definitions) {
+        if (def.definitionType === "typedef") {
+          continue;
+        }
+        // flatten constants into fields
+        if ("isConstant" in def && def.isConstant === true) {
+          constantDefs.push(def);
+        }
+      }
+      if (constantDefs.length > 0) {
         flattened.push({
           name: path.map((n) => n.name).join("/"),
-          definitions: moduleDefs as MessageDefinitionField[],
+          definitions: constantDefs,
         });
       }
     } else if (node.definitionType === "struct") {
@@ -119,6 +134,8 @@ function flattenIdlNamespaces(definition: RawIdlDefinition): MessageDefinition[]
         name: path.map((n) => n.name).join("/"),
         definitions: node.definitions as MessageDefinitionField[],
       });
+    } else if (node.definitionType === "enum") {
+      throw new Error("Enums are not supported in ROS 2 IDL");
     }
   });
 

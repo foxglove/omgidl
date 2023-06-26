@@ -15,5 +15,8 @@ export function parseIdl(definition: string): RawIdlDefinition[][] {
       `Could not parse message definition (unexpected end of input): '${definition}'`,
     );
   }
+  if (results.length > 1) {
+    throw new Error(`Ambiguous grammar: '${definition}'`);
+  }
   return results;
 }
