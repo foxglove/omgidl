@@ -13,7 +13,7 @@
     "test": "yarn workspaces foreach run test --color",
     "lint": "yarn workspaces foreach run lint --color",
     "lint:ci": "yarn workspaces foreach run lint:ci",
-    "build": "yarn workspaces foreach run build --color",
+    "build": "yarn workspaces foreach run build",
     "grammar:test": "yarn workspace @foxglove/omgidl-grammar test",
     "grammar:build": "yarn workspace @foxglove/omgidl-grammar build",
     "omgidl:test": "yarn workspace @foxglove/omgidl-parser test",
