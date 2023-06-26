@@ -42,6 +42,49 @@ describe("rosidl grammar tests", () => {
       },
     ]);
   });
+  it("parses typedefs of complex types", () => {
+    const types = parse(
+      `module msg {
+        typedef Point Point2D;
+        struct PointCollection {
+          sequence<Point2D> points;
+        };
+      };
+      struct Point {
+        float32 x;
+        float32 y;
+      };`,
+    );
+    expect(types).toEqual([
+      {
+        name: "msg::PointCollection",
+        definitions: [
+          {
+            name: "points",
+            type: "Point",
+            isComplex: true,
+            isArray: true,
+            arrayUpperBound: undefined,
+          },
+        ],
+      },
+      {
+        name: "Point",
+        definitions: [
+          {
+            name: "x",
+            type: "float32",
+            isComplex: false,
+          },
+          {
+            name: "y",
+            type: "float32",
+            isComplex: false,
+          },
+        ],
+      },
+    ]);
+  });
   it("parses a module with a typedefs used in a struct", () => {
     const types = parse(
       `
@@ -868,6 +911,209 @@ module rosidl_parser {
           },
         ],
         name: "action::MyAction_Goal",
+      },
+    ]);
+  });
+  it("parses enums", () => {
+    const msgDef = `
+      enum COLORS {
+        RED,
+        GREEN,
+        BLUE
+      };
+    `;
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        name: "COLORS",
+        definitions: [
+          {
+            name: "RED",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 0,
+          },
+          {
+            name: "GREEN",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 1,
+          },
+          {
+            name: "BLUE",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 2,
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses enums in modules", () => {
+    const msgDef = `
+    module Scene {
+      enum COLORS {
+        RED,
+        GREEN,
+        BLUE
+      };
+    };
+    `;
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        name: "Scene::COLORS",
+        definitions: [
+          {
+            name: "RED",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 0,
+          },
+          {
+            name: "GREEN",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 1,
+          },
+          {
+            name: "BLUE",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 2,
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses enums used as type", () => {
+    const msgDef = `
+    enum COLORS {
+      RED,
+      GREEN,
+      BLUE
+    };
+ 
+    struct Line {
+      COLORS color;
+    };
+   `;
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        name: "COLORS",
+        definitions: [
+          {
+            name: "RED",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 0,
+          },
+          {
+            name: "GREEN",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 1,
+          },
+          {
+            name: "BLUE",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 2,
+          },
+        ],
+      },
+      {
+        name: "Line",
+        definitions: [
+          {
+            name: "color",
+            type: "uint32",
+            isComplex: false,
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses enums used as constants", () => {
+    const msgDef = `
+
+    enum COLORS {
+      RED,
+      GREEN,
+      BLUE
+    };
+ 
+    module Scene {
+      module DefaultColors {
+        const COLORS red = COLORS::RED;
+      };
+      struct Line {
+        @default(value=COLORS::GREEN)
+        COLORS color;
+      };
+    };
+   `;
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        name: "COLORS",
+        definitions: [
+          {
+            name: "RED",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 0,
+          },
+          {
+            name: "GREEN",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 1,
+          },
+          {
+            name: "BLUE",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 2,
+          },
+        ],
+      },
+      {
+        name: "Scene::DefaultColors",
+        definitions: [
+          {
+            isConstant: true,
+            name: "red",
+            type: "uint32",
+            isComplex: false,
+            value: 0,
+            valueText: "COLORS::RED",
+          },
+        ],
+      },
+      {
+        name: "Scene::Line",
+        definitions: [
+          {
+            name: "color",
+            type: "uint32",
+            isComplex: false,
+            defaultValue: 1,
+          },
+        ],
       },
     ]);
   });

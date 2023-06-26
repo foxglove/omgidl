@@ -126,6 +126,9 @@ function aggregateConstantUsage(dcl) {
   const entries = Object.entries(dcl).filter(
     ([key, value]) => value?.usesConstant === true
   ).map(([key, {name}]) => ([key, name]));
+  if(entries.length === 0) {
+    return dcl;
+  }
   return {
     ...dcl,
     constantUsage: entries,
@@ -135,8 +138,8 @@ function aggregateConstantUsage(dcl) {
 
 @lexer lexer
 
-main -> (importDcl:* definition:+):+ {% d => {
-  return d[0].flatMap(inner => inner[1].flat());
+main -> (importDcl:* definition):+ {% d => {
+  return d[0].flatMap(inner => inner[1]);
 }
 %}
 
@@ -278,10 +281,9 @@ constType -> (
    | constKeyword numericType fieldName intAssignment simple
    | constKeyword stringType fieldName stringAssignment simple
    | constKeyword booleanType fieldName booleanAssignment simple
+   | constKeyword customType fieldName variableAssignment simple
 ) {% d => {
-  const def = extend(d[0]);
-  const name = def.name;
-  const value = def.value;
+  const def = aggregateConstantUsage(extend(d[0]));
   return def;
 } %}
 
