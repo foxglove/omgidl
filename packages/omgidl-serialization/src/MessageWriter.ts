@@ -21,8 +21,6 @@ const PRIMITIVE_SIZES = new Map<string, number>([
   ["float32", 4],
   ["float64", 8],
   // ["string", ...], // handled separately
-  ["time", 8],
-  ["duration", 8],
 ]);
 
 const PRIMITIVE_WRITERS = new Map<string, PrimitiveWriter>([
@@ -38,8 +36,6 @@ const PRIMITIVE_WRITERS = new Map<string, PrimitiveWriter>([
   ["float32", float32],
   ["float64", float64],
   ["string", string],
-  ["time", time],
-  ["duration", time],
 ]);
 
 const PRIMITIVE_ARRAY_WRITERS = new Map<string, PrimitiveArrayWriter>([
@@ -55,8 +51,6 @@ const PRIMITIVE_ARRAY_WRITERS = new Map<string, PrimitiveArrayWriter>([
   ["float32", float32Array],
   ["float64", float64Array],
   ["string", stringArray],
-  ["time", timeArray],
-  ["duration", timeArray],
 ]);
 
 /**
@@ -67,10 +61,13 @@ export class MessageWriter {
   rootDefinition: MessageDefinitionField[];
   definitions: Map<string, MessageDefinitionField[]>;
 
-  constructor(definitions: MessageDefinition[]) {
-    const rootDefinition = definitions[0];
+  constructor(rootDefinitionName: string, definitions: MessageDefinition[]) {
+    // use first not entirely constant module as root
+    const rootDefinition = definitions.find((def) => def.name === rootDefinitionName);
     if (rootDefinition == undefined) {
-      throw new Error("MessageReader initialized with no root MessageDefinition");
+      throw new Error(
+        `Root definition name "${rootDefinitionName}" not found in schema definitions.`,
+      );
     }
     this.rootDefinition = rootDefinition.definitions;
     this.definitions = new Map<string, MessageDefinitionField[]>(
@@ -137,7 +134,7 @@ export class MessageWriter {
         } else {
           // Primitive array
           const entrySize = this.getPrimitiveSize(field.type);
-          const alignment = field.type === "time" || field.type === "duration" ? 4 : entrySize;
+          const alignment = entrySize;
           newOffset += padding(newOffset, alignment);
           newOffset += entrySize * arrayLength;
         }
@@ -155,7 +152,7 @@ export class MessageWriter {
         } else {
           // Primitive
           const entrySize = this.getPrimitiveSize(field.type);
-          const alignment = field.type === "time" || field.type === "duration" ? 4 : entrySize;
+          const alignment = entrySize;
           newOffset += padding(newOffset, alignment);
           newOffset += entrySize;
         }
@@ -311,17 +308,6 @@ function string(value: unknown, defaultValue: DefaultValue, writer: CdrWriter): 
   writer.string(typeof value === "string" ? value : ((defaultValue ?? "") as string));
 }
 
-function time(value: unknown, _defaultValue: DefaultValue, writer: CdrWriter): void {
-  if (value == undefined) {
-    writer.int32(0);
-    writer.uint32(0);
-    return;
-  }
-  const timeObj = value as { sec?: number; nsec?: number; nanosec?: number };
-  writer.int32(timeObj.sec ?? 0);
-  writer.uint32(timeObj.nsec ?? timeObj.nanosec ?? 0);
-}
-
 function boolArray(value: unknown, defaultValue: DefaultValue, writer: CdrWriter): void {
   if (Array.isArray(value)) {
     const array = new Int8Array(value);
@@ -452,14 +438,6 @@ function stringArray(value: unknown, defaultValue: DefaultValue, writer: CdrWrit
     const array = (defaultValue ?? []) as string[];
     for (const item of array) {
       writer.string(item);
-    }
-  }
-}
-
-function timeArray(value: unknown, _defaultValue: DefaultValue, writer: CdrWriter): void {
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      time(item, undefined, writer);
     }
   }
 }
