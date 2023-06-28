@@ -1,6 +1,6 @@
 import { parseOmgidl as parse } from "./parseOmgidl";
 
-describe("rosidl grammar tests", () => {
+describe("omgidl parser tests", () => {
   it("parses a module with an enclosed struct and module", () => {
     const types = parse(
       `
@@ -47,12 +47,12 @@ describe("rosidl grammar tests", () => {
       `module msg {
         typedef Point Point2D;
         struct PointCollection {
-          sequence<Point2D> points;
+          sequence<msg::Point2D> points;
         };
       };
       struct Point {
-        float32 x;
-        float32 y;
+        float x;
+        float y;
       };`,
     );
     expect(types).toEqual([
@@ -79,6 +79,30 @@ describe("rosidl grammar tests", () => {
           {
             name: "y",
             type: "float32",
+            isComplex: false,
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses nested typedefs in modules and their usage", () => {
+    const types = parse(
+      `module msg {
+        typedef float coord[2];
+      };
+      struct Point {
+        msg::coord loc;
+      };`,
+    );
+    expect(types).toEqual([
+      {
+        name: "Point",
+        definitions: [
+          {
+            name: "loc",
+            type: "float32",
+            isArray: true,
+            arrayLength: 2,
             isComplex: false,
           },
         ],
@@ -464,11 +488,9 @@ module rosidl_parser {
   it("parses a module of all array types", () => {
     const types = parse(
       `
+      const unsigned long UNSIGNED_LONG_CONSTANT = 42;
       module rosidl_parser {
         module msg {
-          module MyMessage_Constants {
-            const unsigned long UNSIGNED_LONG_CONSTANT = 42;
-          };
           struct MyMessage {
             string<5> bounded_string_value;
             wstring wstring_value;
@@ -487,7 +509,7 @@ module rosidl_parser {
     );
     expect(types).toEqual([
       {
-        name: "rosidl_parser::msg::MyMessage_Constants",
+        name: "",
         definitions: [
           {
             name: "UNSIGNED_LONG_CONSTANT",
@@ -628,6 +650,13 @@ module rosidl_parser {
     };
   };
 };
+module geometry {
+  module msg {
+    struct Point {
+      float x;
+    };
+  };
+};
     `,
     );
     expect(types).toEqual([
@@ -649,8 +678,19 @@ module rosidl_parser {
           {
             type: "geometry::msg::Point",
             name: "points_with_length_sequence",
+            arrayUpperBound: undefined,
             isArray: true,
             isComplex: true,
+          },
+        ],
+      },
+      {
+        name: "geometry::msg::Point",
+        definitions: [
+          {
+            name: "x",
+            type: "float32",
+            isComplex: false,
           },
         ],
       },

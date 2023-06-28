@@ -3,15 +3,12 @@ import {
   MessageDefinition,
   MessageDefinitionField,
 } from "@foxglove/message-definition";
-import {
-  EnumDefinition,
-  RawIdlDefinition,
-  RawIdlFieldDefinition,
-  parseIdl,
-} from "@foxglove/omgidl-grammar";
+import { RawIdlDefinition, AnyIDLNode, parseIdl, StructMemberNode } from "@foxglove/omgidl-grammar";
 
 const SIMPLE_TYPES = new Set([
   "bool",
+  "char",
+  "byte",
   "int8",
   "uint8",
   "int16",
@@ -37,7 +34,7 @@ export function parseOmgidl(messageDefinition: string): MessageDefinition[] {
 function buildOmgidlType(messageDefinition: string): MessageDefinition[] {
   const results = parseIdl(messageDefinition);
 
-  const result = results[0] as RawIdlDefinition[];
+  const result = results[0]!;
   const processedResult = postProcessIdlDefinitions(result);
   for (const { definitions } of processedResult) {
     for (const definition of definitions) {
@@ -51,101 +48,246 @@ function buildOmgidlType(messageDefinition: string): MessageDefinition[] {
 function postProcessIdlDefinitions(definitions: RawIdlDefinition[]): MessageDefinition[] {
   const finalDefs: MessageDefinition[] = [];
   // Need to update the names of modules and structs to be in their respective namespaces
-  const enumMap = new Map<string, EnumDefinition>();
-  const constantValueMap = new Map<string, ConstantValue>();
+  const definitionMap = new Map<string, AnyIDLNode>();
+
   for (const definition of definitions) {
-    const typedefMap = new Map<string, Partial<RawIdlFieldDefinition>>();
-    // build up enums map first so that it can be used by typedefs
-    traverseIdl([definition], (path) => {
-      const node = path[path.length - 1];
-      if (node == undefined || node.definitionType !== "enum") {
-        return;
-      }
-      const namespacedName = path.map((n) => n.name).join("::");
-      enumMap.set(namespacedName, node);
-      // set enums into constant value map as well
-      node.members.forEach((m: string, i: number) => {
-        constantValueMap.set(`${namespacedName}::${m}`, i as ConstantValue);
-      });
-    });
-
-    // build constant and typedef maps
-    traverseIdl([definition], (path) => {
-      const node = path[path.length - 1];
-      // only run on constants and typedefs
-      if (
-        node == undefined ||
-        node.definitionType === "module" ||
-        node.definitionType === "struct" ||
-        node.definitionType === "enum"
-      ) {
-        return;
-      }
-
-      if (node.definitionType === "typedef") {
-        // typedefs must have a name
-        const { definitionType: _definitionType, name: _name, ...partialDef } = node;
-
-        // enum values and types are treated as uint32s so they aren't complex
-        if (enumMap.has(node.type ?? "")) {
-          partialDef.type = "uint32";
-          partialDef.isComplex = false;
-        } else if (!SIMPLE_TYPES.has(node.type ?? "")) {
-          partialDef.isComplex = true;
-        }
-
-        typedefMap.set(node.name, partialDef);
-      } else if (node.isConstant === true) {
-        constantValueMap.set(node.name, node.value);
-      }
-    });
-
-    // modify ast field nodes in-place to replace typedefs and constants
+    // build flattened definition map
     traverseIdl([definition], (path) => {
       const node = path[path.length - 1]!;
+      const namePath = path.map((n) => n.name);
 
-      // only run on fields
-      if (node.definitionType != undefined) {
-        return;
-      }
-      // replace field definition with corresponding typedef aliased definition
-      if (node.type && typedefMap.has(node.type)) {
-        Object.assign(node, { ...typedefMap.get(node.type), name: node.name });
-      }
-      if (node.type && enumMap.has(node.type)) {
-        Object.assign(node, { type: "uint32", isComplex: false, name: node.name });
-      }
-
-      // need to iterate through keys because this can occur on arrayLength, upperBound, arrayUpperBound, value, defaultValue
-      for (const [key, constantName] of node.constantUsage ?? []) {
-        if (constantValueMap.has(constantName)) {
-          (node[key] as ConstantValue) = constantValueMap.get(constantName);
-        } else {
-          throw new Error(
-            `Could not find constant <${constantName}> for field <${
-              node.name ?? "undefined"
-            }> in <${definition.name}>`,
-          );
+      definitionMap.set(toScopedIdentifier(namePath), node);
+      // expand enums into constants for usage downstream
+      if (node.declarator === "enum") {
+        const enumConstants = node.enumerators.map((m: string, i: number) => ({
+          declarator: "const" as const,
+          isConstant: true as const,
+          name: m,
+          type: "uint32", // enums treated as unsigned longs in OMG IDL spec
+          value: i as ConstantValue,
+          isComplex: false,
+        }));
+        for (const constant of enumConstants) {
+          definitionMap.set(toScopedIdentifier([...namePath, constant.name]), constant);
         }
       }
-      delete node.constantUsage;
     });
+  }
 
-    const flattened = flattenIdlNamespaces(definition);
-    finalDefs.push(...flattened);
+  // resolve constant usage  to values
+  for (const [scopedIdentifier, node] of definitionMap.entries()) {
+    if (
+      (node.declarator !== "struct-member" &&
+        node.declarator !== "typedef" &&
+        node.declarator !== "const") ||
+      node.constantUsage == undefined
+    ) {
+      continue;
+    }
+
+    // need to iterate through keys because this can occur on arrayLength, upperBound, arrayUpperBound, value, defaultValue
+    for (const [key, constantName] of node.constantUsage ?? []) {
+      const constantNode = resolveScopedOrLocalNodeReference({
+        usedIdentifier: constantName,
+        scopedIdentifierOfUsageNode: scopedIdentifier,
+        definitionMap,
+      });
+      if (!constantNode) {
+        throw new Error(
+          `Could not find constant <${constantName}> for field <${node.name ?? "undefined"}> in <${
+            node.name
+          }>`,
+        );
+      }
+
+      if (constantNode.declarator !== "const") {
+        throw new Error(`Identifier <${constantName}> used in ${node.name} is not a constant`);
+      }
+      (node[key] as ConstantValue) = constantNode.value;
+    }
+  }
+
+  // resolve enums types
+  for (const [scopedIdentifier, node] of definitionMap.entries()) {
+    // "const" types don't really matter to resolve since they aren't used in serialization
+    if (
+      node.declarator !== "typedef" &&
+      node.declarator !== "struct-member" &&
+      node.declarator !== "const"
+    ) {
+      continue;
+    }
+    const type = node.type;
+    if (SIMPLE_TYPES.has(type)) {
+      continue;
+    }
+    const typeNode = resolveScopedOrLocalNodeReference({
+      usedIdentifier: type,
+      scopedIdentifierOfUsageNode: scopedIdentifier,
+      definitionMap,
+    });
+    if (!typeNode) {
+      throw new Error(
+        `Could not find type <${type}> for field <${node.name ?? "undefined"}> in <${node.name}>`,
+      );
+    }
+    if (typeNode.declarator === "enum") {
+      node.type = "uint32";
+      node.isComplex = false;
+    }
+  }
+
+  // resolve  what typedefs are complex
+  // assume that typedefs can't reference other typedefs
+  for (const [scopedIdentifier, node] of definitionMap.entries()) {
+    if (node.declarator !== "typedef") {
+      continue;
+    }
+    const type = node.type;
+    if (SIMPLE_TYPES.has(type)) {
+      continue;
+    }
+    const typeNode = resolveScopedOrLocalNodeReference({
+      usedIdentifier: type,
+      scopedIdentifierOfUsageNode: scopedIdentifier,
+      definitionMap,
+    });
+    if (!typeNode) {
+      throw new Error(
+        `Could not find type <${type}> for field <${node.name ?? "undefined"}> in <${node.name}>`,
+      );
+    }
+    if (typeNode.declarator === "typedef") {
+      throw new Error(
+        `We do not support typedefs that reference other typedefs ${node.name} -> ${typeNode.name}`,
+      );
+    }
+    if (typeNode.declarator === "struct") {
+      node.isComplex = true;
+      continue;
+    }
+  }
+
+  // resolve non-primitive struct member types
+  for (const [scopedIdentifier, node] of definitionMap.entries()) {
+    if (node.declarator !== "struct-member") {
+      continue;
+    }
+    const type = node.type;
+    if (SIMPLE_TYPES.has(type)) {
+      continue;
+    }
+
+    const typeNode = resolveScopedOrLocalNodeReference({
+      usedIdentifier: type,
+      scopedIdentifierOfUsageNode: scopedIdentifier,
+      definitionMap,
+    });
+    if (!typeNode) {
+      throw new Error(
+        `Could not find type <${type}> for field <${node.name ?? "undefined"}> in <${node.name}>`,
+      );
+    }
+    if (typeNode.declarator === "typedef") {
+      // apply typedef definition to struct member
+      const { declarator: _d, name: _name, ...partialDef } = typeNode;
+      Object.assign(node, { ...partialDef });
+    } else if (typeNode.declarator === "struct") {
+      node.isComplex = true;
+    } else {
+      throw new Error(
+        `Unexpected type <${typeNode.declarator}> for  <${node.name}>. Must be typedef or struct`,
+      );
+    }
+  }
+
+  // flatten for output to message definition
+  for (const [namespacedName, node] of definitionMap.entries()) {
+    if (node.declarator === "struct") {
+      finalDefs.push({
+        name: namespacedName,
+        definitions: node.definitions
+          .map((d) =>
+            idlNodeToMessageDefinitionField(
+              definitionMap.get(toScopedIdentifier([namespacedName, d.name])) as StructMemberNode,
+            ),
+          )
+          .filter(Boolean) as MessageDefinitionField[],
+      });
+    } else if (node.declarator === "module") {
+      const fieldDefinitions = node.definitions
+        .map((d) =>
+          idlNodeToMessageDefinitionField(
+            definitionMap.get(toScopedIdentifier([namespacedName, d.name])) as StructMemberNode,
+          ),
+        )
+        .filter(Boolean) as MessageDefinitionField[];
+      if (fieldDefinitions.length > 0) {
+        finalDefs.push({
+          name: namespacedName,
+          definitions: fieldDefinitions,
+        });
+      }
+    } else if (node.declarator === "enum") {
+      const fieldDefinitions = node.enumerators
+        .map((e) =>
+          idlNodeToMessageDefinitionField(
+            definitionMap.get(toScopedIdentifier([namespacedName, e])) as StructMemberNode,
+          ),
+        )
+        .filter(Boolean) as MessageDefinitionField[];
+      if (fieldDefinitions.length > 0) {
+        finalDefs.push({
+          name: namespacedName,
+          definitions: fieldDefinitions,
+        });
+      }
+    } else if (node.name === namespacedName) {
+      const fieldDefinition = idlNodeToMessageDefinitionField(node);
+      if (fieldDefinition) {
+        finalDefs.push({ name: "", definitions: [fieldDefinition] });
+      }
+    }
   }
 
   return finalDefs;
+}
+
+function idlNodeToMessageDefinitionField(node: AnyIDLNode): MessageDefinitionField | undefined {
+  if (node.declarator !== "struct-member" && node.declarator !== "const") {
+    return undefined;
+  }
+  const { declarator: _d, constantUsage: _cU, ...messageDefinition } = node;
+  return messageDefinition;
+}
+
+function resolveScopedOrLocalNodeReference({
+  usedIdentifier,
+  scopedIdentifierOfUsageNode,
+  definitionMap,
+}: {
+  usedIdentifier: string;
+  scopedIdentifierOfUsageNode: string;
+  definitionMap: Map<string, AnyIDLNode>;
+}): AnyIDLNode | undefined {
+  // If using local un-scoped identifier, it will not be found in the definitions map
+  // In this case we try by building up the namespace prefix until we find a match
+  let referencedNode = undefined;
+  const namespacePrefixes = fromScopedIdentifier(scopedIdentifierOfUsageNode).slice(0, -1); // do not add node name
+  const currPrefix: string[] = [];
+  do {
+    referencedNode = definitionMap.get(toScopedIdentifier([...currPrefix, usedIdentifier]));
+    currPrefix.push(namespacePrefixes.shift()!);
+  } while (referencedNode == undefined && namespacePrefixes.length > 0);
+
+  return referencedNode;
 }
 
 /**
  * Iterates through IDL tree and calls `processNode` function on each node.
  * NOTE: Does not process enum members
  */
-function traverseIdl(
-  path: (RawIdlDefinition | RawIdlFieldDefinition)[],
-  processNode: (path: (RawIdlDefinition | RawIdlFieldDefinition)[]) => void,
-) {
+function traverseIdl(path: AnyIDLNode[], processNode: (path: AnyIDLNode[]) => void) {
   const currNode = path[path.length - 1]!;
   if ("definitions" in currNode) {
     currNode.definitions.forEach((n) => traverseIdl([...path, n], processNode));
@@ -153,56 +295,12 @@ function traverseIdl(
   processNode(path);
 }
 
-/**
- * Flattens nested modules down into a single message definition
- * Example: `{ name: "foo", definitions: [{ name: "bar", definitions: [{ name: "baz" }] }] }`
- * becomes `{ name: "foo::bar::baz" } with leaf node definitions`
- *
- */
-function flattenIdlNamespaces(definition: RawIdlDefinition): MessageDefinition[] {
-  const flattened: MessageDefinition[] = [];
+function toScopedIdentifier(path: string[]): string {
+  return path.map((id) => id).join("::");
+}
 
-  traverseIdl([definition], (path) => {
-    const node = path[path.length - 1] as RawIdlDefinition;
-    if (node.definitionType === "module") {
-      const constantDefs: MessageDefinitionField[] = [];
-      for (const def of node.definitions) {
-        if (def.definitionType === "typedef") {
-          continue;
-        }
-        // flatten constants into fields
-        if ("isConstant" in def && def.isConstant === true) {
-          constantDefs.push(def);
-        }
-      }
-      if (constantDefs.length > 0) {
-        flattened.push({
-          name: path.map((n) => n.name).join("::"),
-          definitions: constantDefs,
-        });
-      }
-    } else if (node.definitionType === "struct") {
-      // all structs are leaf nodes to be added
-      flattened.push({
-        name: path.map((n) => n.name).join("::"),
-        definitions: node.definitions as MessageDefinitionField[],
-      });
-    } else if (node.definitionType === "enum") {
-      // enums should be considered as a special syntax for modules filled with constants
-      flattened.push({
-        name: path.map((n) => n.name).join("::"),
-        definitions: node.members.map((m: string, i: number) => ({
-          name: m,
-          type: "uint32", // enums treated as unsigned longs in OMG IDL spec
-          isConstant: true,
-          value: i as ConstantValue,
-          isComplex: false,
-        })),
-      });
-    }
-  });
-
-  return flattened;
+function fromScopedIdentifier(path: string): string[] {
+  return path.split("::");
 }
 
 export function normalizeType(type: string): string {
