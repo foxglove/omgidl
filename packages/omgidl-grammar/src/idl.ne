@@ -153,7 +153,7 @@ function processModule(d) {
   const defs = d[4];
   // need to return array here to keep same signature as processComplexModule
   return {
-    definitionType: "module",
+    declarator: "module",
     name: moduleName,
     definitions: defs.flat(1),
   };
@@ -191,9 +191,9 @@ enum ->  "enum" fieldName "{" fieldName ("," fieldName):* "}" {% d => {
     .filter(Boolean);
 
   return {
-    definitionType: 'enum',
+    declarator: 'enum',
     name,
-    members: [firstMember, ...members],
+    enumerators: [firstMember, ...members],
   };
 } %}
 
@@ -201,7 +201,7 @@ struct -> "struct" fieldName "{" (member):+ "}" {% d => {
   const name = d[1].name;
   const definitions = d[3].flat(2).filter(def => def !== null);
   return {
-    definitionType: 'struct',
+    declarator: 'struct',
     name,
     definitions,
   };
@@ -213,8 +213,9 @@ typedefWithAnnotations -> multiAnnotations (
  | typedef sequenceType fieldName
 ) {% d => {
   const def = aggregateConstantUsage(extend(d.flat(1)));
+  
   return {
-    definitionType: "typedef",
+    declarator: "typedef",
     ...def,
   };
 } %}
@@ -243,7 +244,10 @@ fieldDcl -> (
  ) {% (d) => {
   const names = d[0].splice(1, 1)[0];
   // create a definition for each name
-  const defs = names.map((nameObj) => extend([...d[0], nameObj]));
+  const defs = names.map((nameObj) => ({
+    ...extend([...d[0], nameObj]),
+    declarator: "struct-member"
+  }));
   return defs;
 } %}
 
@@ -287,7 +291,7 @@ constType -> (
   return def;
 } %}
 
-constKeyword -> "const"  {% d => ({isConstant: true}) %}
+constKeyword -> "const"  {% d => ({isConstant: true, declarator: "const"}) %}
 
 fieldName -> %NAME {% d => ({name: d[0].value}) %}
 
@@ -333,12 +337,9 @@ primitiveTypes -> (
 
 customType -> %NAME {% d => {
   const typeName = d[0].value;
-  // won't be replaced later with a typedef alias definition
-  // typedefs can't include :: in their name, but they can be complex
-  const isDefinitelyComplex = typeName.includes("::");
 
   // post process will go through and replace typedefs with their actual type
-  return {type: typeName, isComplex: isDefinitelyComplex };
+  return {type: typeName };
 }%}
 
 stringType ->  ("string"|"wstring") ("<" (INT | %NAME) ">"):? {% d => {
