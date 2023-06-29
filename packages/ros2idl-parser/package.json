@@ -48,6 +48,7 @@
   "dependencies": {
     "@foxglove/message-definition": "^0.2.0",
     "@foxglove/omgidl-grammar": "workspace:*",
+    "@foxglove/omgidl-parser": "workspace:*",
     "md5-typescript": "^1.0.5"
   },
   "devDependencies": {

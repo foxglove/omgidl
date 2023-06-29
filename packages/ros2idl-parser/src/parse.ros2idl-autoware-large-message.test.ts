@@ -424,6 +424,32 @@ module builtin_interfaces {
     };
   };
 };
+
+// BELOW ADDED MANUALLY BECAUSE IT WAS NOT INCLUDED IN THE ORIGINAL MESSAGE
+================================================================================
+IDL: geometry_msgs/msg/PosesWithCovariance
+
+module geometry_msgs {
+  module msg {
+    struct PoseWithCovariance {
+      geometry_msgs::msg::Pose pose;
+      double covariance[36];
+    };
+  };
+};
+
+================================================================================
+IDL: geometry_msgs/msg/Pose
+
+module geometry_msgs {
+  module msg {
+    struct Pose {
+      geometry_msgs::msg::Point position;
+      geometry_msgs::msg::Quaternion orientation;
+    };
+  };
+};
+
 `;
 
 describe("ros2idl large autoware message (TrackedMessages)", () => {

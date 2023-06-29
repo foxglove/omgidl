@@ -451,5 +451,37 @@ Array [
     ],
     "name": "builtin_interfaces/msg/Time",
   },
+  Object {
+    "definitions": Array [
+      Object {
+        "isComplex": true,
+        "name": "pose",
+        "type": "geometry_msgs/msg/Pose",
+      },
+      Object {
+        "arrayLength": 36,
+        "isArray": true,
+        "isComplex": false,
+        "name": "covariance",
+        "type": "float64",
+      },
+    ],
+    "name": "geometry_msgs/msg/PoseWithCovariance",
+  },
+  Object {
+    "definitions": Array [
+      Object {
+        "isComplex": true,
+        "name": "position",
+        "type": "geometry_msgs/msg/Point",
+      },
+      Object {
+        "isComplex": true,
+        "name": "orientation",
+        "type": "geometry_msgs/msg/Quaternion",
+      },
+    ],
+    "name": "geometry_msgs/msg/Pose",
+  },
 ]
 `;
