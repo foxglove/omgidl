@@ -263,18 +263,24 @@ multiAnnotations -> annotation:* {%
   }
 %}
 
-annotation -> at %NAME ("(" multiAnnotationParams ")"):? {% d => {
-  const paramsMap = d[2] ? d[2][1] : {};
+annotation -> at %NAME ("(" annotationParams ")"):? {% d => {
   if(d[1].value === "default") {
-    const defaultValue = paramsMap.value;
+    const params = d[2] ? d[2][1] : {};
+    const defaultValue = params.value;
     return {defaultValue};
   }
   return null
 } %}
 
-multiAnnotationParams -> annotationParam ("," annotationParam):* {%
+annotationParams -> (multipleNamedAnnotationParams | literal) {% d => d[0][0] %}
+
+multipleNamedAnnotationParams -> namedAnnotationParams ("," namedAnnotationParams):* {%
   d => extend([d[0], ...d[1].flatMap(([, param]) => param)])
 %}
+
+namedAnnotationParams -> (%NAME assignment) {% d => ({[d[0][0].value]: d[0][1].value}) %}
+  | (%NAME) {% noop %}
+
 annotationParam -> (%NAME assignment) {% d => ({[d[0][0].value]: d[0][1].value}) %}
   | (%NAME) {% noop %}
 
@@ -380,6 +386,16 @@ numericType -> (
   return { type: type ? type : typeString };
 }
 %}
+
+literal -> (booleanLiteral | strLiteral | floatLiteral | intLiteral) {% d => d[0][0] %}
+
+booleanLiteral -> BOOLEAN {% d => ({value: d[0] === "TRUE"}) %}
+
+strLiteral -> STR {% d => ({value: d[0]}) %}
+
+floatLiteral -> (SIGNED_FLOAT | FLOAT) {% d => ({value: parseFloat(d[0][0])}) %}
+
+intLiteral -> (SIGNED_INT | INT) {% d => ({value: parseInt(d[0][0])}) %}
 
 # ALL CAPS return strings rather than objects or null (terminals)
 

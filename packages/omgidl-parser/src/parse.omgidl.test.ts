@@ -609,6 +609,7 @@ module rosidl_parser {
       @verbatim (language="comment", text="")
       @arbitrary_annotation ( key1="value1", key2=TRUE, key3=0.0, key4=10 )
       @key unsigned long unsigned_long_value;
+      @id(100) @default(100) uint32 uint32_with_default;
     };
   };
 };
@@ -633,6 +634,12 @@ module rosidl_parser {
             type: "uint32",
             name: "unsigned_long_value",
             isComplex: false,
+          },
+          {
+            type: "uint32",
+            name: "uint32_with_default",
+            isComplex: false,
+            defaultValue: 100,
           },
         ],
       },

@@ -526,6 +526,7 @@ module idl_parser {
       @verbatim (language="comment", text="")
       @arbitrary_annotation ( key1="value1", key2=TRUE, key3=0.0, key4=10 )
       @key unsigned long unsigned_long_value;
+      @id(100) @default(100) uint32 uint32_with_default;
     };
   };
 };
@@ -560,6 +561,13 @@ module idl_parser {
                       declarator: "struct-member",
                       name: "unsigned_long_value",
                       type: "uint32",
+                    },
+                    {
+                      isComplex: false,
+                      declarator: "struct-member",
+                      name: "uint32_with_default",
+                      type: "uint32",
+                      defaultValue: 100,
                     },
                   ],
                   name: "MyMessage",
