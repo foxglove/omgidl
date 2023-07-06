@@ -432,7 +432,7 @@ module rosidl_parser {
             isComplex: false,
           },
           {
-            type: "int8",
+            type: "uint8",
             name: "octet_value",
             isComplex: false,
           },

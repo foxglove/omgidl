@@ -85,7 +85,7 @@ function postProcessIdlDefinitions(definitions: RawIdlDefinition[]): MessageDefi
       continue;
     }
 
-    // need to iterate through keys because this can occur on arrayLength, upperBound, arrayUpperBound, value, defaultValue
+    // need to iterate through keys because this can occur on arrayLength, upperBound, arrayLength, value, defaultValue
     for (const [key, constantName] of node.constantUsage ?? []) {
       const constantNode = resolveScopedOrLocalNodeReference({
         usedIdentifier: constantName,

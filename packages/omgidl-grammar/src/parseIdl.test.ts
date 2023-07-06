@@ -171,7 +171,7 @@ describe("IDL grammar", () => {
               declarator: "struct-member",
             },
             {
-              type: "byte",
+              type: "uint8",
               name: "octet_value",
               isComplex: false,
               declarator: "struct-member",

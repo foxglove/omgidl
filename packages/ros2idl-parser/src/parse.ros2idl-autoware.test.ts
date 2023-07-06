@@ -38,7 +38,7 @@ describe("test autoware generated idl schemas", () => {
     schema.match(idlRegex)![0]!.split("/").pop(),
     schema,
   ]) as [string, string][];
-  it.each(failTestMap)("parses %s", (_idl, schema) => {
+  it.each(failTestMap)("fails to parse %s", (_idl, schema) => {
     expect(() => parse(schema)).toThrow();
   });
 });
