@@ -425,7 +425,6 @@ module builtin_interfaces {
   };
 };
 
-// BELOW ADDED MANUALLY BECAUSE IT WAS NOT INCLUDED IN THE ORIGINAL MESSAGE
 ================================================================================
 IDL: geometry_msgs/msg/PosesWithCovariance
 

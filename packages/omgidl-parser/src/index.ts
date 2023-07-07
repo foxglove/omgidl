@@ -1,1 +1,1 @@
-export * from "./parseOmgidl";
+export * from "./parseIdl";

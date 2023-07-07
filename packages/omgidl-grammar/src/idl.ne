@@ -264,7 +264,8 @@ multiAnnotations -> annotation:* {%
 %}
 
 annotation -> at %NAME ("(" annotationParams ")"):? {% d => {
-  if(d[1].value === "default") {
+  const annotationName = d[1].value;
+  if(annotationName === "default") {
     const params = d[2] ? d[2][1] : {};
     const defaultValue = params.value;
     return {defaultValue};
@@ -279,10 +280,6 @@ multipleNamedAnnotationParams -> namedAnnotationParams ("," namedAnnotationParam
 %}
 
 namedAnnotationParams -> (%NAME assignment) {% d => ({[d[0][0].value]: d[0][1].value}) %}
-  | (%NAME) {% noop %}
-
-annotationParam -> (%NAME assignment) {% d => ({[d[0][0].value]: d[0][1].value}) %}
-  | (%NAME) {% noop %}
 
 at -> "@" {% noop %}
 

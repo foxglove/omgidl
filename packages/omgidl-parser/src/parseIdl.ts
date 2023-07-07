@@ -27,15 +27,15 @@ const SIMPLE_TYPES = new Set([
  * @param messageDefinition - idl decoded message definition string
  * @returns - parsed message definition
  */
-export function parseOmgidl(messageDefinition: string): MessageDefinition[] {
-  return buildOmgidlType(messageDefinition);
+export function parseIdl(messageDefinition: string): MessageDefinition[] {
+  return buildIdlType(messageDefinition);
 }
 
-function buildOmgidlType(messageDefinition: string): MessageDefinition[] {
+function buildIdlType(messageDefinition: string): MessageDefinition[] {
   const results = parseIdl(messageDefinition);
 
   const result = results[0]!;
-  const processedResult = postProcessIdlDefinitions(result);
+  const processedResult = processIdlDefinitions(result);
   for (const { definitions } of processedResult) {
     for (const definition of definitions) {
       definition.type = normalizeType(definition.type);
@@ -45,7 +45,10 @@ function buildOmgidlType(messageDefinition: string): MessageDefinition[] {
   return processedResult;
 }
 
-function postProcessIdlDefinitions(definitions: RawIdlDefinition[]): MessageDefinition[] {
+/** Resolves enum, constant and typedef usage in schema to make each member in the schema not referential beyond complex types.
+ * Flattens down into a single array
+ */
+function processIdlDefinitions(definitions: RawIdlDefinition[]): MessageDefinition[] {
   const finalDefs: MessageDefinition[] = [];
   // Need to update the names of modules and structs to be in their respective namespaces
   const definitionMap = new Map<string, AnyIDLNode>();
@@ -72,39 +75,6 @@ function postProcessIdlDefinitions(definitions: RawIdlDefinition[]): MessageDefi
         }
       }
     });
-  }
-
-  // resolve constant usage  to values
-  for (const [scopedIdentifier, node] of definitionMap.entries()) {
-    if (
-      (node.declarator !== "struct-member" &&
-        node.declarator !== "typedef" &&
-        node.declarator !== "const") ||
-      node.constantUsage == undefined
-    ) {
-      continue;
-    }
-
-    // need to iterate through keys because this can occur on arrayLength, upperBound, arrayLength, value, defaultValue
-    for (const [key, constantName] of node.constantUsage ?? []) {
-      const constantNode = resolveScopedOrLocalNodeReference({
-        usedIdentifier: constantName,
-        scopedIdentifierOfUsageNode: scopedIdentifier,
-        definitionMap,
-      });
-      if (!constantNode) {
-        throw new Error(
-          `Could not find constant <${constantName}> for field <${node.name ?? "undefined"}> in <${
-            node.name
-          }>`,
-        );
-      }
-
-      if (constantNode.declarator !== "const") {
-        throw new Error(`Identifier <${constantName}> used in ${node.name} is not a constant`);
-      }
-      (node[key] as ConstantValue) = constantNode.value;
-    }
   }
 
   // resolve enums types
@@ -251,6 +221,41 @@ function postProcessIdlDefinitions(definitions: RawIdlDefinition[]): MessageDefi
   }
 
   return finalDefs;
+}
+
+class IDLTree {
+  definitions: RawIdlDefinition[];
+  map: Map<string, AnyIDLNode>;
+  constructor(definitions: RawIdlDefinition[]) {
+    this.definitions = definitions;
+    this.map = new Map();
+    this.buildMap();
+  }
+  buildMap() {
+    for (const definition of this.definitions) {
+      // build flattened definition map
+      traverseIdl([definition], (path) => {
+        const node = path[path.length - 1]!;
+        const namePath = path.map((n) => n.name);
+
+        this.map.set(toScopedIdentifier(namePath), node);
+        // expand enums into constants for usage downstream
+        if (node.declarator === "enum") {
+          const enumConstants = node.enumerators.map((m: string, i: number) => ({
+            declarator: "const" as const,
+            isConstant: true as const,
+            name: m,
+            type: "uint32", // enums treated as unsigned longs in OMG IDL spec
+            value: i as ConstantValue,
+            isComplex: false,
+          }));
+          for (const constant of enumConstants) {
+            this.map.set(toScopedIdentifier([...namePath, constant.name]), constant);
+          }
+        }
+      });
+    }
+  }
 }
 
 function idlNodeToMessageDefinitionField(node: AnyIDLNode): MessageDefinitionField | undefined {

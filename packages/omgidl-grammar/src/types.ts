@@ -18,6 +18,11 @@ export type BaseIDLNode = {
   declarator: "const" | "typedef" | "struct" | "enum" | "module" | "struct-member";
   name: string;
   isConstant?: boolean;
+  /**
+   * Map of a key on a MessageDefinitionField to the string identifier of the constant used in that field
+   * key example: value arrayLength, arrayUpperBound, defaultValue, upperBound
+   * This can be used to resolve those string identifiers to their respective values
+   */
   constantUsage?: [keyof MessageDefinitionField, string][];
 };
 
