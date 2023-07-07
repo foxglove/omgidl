@@ -280,6 +280,7 @@ multipleNamedAnnotationParams -> namedAnnotationParams ("," namedAnnotationParam
 %}
 
 namedAnnotationParams -> (%NAME assignment) {% d => ({[d[0][0].value]: d[0][1].value}) %}
+ | (%NAME) {% /** constants */ noop %} 
 
 at -> "@" {% noop %}
 

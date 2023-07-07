@@ -3,7 +3,12 @@ import {
   MessageDefinition,
   MessageDefinitionField,
 } from "@foxglove/message-definition";
-import { RawIdlDefinition, AnyIDLNode, parseIdl, StructMemberNode } from "@foxglove/omgidl-grammar";
+import {
+  RawIdlDefinition,
+  AnyIDLNode,
+  parseIdlToNestedDefinitions,
+  StructMemberNode,
+} from "@foxglove/omgidl-grammar";
 
 const SIMPLE_TYPES = new Set([
   "bool",
@@ -32,7 +37,7 @@ export function parseIdl(messageDefinition: string): MessageDefinition[] {
 }
 
 function buildIdlType(messageDefinition: string): MessageDefinition[] {
-  const results = parseIdl(messageDefinition);
+  const results = parseIdlToNestedDefinitions(messageDefinition);
 
   const result = results[0]!;
   const processedResult = processIdlDefinitions(result);
@@ -49,178 +54,14 @@ function buildIdlType(messageDefinition: string): MessageDefinition[] {
  * Flattens down into a single array
  */
 function processIdlDefinitions(definitions: RawIdlDefinition[]): MessageDefinition[] {
-  const finalDefs: MessageDefinition[] = [];
-  // Need to update the names of modules and structs to be in their respective namespaces
-  const definitionMap = new Map<string, AnyIDLNode>();
+  const idlTree = new IDLTree(definitions);
 
-  for (const definition of definitions) {
-    // build flattened definition map
-    traverseIdl([definition], (path) => {
-      const node = path[path.length - 1]!;
-      const namePath = path.map((n) => n.name);
+  idlTree.resolveEnumTypes();
+  idlTree.resolveConstants();
+  idlTree.resolveTypeDefs();
+  idlTree.resolveComplexTypes();
 
-      definitionMap.set(toScopedIdentifier(namePath), node);
-      // expand enums into constants for usage downstream
-      if (node.declarator === "enum") {
-        const enumConstants = node.enumerators.map((m: string, i: number) => ({
-          declarator: "const" as const,
-          isConstant: true as const,
-          name: m,
-          type: "uint32", // enums treated as unsigned longs in OMG IDL spec
-          value: i as ConstantValue,
-          isComplex: false,
-        }));
-        for (const constant of enumConstants) {
-          definitionMap.set(toScopedIdentifier([...namePath, constant.name]), constant);
-        }
-      }
-    });
-  }
-
-  // resolve enums types
-  for (const [scopedIdentifier, node] of definitionMap.entries()) {
-    // "const" types don't really matter to resolve since they aren't used in serialization
-    if (
-      node.declarator !== "typedef" &&
-      node.declarator !== "struct-member" &&
-      node.declarator !== "const"
-    ) {
-      continue;
-    }
-    const type = node.type;
-    if (SIMPLE_TYPES.has(type)) {
-      continue;
-    }
-    const typeNode = resolveScopedOrLocalNodeReference({
-      usedIdentifier: type,
-      scopedIdentifierOfUsageNode: scopedIdentifier,
-      definitionMap,
-    });
-    if (!typeNode) {
-      throw new Error(
-        `Could not find type <${type}> for field <${node.name ?? "undefined"}> in <${node.name}>`,
-      );
-    }
-    if (typeNode.declarator === "enum") {
-      node.type = "uint32";
-      node.isComplex = false;
-    }
-  }
-
-  // resolve  what typedefs are complex
-  // assume that typedefs can't reference other typedefs
-  for (const [scopedIdentifier, node] of definitionMap.entries()) {
-    if (node.declarator !== "typedef") {
-      continue;
-    }
-    const type = node.type;
-    if (SIMPLE_TYPES.has(type)) {
-      continue;
-    }
-    const typeNode = resolveScopedOrLocalNodeReference({
-      usedIdentifier: type,
-      scopedIdentifierOfUsageNode: scopedIdentifier,
-      definitionMap,
-    });
-    if (!typeNode) {
-      throw new Error(
-        `Could not find type <${type}> for field <${node.name ?? "undefined"}> in <${node.name}>`,
-      );
-    }
-    if (typeNode.declarator === "typedef") {
-      throw new Error(
-        `We do not support typedefs that reference other typedefs ${node.name} -> ${typeNode.name}`,
-      );
-    }
-    if (typeNode.declarator === "struct") {
-      node.isComplex = true;
-      continue;
-    }
-  }
-
-  // resolve non-primitive struct member types
-  for (const [scopedIdentifier, node] of definitionMap.entries()) {
-    if (node.declarator !== "struct-member") {
-      continue;
-    }
-    const type = node.type;
-    if (SIMPLE_TYPES.has(type)) {
-      continue;
-    }
-
-    const typeNode = resolveScopedOrLocalNodeReference({
-      usedIdentifier: type,
-      scopedIdentifierOfUsageNode: scopedIdentifier,
-      definitionMap,
-    });
-    if (!typeNode) {
-      throw new Error(
-        `Could not find type <${type}> for field <${node.name ?? "undefined"}> in <${node.name}>`,
-      );
-    }
-    if (typeNode.declarator === "typedef") {
-      // apply typedef definition to struct member
-      const { declarator: _d, name: _name, ...partialDef } = typeNode;
-      Object.assign(node, { ...partialDef });
-    } else if (typeNode.declarator === "struct") {
-      node.isComplex = true;
-    } else {
-      throw new Error(
-        `Unexpected type <${typeNode.declarator}> for  <${node.name}>. Must be typedef or struct`,
-      );
-    }
-  }
-
-  // flatten for output to message definition
-  for (const [namespacedName, node] of definitionMap.entries()) {
-    if (node.declarator === "struct") {
-      finalDefs.push({
-        name: namespacedName,
-        definitions: node.definitions
-          .map((d) =>
-            idlNodeToMessageDefinitionField(
-              definitionMap.get(toScopedIdentifier([namespacedName, d.name])) as StructMemberNode,
-            ),
-          )
-          .filter(Boolean) as MessageDefinitionField[],
-      });
-    } else if (node.declarator === "module") {
-      const fieldDefinitions = node.definitions
-        .map((d) =>
-          idlNodeToMessageDefinitionField(
-            definitionMap.get(toScopedIdentifier([namespacedName, d.name])) as StructMemberNode,
-          ),
-        )
-        .filter(Boolean) as MessageDefinitionField[];
-      if (fieldDefinitions.length > 0) {
-        finalDefs.push({
-          name: namespacedName,
-          definitions: fieldDefinitions,
-        });
-      }
-    } else if (node.declarator === "enum") {
-      const fieldDefinitions = node.enumerators
-        .map((e) =>
-          idlNodeToMessageDefinitionField(
-            definitionMap.get(toScopedIdentifier([namespacedName, e])) as StructMemberNode,
-          ),
-        )
-        .filter(Boolean) as MessageDefinitionField[];
-      if (fieldDefinitions.length > 0) {
-        finalDefs.push({
-          name: namespacedName,
-          definitions: fieldDefinitions,
-        });
-      }
-    } else if (node.name === namespacedName) {
-      const fieldDefinition = idlNodeToMessageDefinitionField(node);
-      if (fieldDefinition) {
-        finalDefs.push({ name: "", definitions: [fieldDefinition] });
-      }
-    }
-  }
-
-  return finalDefs;
+  return idlTree.toMessageDefinitions();
 }
 
 class IDLTree {
@@ -255,6 +96,186 @@ class IDLTree {
         }
       });
     }
+  }
+  /** Resolve enum types to uint32 */
+  resolveEnumTypes() {
+    for (const [scopedIdentifier, node] of this.map.entries()) {
+      if (
+        node.declarator !== "typedef" &&
+        node.declarator !== "struct-member" &&
+        node.declarator !== "const"
+      ) {
+        continue;
+      }
+      const type = node.type;
+      if (SIMPLE_TYPES.has(type)) {
+        continue;
+      }
+      const typeNode = resolveScopedOrLocalNodeReference({
+        usedIdentifier: type,
+        scopedIdentifierOfUsageNode: scopedIdentifier,
+        definitionMap: this.map,
+      });
+      if (!typeNode) {
+        throw new Error(
+          `Could not find type <${type}> for field <${node.name ?? "undefined"}> in <${node.name}>`,
+        );
+      }
+      if (typeNode.declarator === "enum") {
+        node.type = "uint32";
+        node.isComplex = false;
+      }
+    }
+  }
+
+  resolveConstants() {
+    for (const [scopedIdentifier, node] of this.map.entries()) {
+      if (
+        node.declarator !== "struct-member" &&
+        node.declarator !== "typedef" &&
+        node.declarator !== "const"
+      ) {
+        continue;
+      }
+      // need to iterate through keys because this can occur on arrayLength, upperBound, arrayUpperBound, value, defaultValue
+      for (const [key, constantName] of node.constantUsage ?? []) {
+        const constantNode = resolveScopedOrLocalNodeReference({
+          usedIdentifier: constantName,
+          scopedIdentifierOfUsageNode: scopedIdentifier,
+          definitionMap: this.map,
+        });
+        if (constantNode != undefined && constantNode.declarator === "const") {
+          (node[key] as ConstantValue) = constantNode.value;
+        } else {
+          throw new Error(
+            `Could not find constant <${constantName}> for field <${
+              node.name ?? "undefined"
+            }> in <${scopedIdentifier}>`,
+          );
+        }
+      }
+    }
+  }
+  /**  Resolve  what typedefs are complex */
+  resolveTypeDefs() {
+    // assume that typedefs can't reference other typedefs
+    for (const [scopedIdentifier, node] of this.map.entries()) {
+      if (node.declarator !== "typedef") {
+        continue;
+      }
+      const type = node.type;
+      if (SIMPLE_TYPES.has(type)) {
+        continue;
+      }
+      const typeNode = resolveScopedOrLocalNodeReference({
+        usedIdentifier: type,
+        scopedIdentifierOfUsageNode: scopedIdentifier,
+        definitionMap: this.map,
+      });
+      if (!typeNode) {
+        throw new Error(
+          `Could not find type <${type}> for field <${node.name ?? "undefined"}> in <${node.name}>`,
+        );
+      }
+      if (typeNode.declarator === "typedef") {
+        throw new Error(
+          `We do not support typedefs that reference other typedefs ${node.name} -> ${typeNode.name}`,
+        );
+      }
+      if (typeNode.declarator === "struct") {
+        node.isComplex = true;
+        continue;
+      }
+    }
+  }
+
+  resolveComplexTypes() {
+    // resolve non-primitive struct member types
+    for (const [scopedIdentifier, node] of this.map.entries()) {
+      if (node.declarator !== "struct-member") {
+        continue;
+      }
+      const type = node.type;
+      if (SIMPLE_TYPES.has(type)) {
+        continue;
+      }
+
+      const typeNode = resolveScopedOrLocalNodeReference({
+        usedIdentifier: type,
+        scopedIdentifierOfUsageNode: scopedIdentifier,
+        definitionMap: this.map,
+      });
+      if (!typeNode) {
+        throw new Error(
+          `Could not find type <${type}> for field <${node.name ?? "undefined"}> in <${node.name}>`,
+        );
+      }
+      if (typeNode.declarator === "typedef") {
+        // apply typedef definition to struct member
+        const { declarator: _d, name: _name, ...partialDef } = typeNode;
+        Object.assign(node, { ...partialDef });
+      } else if (typeNode.declarator === "struct") {
+        node.isComplex = true;
+      } else {
+        throw new Error(
+          `Unexpected type <${typeNode.declarator}> for  <${node.name}>. Must be typedef or struct`,
+        );
+      }
+    }
+  }
+
+  toMessageDefinitions() {
+    const messageDefinitions: MessageDefinition[] = [];
+
+    // flatten for output to message definition
+    for (const [namespacedName, node] of this.map.entries()) {
+      if (node.declarator === "struct") {
+        messageDefinitions.push({
+          name: namespacedName,
+          definitions: node.definitions
+            .map((d) =>
+              idlNodeToMessageDefinitionField(
+                this.map.get(toScopedIdentifier([namespacedName, d.name])) as StructMemberNode,
+              ),
+            )
+            .filter(Boolean) as MessageDefinitionField[],
+        });
+      } else if (node.declarator === "module") {
+        const fieldDefinitions = node.definitions
+          .map((d) =>
+            idlNodeToMessageDefinitionField(
+              this.map.get(toScopedIdentifier([namespacedName, d.name])) as StructMemberNode,
+            ),
+          )
+          .filter(Boolean) as MessageDefinitionField[];
+        if (fieldDefinitions.length > 0) {
+          messageDefinitions.push({
+            name: namespacedName,
+            definitions: fieldDefinitions,
+          });
+        }
+      } else if (node.declarator === "enum") {
+        const fieldDefinitions = node.enumerators
+          .map((e) =>
+            idlNodeToMessageDefinitionField(
+              this.map.get(toScopedIdentifier([namespacedName, e])) as StructMemberNode,
+            ),
+          )
+          .filter(Boolean) as MessageDefinitionField[];
+        if (fieldDefinitions.length > 0) {
+          messageDefinitions.push({
+            name: namespacedName,
+            definitions: fieldDefinitions,
+          });
+        }
+      } else if (node.name === namespacedName) {
+        const fieldDefinition = idlNodeToMessageDefinitionField(node);
+        if (fieldDefinition) {
+          messageDefinitions.push({ name: "", definitions: [fieldDefinition] });
+        }
+      }
+    }
+    return messageDefinitions;
   }
 }
 

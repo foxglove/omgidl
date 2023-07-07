@@ -1,4 +1,4 @@
-import { parseOmgidl } from "@foxglove/omgidl-parser";
+import { parseIdl } from "@foxglove/omgidl-parser";
 
 import { MessageReader } from "./MessageReader";
 
@@ -22,7 +22,7 @@ describe("MessageReader", () => {
           const int8 STATUS_TWO = 2;
         };
       };`;
-    const ast = parseOmgidl(msgDef);
+    const ast = parseIdl(msgDef);
     expect(ast).not.toBeUndefined();
   });
   it.each([
@@ -292,7 +292,7 @@ describe("MessageReader", () => {
     "should deserialize %s",
     (msgDef: string, rootDef: string, arr: Iterable<number>, expected: Record<string, unknown>) => {
       const buffer = Uint8Array.from([0, 1, 0, 0, ...arr]);
-      const reader = new MessageReader(rootDef, parseOmgidl(msgDef));
+      const reader = new MessageReader(rootDef, parseIdl(msgDef));
       const read = reader.readMessage(buffer);
 
       // check that our message matches the object
@@ -376,7 +376,7 @@ module builtin_interfaces {
   };
 };
     `;
-    const reader = new MessageReader("geometry_msgs::msg::Transforms", parseOmgidl(msgDef));
+    const reader = new MessageReader("geometry_msgs::msg::Transforms", parseIdl(msgDef));
     const read = reader.readMessage(buffer);
 
     expect(read).toEqual({
@@ -399,6 +399,6 @@ module builtin_interfaces {
     const msgDef = `
     struct a { int8 sample; };
     `;
-    expect(() => new MessageReader("b", parseOmgidl(msgDef))).toThrow(/"b" not found/i);
+    expect(() => new MessageReader("b", parseIdl(msgDef))).toThrow(/"b" not found/i);
   });
 });

@@ -1,4 +1,4 @@
-import { parseIdl } from "./parseIdl";
+import { parseIdlToNestedDefinitions } from "./parse";
 
 describe("IDL grammar", () => {
   it("parses a simple IDL", () => {
@@ -8,7 +8,7 @@ describe("IDL grammar", () => {
         };
     `;
 
-    expect(parseIdl(schema)).toEqual([
+    expect(parseIdlToNestedDefinitions(schema)).toEqual([
       [
         {
           declarator: "struct",
@@ -35,7 +35,7 @@ describe("IDL grammar", () => {
     };
     `;
 
-    expect(parseIdl(schema)).toEqual([
+    expect(parseIdlToNestedDefinitions(schema)).toEqual([
       [
         {
           name: "idl_parser",
@@ -104,7 +104,7 @@ describe("IDL grammar", () => {
         };
     `;
 
-    expect(parseIdl(schema)).toEqual([
+    expect(parseIdlToNestedDefinitions(schema)).toEqual([
       [
         {
           name: "All_Numbers",
@@ -230,7 +230,7 @@ describe("IDL grammar", () => {
     ]);
   });
   it("parses a module full of numeric constants", () => {
-    const types = parseIdl(
+    const types = parseIdlToNestedDefinitions(
       `
 module idl_parser {
   module msg {
@@ -304,7 +304,7 @@ module idl_parser {
     ]);
   });
   it("parses a module with various floating point default values", () => {
-    const types = parseIdl(
+    const types = parseIdlToNestedDefinitions(
       `
       module idl_parser {
         module msg {
@@ -455,7 +455,7 @@ module idl_parser {
     ]);
   });
   it("parses a module with customTypes", () => {
-    const types = parseIdl(
+    const types = parseIdlToNestedDefinitions(
       `
 module idl_parser {
   module msg {
@@ -511,7 +511,7 @@ module idl_parser {
     ]);
   });
   it("parses a module with arbitrary annotations including default values", () => {
-    const types = parseIdl(
+    const types = parseIdlToNestedDefinitions(
       `
 module idl_parser {
   module msg {
@@ -582,7 +582,7 @@ module idl_parser {
     ]);
   });
   it("parses a module with a typedefs used in a struct", () => {
-    const types = parseIdl(
+    const types = parseIdlToNestedDefinitions(
       `
     module idl_parser {
       module action {
@@ -646,7 +646,7 @@ module idl_parser {
     ]);
   });
   it("parses a module with an multiple enclosed structs and modules", () => {
-    const types = parseIdl(
+    const types = parseIdlToNestedDefinitions(
       `
       module idl_parser {
         module action {
@@ -772,7 +772,7 @@ module idl_parser {
   });
 
   it("ignore #include statements in AST", () => {
-    const types = parseIdl(
+    const types = parseIdlToNestedDefinitions(
       `
    #include "OtherMessage.idl"
    #include <pkgname/msg/OtherMessage.idl>
@@ -836,7 +836,7 @@ module idl_parser {
     ]);
   });
   it("parses a module full of string constants", () => {
-    const types = parseIdl(
+    const types = parseIdlToNestedDefinitions(
       `
 module idl_parser {
   module msg {
@@ -914,7 +914,7 @@ module idl_parser {
     ]);
   });
   it("parses a module of all array types", () => {
-    const types = parseIdl(
+    const types = parseIdlToNestedDefinitions(
       `
       module idl_parser {
         module msg {
@@ -1067,7 +1067,7 @@ module idl_parser {
         };
       };
     `;
-    const types = parseIdl(msgDef);
+    const types = parseIdlToNestedDefinitions(msgDef);
     expect(types).toEqual([
       [
         {
@@ -1114,7 +1114,7 @@ module idl_parser {
         int32 int1, int2;
       };
     `;
-    const types = parseIdl(msgDef);
+    const types = parseIdlToNestedDefinitions(msgDef);
     expect(types).toEqual([
       [
         {
@@ -1148,7 +1148,7 @@ module idl_parser {
         BLUE
       };
     `;
-    const types = parseIdl(msgDef);
+    const types = parseIdlToNestedDefinitions(msgDef);
     expect(types).toEqual([
       [
         {
@@ -1169,7 +1169,7 @@ module idl_parser {
       };
     };
     `;
-    const types = parseIdl(msgDef);
+    const types = parseIdlToNestedDefinitions(msgDef);
     expect(types).toEqual([
       [
         {
@@ -1204,7 +1204,7 @@ module idl_parser {
       };
     };
     `;
-    const types = parseIdl(msgDef);
+    const types = parseIdlToNestedDefinitions(msgDef);
     expect(types).toEqual([
       [
         {
@@ -1265,14 +1265,14 @@ module idl_parser {
         };
       };
     `;
-    expect(() => parseIdl(msgDef)).toThrow(/unexpected , token/i);
+    expect(() => parseIdlToNestedDefinitions(msgDef)).toThrow(/unexpected , token/i);
   });
   it("cannot parse empty struct", () => {
     const msgDef = `
       struct a {
       };
     `;
-    expect(() => parseIdl(msgDef)).toThrow(/unexpected RCBR token/i);
+    expect(() => parseIdlToNestedDefinitions(msgDef)).toThrow(/unexpected RCBR token/i);
   });
   /****************  Syntax Errors */
   it("missing bracket at the end will result in end of input error", () => {
@@ -1287,7 +1287,7 @@ module idl_parser {
         };
       };
     `;
-    expect(() => parseIdl(msgDef)).toThrow(
+    expect(() => parseIdlToNestedDefinitions(msgDef)).toThrow(
       `Could not parse message definition (unexpected end of input): '${msgDef}'`,
     );
   });
@@ -1302,6 +1302,6 @@ module idl_parser {
         };
       };
     };`;
-    expect(() => parseIdl(msgDef)).toThrow(/unexpected RCBR token: "}"/i);
+    expect(() => parseIdlToNestedDefinitions(msgDef)).toThrow(/unexpected RCBR token: "}"/i);
   });
 });

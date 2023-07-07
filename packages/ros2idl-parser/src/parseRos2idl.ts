@@ -1,5 +1,5 @@
 import { MessageDefinition } from "@foxglove/message-definition";
-import { parseOmgidl } from "@foxglove/omgidl-parser";
+import { parseIdl } from "@foxglove/omgidl-parser";
 
 /**
  *
@@ -17,7 +17,7 @@ function buildRos2idlType(messageDefinition: string): MessageDefinition[] {
   // conform to conforming idl and just read it all in a single parse so that we don't have to call parse multiple times
   const idlConformedDef = messageDefinition.replaceAll(ROS2IDL_HEADER, "");
 
-  const results = parseOmgidl(idlConformedDef);
+  const results = parseIdl(idlConformedDef);
 
   for (const def of results) {
     def.name = toRos2ResourceName(def.name!);
