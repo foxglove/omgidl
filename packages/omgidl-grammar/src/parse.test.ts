@@ -1256,7 +1256,41 @@ module idl_parser {
       ],
     ]);
   });
+  it("parses multiple top level typedefs referencing each other", () => {
+    const msgDef = `
+    typedef sequence<short> shortSeq;
+    typedef sequence<shortSeq> shortSeqSeq;
+    `;
+    expect(parseIdlToNestedDefinitions(msgDef)).toEqual([
+      [
+        {
+          name: "shortSeq",
+          declarator: "typedef",
+          isArray: true,
+          arrayUpperBound: undefined,
+          isComplex: false,
+          type: "int16",
+        },
+        {
+          name: "shortSeqSeq",
+          declarator: "typedef",
+          isArray: true,
+          type: "shortSeq",
+        },
+      ],
+    ]);
+  });
   /****************  Not supported by IDL (as far as I can tell) */
+  it("cannot parse constants that reference other constants", () => {
+    const msgDef = `
+        const short SHORT_CONSTANT = -23;
+        const short SHORT2 = SHORT_CONSTANT;
+        struct ArrStruct {
+          sequence<SHORT2> intArray;
+        };
+    `;
+    expect(() => parseIdlToNestedDefinitions(msgDef)).toThrow(/unexpected NAME token/i);
+  });
   it("cannot parse multiple const declarations in a single line", () => {
     const msgDef = `
       module action {

@@ -178,6 +178,7 @@ class IDLTree {
         );
       }
       if (typeNode.declarator === "typedef") {
+        // To fully support this we would need to either make multiple passes or recursively resolve typedefs
         throw new Error(
           `We do not support typedefs that reference other typedefs ${node.name} -> ${typeNode.name}`,
         );

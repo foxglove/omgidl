@@ -1164,6 +1164,17 @@ module rosidl_parser {
       },
     ]);
   });
+  // **************** Not supported in our implementation yet
+  it("cannot parse typedefs that reference other typedefs", () => {
+    const msgDef = `
+        typedef sequence<int32, 10> int32arr;
+        typedef int32arr int32arr2;
+        struct ArrStruct {
+          int32arr2 intArray;
+        };
+    `;
+    expect(() => parse(msgDef)).toThrow(/do not support typedefs that reference other typedefs/i);
+  });
   //****************  Not supported by IDL (as far as I can tell) *::
   it("cannot parse multiple const declarations in a single line", () => {
     const msgDef = `
