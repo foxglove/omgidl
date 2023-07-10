@@ -1280,6 +1280,19 @@ module idl_parser {
       ],
     ]);
   });
+  /**************** Not yet supported */
+  it("cannot parse leading ::", () => {
+    const msgDef = `
+      typedef float coord[2];
+      module msg {
+        struct Point {
+            ::coord loc;
+            coord loc2;
+        };
+      };
+      `;
+    expect(() => parseIdlToNestedDefinitions(msgDef)).toThrow(/unexpected input/i);
+  });
   /****************  Not supported by IDL (as far as I can tell) */
   it("cannot parse constants that reference other constants", () => {
     const msgDef = `

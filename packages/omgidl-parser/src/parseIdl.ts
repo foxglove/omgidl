@@ -54,24 +54,28 @@ function buildIdlType(messageDefinition: string): MessageDefinition[] {
  * Flattens down into a single array
  */
 function processIdlDefinitions(definitions: RawIdlDefinition[]): MessageDefinition[] {
-  const idlTree = new IDLTree(definitions);
+  const idlProcessor = new IDLNodeProcessor(definitions);
 
-  idlTree.resolveEnumTypes();
-  idlTree.resolveConstants();
-  idlTree.resolveTypeDefs();
-  idlTree.resolveComplexTypes();
+  idlProcessor.resolveEnumTypes();
+  idlProcessor.resolveConstants();
+  idlProcessor.resolveTypeDefs();
+  idlProcessor.resolveComplexTypes();
 
-  return idlTree.toMessageDefinitions();
+  return idlProcessor.toMessageDefinitions();
 }
 
-class IDLTree {
+/** Class used for processing and resolving raw IDL node definitions */
+class IDLNodeProcessor {
   definitions: RawIdlDefinition[];
   map: Map<string, AnyIDLNode>;
+  firstStructName?: string;
+
   constructor(definitions: RawIdlDefinition[]) {
     this.definitions = definitions;
     this.map = new Map();
     this.buildMap();
   }
+  /** Initializes map of IDL nodes to their scoped namespaces */
   buildMap() {
     for (const definition of this.definitions) {
       // build flattened definition map
@@ -94,9 +98,13 @@ class IDLTree {
             this.map.set(toScopedIdentifier([...namePath, constant.name]), constant);
           }
         }
+        if (node.declarator === "struct" && this.firstStructName == undefined) {
+          this.firstStructName = node.name;
+        }
       });
     }
   }
+
   /** Resolve enum types to uint32 */
   resolveEnumTypes() {
     for (const [scopedIdentifier, node] of this.map.entries()) {
@@ -156,7 +164,7 @@ class IDLTree {
       }
     }
   }
-  /**  Resolve  what typedefs are complex */
+  /**  Resolve typedefs that reference structs as complex*/
   resolveTypeDefs() {
     // assume that typedefs can't reference other typedefs
     for (const [scopedIdentifier, node] of this.map.entries()) {
@@ -190,6 +198,7 @@ class IDLTree {
     }
   }
 
+  /** Resolve struct-members that refer to complex types as complex */
   resolveComplexTypes() {
     // resolve non-primitive struct member types
     for (const [scopedIdentifier, node] of this.map.entries()) {
@@ -225,7 +234,8 @@ class IDLTree {
     }
   }
 
-  toMessageDefinitions() {
+  /** Convert to Message Definitions for serialization and usage in foxglove studio's Raw Message panel */
+  toMessageDefinitions(): MessageDefinition[] {
     const messageDefinitions: MessageDefinition[] = [];
 
     // flatten for output to message definition
@@ -323,7 +333,7 @@ function traverseIdl(path: AnyIDLNode[], processNode: (path: AnyIDLNode[]) => vo
 }
 
 function toScopedIdentifier(path: string[]): string {
-  return path.map((id) => id).join("::");
+  return path.join("::");
 }
 
 function fromScopedIdentifier(path: string): string[] {

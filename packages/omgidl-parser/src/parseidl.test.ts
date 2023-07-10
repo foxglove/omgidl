@@ -47,7 +47,7 @@ describe("omgidl parser tests", () => {
       `module msg {
         typedef Point Point2D;
         struct PointCollection {
-          sequence<msg::Point2D> points;
+          sequence<Point2D> points;
         };
       };
       struct Point {
@@ -103,6 +103,136 @@ describe("omgidl parser tests", () => {
             type: "float32",
             isArray: true,
             arrayLength: 2,
+            isComplex: false,
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses typedefs by local and global names", () => {
+    const types = parse(
+      `module msg {
+        typedef float coord[2];
+        struct Point {
+            msg::coord loc;
+            coord loc2;
+        };
+      };
+      `,
+    );
+    expect(types).toEqual([
+      {
+        name: "msg::Point",
+        definitions: [
+          {
+            name: "loc",
+            type: "float32",
+            isArray: true,
+            arrayLength: 2,
+            isComplex: false,
+          },
+          {
+            name: "loc2",
+            type: "float32",
+            isArray: true,
+            arrayLength: 2,
+            isComplex: false,
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses typedefs by local and global names many levels deep into module", () => {
+    const types = parse(
+      `module layer1 {
+        typedef float L1[1];
+        module layer2 {
+          typedef float L2[2];
+          module layer3 {
+            typedef float L3[3];
+            struct Point {
+              layer1::L1 layer1L1;
+              L1 lyr1;
+
+              layer1::layer2::L2 layer1Layer2L2;
+              layer2::L2 layer2L2;
+              L2 lyr2;
+
+              layer1::layer2::layer3::L3 layer1Layer2Layer3L3;
+              layer2::layer3::L3 layer2Layer3L3;
+              layer3::L3 layer3L3;
+              L3 lyr3;
+            };
+          };
+        };
+      };
+      `,
+    );
+    expect(types).toEqual([
+      {
+        name: "layer1::layer2::layer3::Point",
+        definitions: [
+          {
+            name: "layer1L1",
+            type: "float32",
+            isArray: true,
+            arrayLength: 1,
+            isComplex: false,
+          },
+          {
+            name: "lyr1",
+            type: "float32",
+            isArray: true,
+            arrayLength: 1,
+            isComplex: false,
+          },
+          {
+            name: "layer1Layer2L2",
+            type: "float32",
+            isArray: true,
+            arrayLength: 2,
+            isComplex: false,
+          },
+          {
+            name: "layer2L2",
+            type: "float32",
+            isArray: true,
+            arrayLength: 2,
+            isComplex: false,
+          },
+          {
+            name: "lyr2",
+            type: "float32",
+            isArray: true,
+            arrayLength: 2,
+            isComplex: false,
+          },
+          {
+            name: "layer1Layer2Layer3L3",
+            type: "float32",
+            isArray: true,
+            arrayLength: 3,
+            isComplex: false,
+          },
+          {
+            name: "layer2Layer3L3",
+            type: "float32",
+            isArray: true,
+            arrayLength: 3,
+            isComplex: false,
+          },
+          {
+            name: "layer3L3",
+            type: "float32",
+            isArray: true,
+            arrayLength: 3,
+            isComplex: false,
+          },
+          {
+            name: "lyr3",
+            type: "float32",
+            isArray: true,
+            arrayLength: 3,
             isComplex: false,
           },
         ],
@@ -609,7 +739,7 @@ module rosidl_parser {
       @verbatim (language="comment", text="")
       @arbitrary_annotation ( key1="value1", key2=TRUE, key3=0.0, key4=10 )
       @key unsigned long unsigned_long_value;
-      @id(100) @default(100) uint32 uint32_with_default;
+      @id(100) @default(200) uint32 uint32_with_default;
     };
   };
 };
@@ -639,7 +769,7 @@ module rosidl_parser {
             type: "uint32",
             name: "uint32_with_default",
             isComplex: false,
-            defaultValue: 100,
+            defaultValue: 200,
           },
         ],
       },
