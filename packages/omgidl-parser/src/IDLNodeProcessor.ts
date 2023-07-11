@@ -5,10 +5,24 @@ import {
 } from "@foxglove/message-definition";
 import { RawIdlDefinition, AnyIDLNode, StructMemberNode } from "@foxglove/omgidl-grammar";
 
+const numericTypeMap: Record<string, string> = {
+  "unsigned short": "uint16",
+  "unsigned long": "uint32",
+  "unsigned long long": "uint64",
+  short: "int16",
+  long: "int32",
+  "long long": "int64",
+  double: "float64",
+  float: "float32",
+  octet: "uint8",
+  wchar: "uint8",
+  char: "uint8",
+  byte: "int8",
+};
+
 const SIMPLE_TYPES = new Set([
   "bool",
-  "char",
-  "byte",
+  "string",
   "int8",
   "uint8",
   "int16",
@@ -17,9 +31,7 @@ const SIMPLE_TYPES = new Set([
   "uint32",
   "int64",
   "uint64",
-  "float32",
-  "float64",
-  "string",
+  ...Object.keys(numericTypeMap),
 ]);
 
 /** Class used for processing and resolving raw IDL node definitions */
@@ -48,7 +60,7 @@ export class IDLNodeProcessor {
             declarator: "const" as const,
             isConstant: true as const,
             name: m,
-            type: "uint32",
+            type: "unsigned long",
             value: i as ConstantValue,
             isComplex: false,
           }));
@@ -85,7 +97,7 @@ export class IDLNodeProcessor {
         );
       }
       if (typeNode.declarator === "enum") {
-        this.map.set(scopedIdentifier, { ...node, type: "uint32", isComplex: false });
+        this.map.set(scopedIdentifier, { ...node, type: "unsigned long", isComplex: false });
       }
     }
   }
@@ -256,7 +268,10 @@ export function idlNodeToMessageDefinitionField(
     return undefined;
   }
   const { declarator: _d, constantUsage: _cU, ...messageDefinition } = node;
-  return messageDefinition;
+  return {
+    ...messageDefinition,
+    type: normalizeType(messageDefinition.type),
+  };
 }
 
 export function resolveScopedOrLocalNodeReference({
@@ -299,4 +314,12 @@ function toScopedIdentifier(path: string[]): string {
 
 function fromScopedIdentifier(path: string): string[] {
   return path.split("::");
+}
+
+function normalizeType(type: string): string {
+  const toType = numericTypeMap[type];
+  if (toType != undefined) {
+    return toType;
+  }
+  return type;
 }
