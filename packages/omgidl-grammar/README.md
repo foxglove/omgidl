@@ -22,7 +22,3 @@ Known limitations that are planned to be addressed are:
 - no union support (will fail)
 - no support for encoding information of annotations outside of `@default` to `defaultValue`. Though parsing will not fail on these
 - no support for leading `::` identifiers
-
-## License
-
-@foxglove/omgidl-grammar is licensed under the [MIT License](https://opensource.org/licenses/MIT).

@@ -42,7 +42,3 @@ const uint8Array = writer.writeMessage({
   z: 0
 });
 ```
-
-## License
-
-@foxglove/omgidl-serialization is licensed under the [MIT License](https://opensource.org/licenses/MIT).
