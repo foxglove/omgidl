@@ -1,18 +1,18 @@
-# @foxglove/rosmsg2-serialization
+# @foxglove/omgidl-serialization
 
-> _ROS 2 (Robot Operating System) message serialization, for reading and writing bags and network messages_
+> _OMGIDL message serialization, for reading and writing CDR and XCDR2 messages based on `.idl` schema_
 
-[![npm version](https://img.shields.io/npm/v/@foxglove/rosmsg2-serialization.svg?style=flat)](https://www.npmjs.com/package/@foxglove/rosmsg2-serialization)
+[![npm version](https://img.shields.io/npm/v/@foxglove/omgidl-serialization.svg?style=flat)](https://www.npmjs.com/package/@foxglove/omgidl-serialization)
 
 ## MessageReader
 
-Message reader deserializes ROS 2 CDR messages into plain objects. The messages are fully deserialized.
+Message reader deserializes CDR and XCDR2 messages into plain objects. The messages are fully deserialized.
 
 ```typescript
-import { MessageReader } from "@foxglove/rosmsg2-serialization";
+import { MessageReader } from "@foxglove/omgidl-serialization";
 
-// message definition comes from `parse()` in @foxglove/rosmsg
-const reader = new MessageReader(messageDefinition);
+// message definition comes from `parseIdl()` in @foxglove/omgidl-parser
+const reader = new MessageReader("PointStamped", messageDefinition);
 
 // deserialize a buffer into an object
 const message = reader.readMessage([0x00, 0x01, ...]);
@@ -23,15 +23,15 @@ message.header.stamp;
 
 ## MessageWriter
 
-Convert an object, array, or primitive value into binary data using ROS 2 CDR message serialization.
+Convert an object, array, or primitive value into binary data using CDR or XCDR2 message serialization.
 
 ```Typescript
-import { MessageWriter } from "@foxglove/rosmsg2-serialization";
+import { MessageWriter } from "@foxglove/omgidl-serialization";
 
-// message definition comes from `parse()` in @foxglove/rosmsg
-const writer = new MessageWriter(pointStampedMessageDefinition);
+// message definition comes from `parseIdl()` in @foxglove/omgidl-parser
+const writer = new MessageWriter("PointStamped", pointStampedMessageDefinition, cdrOptions);
 
-// serialize the passed in object to a Uint8Array as a geometry_msgs/PointStamped message
+// serialize the passed in object to a Uint8Array as a PointStamped message
 const uint8Array = writer.writeMessage({
   header: {
     stamp: { sec: 0, nanosec: 0 },
@@ -43,20 +43,6 @@ const uint8Array = writer.writeMessage({
 });
 ```
 
-### Test
-
-`yarn test`
-
 ## License
 
-@foxglove/rosmsg2-serialization is licensed under the [MIT License](https://opensource.org/licenses/MIT).
-
-## Releasing
-
-1. Run `yarn version --[major|minor|patch]` to bump version
-2. Run `git push && git push --tags` to push new tag
-3. GitHub Actions will take care of the rest
-
-## Stay in touch
-
-Join our [Slack channel](https://foxglove.dev/join-slack) to ask questions, share feedback, and stay up to date on what our team is working on.
+@foxglove/omgidl-serialization is licensed under the [MIT License](https://opensource.org/licenses/MIT).
