@@ -1,6 +1,6 @@
 # @foxglove/omgidl-serialization
 
-> _OMGIDL message serialization, for reading and writing CDR and XCDR2 messages based on `.idl` schema_
+> _OMG IDL message serialization, for reading and writing CDR and XCDR2 messages based on `.idl` schema_
 
 [![npm version](https://img.shields.io/npm/v/@foxglove/omgidl-serialization.svg?style=flat)](https://www.npmjs.com/package/@foxglove/omgidl-serialization)
 

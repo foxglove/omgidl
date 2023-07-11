@@ -12,7 +12,7 @@ This repo contains a grammar that parses a subset of IDL schema into an AST. Thi
 
 Also contains output types of the nested definitions. See `src/types.ts`.
 
-## OMGIDL Subset Support
+## OMG IDL Subset Support
 
 Check `src/parse.test.ts` to see what is supported by the grammar so far and what isn't supported yet.
 

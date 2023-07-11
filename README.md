@@ -1,8 +1,8 @@
-# Foxglove OMGIDL Monorepo
+# Foxglove OMG IDL Monorepo
 
 This repo contains implementations for supporting OMG specifications within [Foxglove Studio](https://www.foxglove.dev).
 
-- `@foxlgove/omgidl-grammar`: OMGIDL (Interface Definition Language) Schema Grammar in `nearley`
+- `@foxlgove/omgidl-grammar`: OMG IDL (Interface Definition Language) Schema Grammar in `nearley`
   - [Interface Definition Language Specification](https://www.omg.org/spec/IDL/4.2/PDF)
 - `@foxglove/omgidl-parser`: IDL schema parser to resolved, flattened definitions
 - `@foxglove/omgidl-serialization`: IDL messages serialization and deserialization to CDR and CDR2
