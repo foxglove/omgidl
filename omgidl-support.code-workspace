@@ -4,13 +4,14 @@
       "path": "."
     },
     {
-      "name": "omgidl-parser",
-      "path": "packages/omgidl-parser"
-    },
-    {
       "name": "omgidl-grammar",
       "path": "packages/omgidl-grammar"
     },
+    {
+      "name": "omgidl-parser",
+      "path": "packages/omgidl-parser"
+    },
+
     {
       "name": "omgidl-serialization",
       "path": "packages/omgidl-serialization"

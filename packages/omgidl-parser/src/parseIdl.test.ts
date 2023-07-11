@@ -1,6 +1,6 @@
-import { parseOmgidl as parse } from "./parseOmgidl";
+import { parseIdl as parse } from "./parseIdl";
 
-describe("rosidl grammar tests", () => {
+describe("omgidl parser tests", () => {
   it("parses a module with an enclosed struct and module", () => {
     const types = parse(
       `
@@ -51,8 +51,8 @@ describe("rosidl grammar tests", () => {
         };
       };
       struct Point {
-        float32 x;
-        float32 y;
+        float x;
+        float y;
       };`,
     );
     expect(types).toEqual([
@@ -79,6 +79,160 @@ describe("rosidl grammar tests", () => {
           {
             name: "y",
             type: "float32",
+            isComplex: false,
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses nested typedefs in modules and their usage", () => {
+    const types = parse(
+      `module msg {
+        typedef float coord[2];
+      };
+      struct Point {
+        msg::coord loc;
+      };`,
+    );
+    expect(types).toEqual([
+      {
+        name: "Point",
+        definitions: [
+          {
+            name: "loc",
+            type: "float32",
+            isArray: true,
+            arrayLength: 2,
+            isComplex: false,
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses typedefs by local and global names", () => {
+    const types = parse(
+      `module msg {
+        typedef float coord[2];
+        struct Point {
+            msg::coord loc;
+            coord loc2;
+        };
+      };
+      `,
+    );
+    expect(types).toEqual([
+      {
+        name: "msg::Point",
+        definitions: [
+          {
+            name: "loc",
+            type: "float32",
+            isArray: true,
+            arrayLength: 2,
+            isComplex: false,
+          },
+          {
+            name: "loc2",
+            type: "float32",
+            isArray: true,
+            arrayLength: 2,
+            isComplex: false,
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses typedefs by local and global names many levels deep into module", () => {
+    const types = parse(
+      `module layer1 {
+        typedef float L1[1];
+        module layer2 {
+          typedef float L2[2];
+          module layer3 {
+            typedef float L3[3];
+            struct Point {
+              layer1::L1 layer1L1;
+              L1 lyr1;
+
+              layer1::layer2::L2 layer1Layer2L2;
+              layer2::L2 layer2L2;
+              L2 lyr2;
+
+              layer1::layer2::layer3::L3 layer1Layer2Layer3L3;
+              layer2::layer3::L3 layer2Layer3L3;
+              layer3::L3 layer3L3;
+              L3 lyr3;
+            };
+          };
+        };
+      };
+      `,
+    );
+    expect(types).toEqual([
+      {
+        name: "layer1::layer2::layer3::Point",
+        definitions: [
+          {
+            name: "layer1L1",
+            type: "float32",
+            isArray: true,
+            arrayLength: 1,
+            isComplex: false,
+          },
+          {
+            name: "lyr1",
+            type: "float32",
+            isArray: true,
+            arrayLength: 1,
+            isComplex: false,
+          },
+          {
+            name: "layer1Layer2L2",
+            type: "float32",
+            isArray: true,
+            arrayLength: 2,
+            isComplex: false,
+          },
+          {
+            name: "layer2L2",
+            type: "float32",
+            isArray: true,
+            arrayLength: 2,
+            isComplex: false,
+          },
+          {
+            name: "lyr2",
+            type: "float32",
+            isArray: true,
+            arrayLength: 2,
+            isComplex: false,
+          },
+          {
+            name: "layer1Layer2Layer3L3",
+            type: "float32",
+            isArray: true,
+            arrayLength: 3,
+            isComplex: false,
+          },
+          {
+            name: "layer2Layer3L3",
+            type: "float32",
+            isArray: true,
+            arrayLength: 3,
+            isComplex: false,
+          },
+          {
+            name: "layer3L3",
+            type: "float32",
+            isArray: true,
+            arrayLength: 3,
+            isComplex: false,
+          },
+          {
+            name: "lyr3",
+            type: "float32",
+            isArray: true,
+            arrayLength: 3,
             isComplex: false,
           },
         ],
@@ -408,7 +562,7 @@ module rosidl_parser {
             isComplex: false,
           },
           {
-            type: "int8",
+            type: "uint8",
             name: "octet_value",
             isComplex: false,
           },
@@ -464,11 +618,9 @@ module rosidl_parser {
   it("parses a module of all array types", () => {
     const types = parse(
       `
+      const unsigned long UNSIGNED_LONG_CONSTANT = 42;
       module rosidl_parser {
         module msg {
-          module MyMessage_Constants {
-            const unsigned long UNSIGNED_LONG_CONSTANT = 42;
-          };
           struct MyMessage {
             string<5> bounded_string_value;
             wstring wstring_value;
@@ -487,7 +639,7 @@ module rosidl_parser {
     );
     expect(types).toEqual([
       {
-        name: "rosidl_parser::msg::MyMessage_Constants",
+        name: "",
         definitions: [
           {
             name: "UNSIGNED_LONG_CONSTANT",
@@ -587,6 +739,7 @@ module rosidl_parser {
       @verbatim (language="comment", text="")
       @arbitrary_annotation ( key1="value1", key2=TRUE, key3=0.0, key4=10 )
       @key unsigned long unsigned_long_value;
+      @id(100) @default(200) uint32 uint32_with_default;
     };
   };
 };
@@ -612,6 +765,12 @@ module rosidl_parser {
             name: "unsigned_long_value",
             isComplex: false,
           },
+          {
+            type: "uint32",
+            name: "uint32_with_default",
+            isComplex: false,
+            defaultValue: 200,
+          },
         ],
       },
     ]);
@@ -625,6 +784,13 @@ module rosidl_parser {
       geometry::msg::Point single_point;
       geometry::msg::Point points_with_length[10];
       sequence<geometry::msg::Point> points_with_length_sequence;
+    };
+  };
+};
+module geometry {
+  module msg {
+    struct Point {
+      float x;
     };
   };
 };
@@ -649,8 +815,19 @@ module rosidl_parser {
           {
             type: "geometry::msg::Point",
             name: "points_with_length_sequence",
+            arrayUpperBound: undefined,
             isArray: true,
             isComplex: true,
+          },
+        ],
+      },
+      {
+        name: "geometry::msg::Point",
+        definitions: [
+          {
+            name: "x",
+            type: "float32",
+            isComplex: false,
           },
         ],
       },
@@ -1116,6 +1293,17 @@ module rosidl_parser {
         ],
       },
     ]);
+  });
+  // **************** Not supported in our implementation yet
+  it("cannot parse typedefs that reference other typedefs", () => {
+    const msgDef = `
+        typedef sequence<int32, 10> int32arr;
+        typedef int32arr int32arr2;
+        struct ArrStruct {
+          int32arr2 intArray;
+        };
+    `;
+    expect(() => parse(msgDef)).toThrow(/do not support typedefs that reference other typedefs/i);
   });
   //****************  Not supported by IDL (as far as I can tell) *::
   it("cannot parse multiple const declarations in a single line", () => {

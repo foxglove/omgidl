@@ -94,7 +94,7 @@ const numericTypeMap = {
   "long long": "int64",
   "double": "float64",
   "float": "float32",
-  "octet": "byte",
+  "octet": "uint8",
   "wchar": "char",
 };
 
@@ -153,7 +153,7 @@ function processModule(d) {
   const defs = d[4];
   // need to return array here to keep same signature as processComplexModule
   return {
-    definitionType: "module",
+    declarator: "module",
     name: moduleName,
     definitions: defs.flat(1),
   };
@@ -191,9 +191,9 @@ enum ->  "enum" fieldName "{" fieldName ("," fieldName):* "}" {% d => {
     .filter(Boolean);
 
   return {
-    definitionType: 'enum',
+    declarator: 'enum',
     name,
-    members: [firstMember, ...members],
+    enumerators: [firstMember, ...members],
   };
 } %}
 
@@ -201,7 +201,7 @@ struct -> "struct" fieldName "{" (member):+ "}" {% d => {
   const name = d[1].name;
   const definitions = d[3].flat(2).filter(def => def !== null);
   return {
-    definitionType: 'struct',
+    declarator: 'struct',
     name,
     definitions,
   };
@@ -213,8 +213,9 @@ typedefWithAnnotations -> multiAnnotations (
  | typedef sequenceType fieldName
 ) {% d => {
   const def = aggregateConstantUsage(extend(d.flat(1)));
+  
   return {
-    definitionType: "typedef",
+    declarator: "typedef",
     ...def,
   };
 } %}
@@ -243,7 +244,10 @@ fieldDcl -> (
  ) {% (d) => {
   const names = d[0].splice(1, 1)[0];
   // create a definition for each name
-  const defs = names.map((nameObj) => extend([...d[0], nameObj]));
+  const defs = names.map((nameObj) => ({
+    ...extend([...d[0], nameObj]),
+    declarator: "struct-member"
+  }));
   return defs;
 } %}
 
@@ -259,20 +263,24 @@ multiAnnotations -> annotation:* {%
   }
 %}
 
-annotation -> at %NAME ("(" multiAnnotationParams ")"):? {% d => {
-  const paramsMap = d[2] ? d[2][1] : {};
-  if(d[1].value === "default") {
-    const defaultValue = paramsMap.value;
+annotation -> at %NAME ("(" annotationParams ")"):? {% d => {
+  const annotationName = d[1].value;
+  if(annotationName === "default") {
+    const params = d[2] ? d[2][1] : {};
+    const defaultValue = params.value;
     return {defaultValue};
   }
   return null
 } %}
 
-multiAnnotationParams -> annotationParam ("," annotationParam):* {%
+annotationParams -> (multipleNamedAnnotationParams | literal) {% d => d[0][0] %}
+
+multipleNamedAnnotationParams -> namedAnnotationParams ("," namedAnnotationParams):* {%
   d => extend([d[0], ...d[1].flatMap(([, param]) => param)])
 %}
-annotationParam -> (%NAME assignment) {% d => ({[d[0][0].value]: d[0][1].value}) %}
-  | (%NAME) {% noop %}
+
+namedAnnotationParams -> (%NAME assignment) {% d => ({[d[0][0].value]: d[0][1].value}) %}
+ | (%NAME) {% /** constants */ noop %} 
 
 at -> "@" {% noop %}
 
@@ -287,7 +295,7 @@ constType -> (
   return def;
 } %}
 
-constKeyword -> "const"  {% d => ({isConstant: true}) %}
+constKeyword -> "const"  {% d => ({isConstant: true, declarator: "const"}) %}
 
 fieldName -> %NAME {% d => ({name: d[0].value}) %}
 
@@ -333,12 +341,9 @@ primitiveTypes -> (
 
 customType -> %NAME {% d => {
   const typeName = d[0].value;
-  // won't be replaced later with a typedef alias definition
-  // typedefs can't include :: in their name, but they can be complex
-  const isDefinitelyComplex = typeName.includes("::");
 
   // post process will go through and replace typedefs with their actual type
-  return {type: typeName, isComplex: isDefinitelyComplex };
+  return {type: typeName };
 }%}
 
 stringType ->  ("string"|"wstring") ("<" (INT | %NAME) ">"):? {% d => {
@@ -379,6 +384,16 @@ numericType -> (
   return { type: type ? type : typeString };
 }
 %}
+
+literal -> (booleanLiteral | strLiteral | floatLiteral | intLiteral) {% d => d[0][0] %}
+
+booleanLiteral -> BOOLEAN {% d => ({value: d[0] === "TRUE"}) %}
+
+strLiteral -> STR {% d => ({value: d[0]}) %}
+
+floatLiteral -> (SIGNED_FLOAT | FLOAT) {% d => ({value: parseFloat(d[0][0])}) %}
+
+intLiteral -> (SIGNED_INT | INT) {% d => ({value: parseInt(d[0][0])}) %}
 
 # ALL CAPS return strings rather than objects or null (terminals)
 

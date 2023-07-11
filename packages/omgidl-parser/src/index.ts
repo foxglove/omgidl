@@ -1,1 +1,2 @@
-export * from "./parseOmgidl";
+export * from "./parseIdl";
+export * from "./IDLNodeProcessor";

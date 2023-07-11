@@ -1,4 +1,4 @@
-import { CdrWriter } from "@foxglove/cdr";
+import { CdrWriter, CdrWriterOpts } from "@foxglove/cdr";
 import {
   DefaultValue,
   MessageDefinition,
@@ -60,8 +60,13 @@ const PRIMITIVE_ARRAY_WRITERS = new Map<string, PrimitiveArrayWriter>([
 export class MessageWriter {
   rootDefinition: MessageDefinitionField[];
   definitions: Map<string, MessageDefinitionField[]>;
+  cdrOptions: Partial<CdrWriterOpts>;
 
-  constructor(rootDefinitionName: string, definitions: MessageDefinition[]) {
+  constructor(
+    rootDefinitionName: string,
+    definitions: MessageDefinition[],
+    cdrOptions?: Partial<CdrWriterOpts>,
+  ) {
     // use first not entirely constant module as root
     const rootDefinition = definitions.find((def) => def.name === rootDefinitionName);
     if (rootDefinition == undefined) {
@@ -73,6 +78,7 @@ export class MessageWriter {
     this.definitions = new Map<string, MessageDefinitionField[]>(
       definitions.map((def) => [def.name ?? "", def.definitions]),
     );
+    this.cdrOptions = cdrOptions ?? {};
   }
 
   /** Calculates the byte size needed to write this message in bytes. */
@@ -88,6 +94,7 @@ export class MessageWriter {
    */
   writeMessage(message: unknown, output?: Uint8Array): Uint8Array {
     const writer = new CdrWriter({
+      ...this.cdrOptions,
       buffer: output,
       size: output ? undefined : this.calculateByteSize(message),
     });

@@ -365,7 +365,7 @@ module rosidl_parser {
             isComplex: false,
           },
           {
-            type: "int8",
+            type: "uint8",
             name: "octet_value",
             isComplex: false,
           },
@@ -421,11 +421,9 @@ module rosidl_parser {
   it("parses a module of all array types", () => {
     const types = parse(
       `
+      const unsigned long UNSIGNED_LONG_CONSTANT = 42;
       module rosidl_parser {
         module msg {
-          module MyMessage_Constants {
-            const unsigned long UNSIGNED_LONG_CONSTANT = 42;
-          };
           struct MyMessage {   
             string<5> bounded_string_value;
             wstring wstring_value;
@@ -443,7 +441,7 @@ module rosidl_parser {
     );
     expect(types).toEqual([
       {
-        name: "rosidl_parser/msg/MyMessage_Constants",
+        name: "",
         definitions: [
           {
             name: "UNSIGNED_LONG_CONSTANT",
@@ -578,6 +576,13 @@ module rosidl_parser {
     };
   };
 };
+module geometry {
+  module msg {
+    struct Point {
+      float x;
+    };
+  };
+};
     `,
     );
     expect(types).toEqual([
@@ -601,6 +606,16 @@ module rosidl_parser {
             name: "points_with_length_sequence",
             isArray: true,
             isComplex: true,
+          },
+        ],
+      },
+      {
+        name: "geometry/msg/Point",
+        definitions: [
+          {
+            type: "float32",
+            name: "x",
+            isComplex: false,
           },
         ],
       },

@@ -570,6 +570,7 @@ __metadata:
   dependencies:
     "@foxglove/message-definition": ^0.2.0
     "@foxglove/omgidl-grammar": "workspace:*"
+    "@foxglove/omgidl-parser": "workspace:*"
     "@types/jest": ^28.0.0
     jest: 28.1.3
     md5-typescript: ^1.0.5
