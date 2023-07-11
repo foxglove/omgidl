@@ -6,13 +6,37 @@
 
 ## MessageReader
 
-Message reader deserializes CDR and XCDR2 messages into plain objects. The messages are fully deserialized.
+Message reader deserializes CDR, and CDR2 messages into plain objects. The messages are fully deserialized.
 
 ```typescript
+import { parseIdl } from "@foxglove/omgidl-parser";
 import { MessageReader } from "@foxglove/omgidl-serialization";
 
-// message definition comes from `parseIdl()` in @foxglove/omgidl-parser
-const reader = new MessageReader("PointStamped", messageDefinition);
+const msgDef = `
+  module geometry_msgs {
+    struct PointStamped {
+      Header header;
+      Point point;
+    };
+  };
+  struct Header {
+    uint32 seq;
+    Time stamp;
+    string frame_id;
+  };
+  struct Time {
+    uint32 sec;
+    uint64 nsec;
+  };
+  struct Point {
+    float x;
+    float y;
+    float z;
+  };
+`;
+
+const messageDefinition = parseIdl(msgDef);
+const reader = new MessageReader("geometry_msgs::PointStamped", messageDefinition);
 
 // deserialize a buffer into an object
 const message = reader.readMessage([0x00, 0x01, ...]);
@@ -28,13 +52,37 @@ Convert an object, array, or primitive value into binary data using CDR or XCDR2
 ```Typescript
 import { MessageWriter } from "@foxglove/omgidl-serialization";
 
-// message definition comes from `parseIdl()` in @foxglove/omgidl-parser
-const writer = new MessageWriter("PointStamped", pointStampedMessageDefinition, cdrOptions);
+const msgDef = `
+  module geometry_msgs {
+    struct PointStamped {
+      Header header;
+      Point point;
+    };
+  };
+  struct Header {
+    uint32 seq;
+    Time stamp;
+    string frame_id;
+  };
+  struct Time {
+    uint32 sec;
+    uint64 nsec;
+  };
+  struct Point {
+    float x;
+    float y;
+    float z;
+  };
+`;
+
+const messageDefinition = parseIdl(msgDef);
+
+const writer = new MessageWriter("geometry_msgs::PointStamped", messageDefinition, cdrOptions);
 
 // serialize the passed in object to a Uint8Array as a PointStamped message
 const uint8Array = writer.writeMessage({
   header: {
-    stamp: { sec: 0, nanosec: 0 },
+    stamp: { sec: 0, nsec: 0 },
     frame_id: ""
   },
   x: 1,
