@@ -425,6 +425,9 @@ module builtin_interfaces {
   };
 };
 
+/** Autoware Auto Generated Schema - Below was added manually because it was not initially included but is necessary for resolution
+ * Ticket find out why it was missing:  https://linear.app/foxglove/issue/FG-4111/rosbag-record-of-autoware-ros2idl-incomplete-definitions
+ * **/
 ================================================================================
 IDL: geometry_msgs/msg/PosesWithCovariance
 
