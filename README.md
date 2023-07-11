@@ -2,13 +2,12 @@
 
 This repo contains implementations for supporting OMG specifications within [Foxglove Studio](https://www.foxglove.dev).
 
-- `@foxlgove/omgidl-grammar`: OMG IDL (Interface Definition Language) Schema Grammar in `nearley`
-  - [Interface Definition Language Specification](https://www.omg.org/spec/IDL/4.2/PDF)
-- `@foxglove/omgidl-parser`: IDL schema parser to resolved, flattened definitions
-- `@foxglove/omgidl-serialization`: IDL messages serialization and deserialization to CDR and CDR2
-  - [Extensible and Dynamic Types for DDS Specification](https://www.omg.org/spec/DDS-XTypes/1.2/PDF)
-- `@foxglove/ros2idl-parser`: ROS2IDL schema parser
-  - ROS 2 IDL Support: [article](https://design.ros2.org/articles/idl_interface_definition.html), [repo](https://github.com/ros2/rosidl)
+| Package name                     | Description                                                      | Reference                                                                                                         | Version                                                                                                                      |
+| -------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `@foxglove/omgidl-grammar`       | Parse OMG IDL schema to AST                                      | [Interface Definition Language Specification](https://www.omg.org/spec/IDL/4.2/PDF)                               | [![](https://shields.io/npm/v/@foxglove/omgidl-grammar)](https://www.npmjs.com/package/@foxglove/omgidl-grammar)             |
+| `@foxglove/omgidl-parser`        | Parse OMG IDL schema to definitions for studio and serialization |                                                                                                                   | [![](https://shields.io/npm/v/@foxglove/omgidl-parser)](https://www.npmjs.com/package/@foxglove/omgidl-parser)               |
+| `@foxglove/omgidl-serialization` | De/Serialize data using IDL to CDR and CDR2                      | [Extensible and Dynamic Types for DDS Specification](https://www.omg.org/spec/DDS-XTypes/1.2/PDF)                 | [![](https://shields.io/npm/v/@foxglove/omgidl-serialization)](https://www.npmjs.com/package/@foxglove/omgidl-serialization) |
+| `@foxglove/ros2idl-parser`       | `ros2idl` schema parser to definitions for serialization         | [article](https://design.ros2.org/articles/idl_interface_definition.html), [repo](https://github.com/ros2/rosidl) | [![](https://shields.io/npm/v/@foxglove/ros2idl-parser)](https://www.npmjs.com/package/@foxglove/ros2idl-parser)             |
 
 ## Setup
 
@@ -27,12 +26,9 @@ Note: to ensure that tests from a downstream in-repo dependency are running agai
 
 The dependency flow is as follows:
 
-- `@foxglove/omgidl-parser`
-  - `@foxglove/omgidl-grammar`
-- `@foxglove/omgidl-serialization`
-  - `@foxglove/omgidl-parser`
-- `@foxglove/ros2idl-parser`
-  - `@foxglove/omgidl-parser`
+- `@foxglove/omgidl-grammar` -> `@foxglove/omgidl-parser`
+- `@foxglove/omgidl-parser` -> `@foxglove/omgidl-serialization`
+- `@foxglove/omgidl-parser` -> `@foxglove/ros2idl-parser`
 
 ## Deploy packages
 
