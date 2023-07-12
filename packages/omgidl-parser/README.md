@@ -1,6 +1,6 @@
 # OMG IDL Nearley Grammar
 
-> _OMG IDL parser to AST_
+> _OMG IDL parser to flattened message definitions for (de)serialization_
 
 [![npm version](https://img.shields.io/npm/v/@foxglove/omgidl-parser.svg?style=flat)](https://www.npmjs.com/package/@foxglove/omgidl-parser)
 
