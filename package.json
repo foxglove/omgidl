@@ -14,10 +14,8 @@
     "lint": "yarn workspaces foreach run lint --color",
     "lint:ci": "yarn workspaces foreach run lint:ci",
     "build": "yarn workspaces foreach run build",
-    "grammar:test": "yarn workspace @foxglove/omgidl-grammar test",
-    "grammar:build": "yarn workspace @foxglove/omgidl-grammar build",
-    "omgidl:test": "yarn workspace @foxglove/omgidl-parser test",
-    "omgidl:build": "yarn workspace @foxglove/omgidl-parser build",
+    "parser:test": "yarn workspace @foxglove/omgidl-parser test",
+    "parser:build": "yarn workspace @foxglove/omgidl-parser build",
     "serde:test": "yarn workspace @foxglove/omgidl-serialization test",
     "serde:build": "yarn workspace @foxglove/omgidl-serialization build",
     "ros2idl:test": "yarn workspace @foxglove/ros2idl-parser test",
@@ -28,7 +26,6 @@
   ],
   "jest": {
     "projects": [
-      "packages/omgidl-grammar/jest.config.js",
       "packages/omgidl-parser/jest.config.js",
       "packages/omgidl-serialization/jest.config.js",
       "packages/ros2idl-parser/jest.config.js"

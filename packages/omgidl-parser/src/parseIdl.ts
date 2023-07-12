@@ -1,7 +1,8 @@
 import { MessageDefinition } from "@foxglove/message-definition";
-import { RawIdlDefinition, parseIdlToNestedDefinitions } from "@foxglove/omgidl-grammar";
 
 import { IDLNodeProcessor } from "./IDLNodeProcessor";
+import { parseIdlToNestedDefinitions } from "./parse";
+import { RawIdlDefinition } from "./types";
 
 /**
  *
