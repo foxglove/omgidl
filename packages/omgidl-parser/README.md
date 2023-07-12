@@ -4,21 +4,13 @@
 
 [![npm version](https://img.shields.io/npm/v/@foxglove/omgidl-parser.svg?style=flat)](https://www.npmjs.com/package/@foxglove/omgidl-parser)
 
-This repo contains a grammar that parses a subset of IDL schema into an AST. This does not resolve definitions; it represents the raw structure and data of the IDL schema. For usage in message serialization, more processing is required.
-
-## API
-
-`parseIdlToNestedDefinitions` - Uses the IDL grammar to parse raw `.idl` text into a raw, unresolved nested definition tree.
-
-Also contains output types of the nested definitions. See `src/types.ts`.
-
-This package provides functions to parse raw `.idl` schemas into resolved, flattened message definitions using `@foxglove/omgidl-grammar`.
+This package provides functions to parse raw `.idl` schemas into resolved, flattened message definitions.
 
 Output definitions can be passed to serializers with a specified root definition in `@foxglove/omgidl-serialization` to read and write CDR and XCDR2 messages.
 
-`parseIdl` - parses raw `.idl` schema string to resolved, flattened definitions.
+## API
 
-`IDLNodeProcessor` - a class that takes semantic definitions outputted from `@foxglove/omgidl-grammar` and provides methods to iteratively resolve references in the definitions to be more complete for serialization. Also provides a method (`toMessageDefinitions`) to flatten the processed IDL to definitions that can be used for serialization.
+`parseIdl` - parses raw `.idl` schema string to resolved, flattened definitions.
 
 ## OMG IDL Subset Support
 
