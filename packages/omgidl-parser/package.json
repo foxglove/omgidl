@@ -1,7 +1,7 @@
 {
   "name": "@foxglove/omgidl-parser",
   "version": "0.0.1",
-  "description": "OMG IDL parser to flattened definitions for serialization",
+  "description": "Parse OMG IDL to flattened definitions for serialization",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -23,7 +23,6 @@
     "email": "contact@foxglove.dev",
     "url": "https://foxglove.dev/"
   },
-  "module": "dist/esm/index.js",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "files": [
