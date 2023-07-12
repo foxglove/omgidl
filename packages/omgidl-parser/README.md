@@ -1,4 +1,4 @@
-# OMG IDL Nearley Grammar
+# OMG IDL schema parser
 
 > _OMG IDL parser to flattened message definitions for (de)serialization_
 
@@ -6,15 +6,13 @@
 
 This package provides functions to parse raw `.idl` schemas into resolved, flattened message definitions.
 
-Output definitions can be passed to serializers with a specified root definition in `@foxglove/omgidl-serialization` to read and write CDR and XCDR2 messages.
+Output definitions can be passed to serializers along with a specified root schema name string in `@foxglove/omgidl-serialization` to read and write CDR and XCDR2 messages.
 
 ## API
 
 `parseIdl` - parses raw `.idl` schema string to resolved, flattened definitions.
 
 ## OMG IDL Subset Support
-
-Check `src/parse.test.ts` to see what is supported by the grammar so far and what isn't supported yet.
 
 Known limitations:
 
