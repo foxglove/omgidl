@@ -16,6 +16,7 @@ module.exports = {
   },
   module: {
     rules: [
+      { test: /\.ne$/, loader: "nearley-loader" },
       {
         test: /\.tsx?$/,
         exclude: /node_modules/,

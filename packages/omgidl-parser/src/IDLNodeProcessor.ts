@@ -3,7 +3,8 @@ import {
   MessageDefinition,
   MessageDefinitionField,
 } from "@foxglove/message-definition";
-import { RawIdlDefinition, AnyIDLNode, StructMemberNode } from "@foxglove/omgidl-grammar";
+
+import { RawIdlDefinition, AnyIDLNode, StructMemberNode } from "./types";
 
 const numericTypeMap: Record<string, string> = {
   "unsigned short": "uint16",
