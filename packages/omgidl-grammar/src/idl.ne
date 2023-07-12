@@ -83,20 +83,7 @@ lexer.next = (next => () => {
   return token;
 })(lexer.next);
 
-// Utiility functions
-
-const numericTypeMap = {
-  "unsigned short": "uint16",
-  "unsigned long": "uint32",
-  "unsigned long long": "uint64",
-  "short": "int16",
-  "long": "int32",
-  "long long": "int64",
-  "double": "float64",
-  "float": "float32",
-  "octet": "uint8",
-  "wchar": "char",
-};
+/*** Utility functions ******/
 
 // also used to parse tokens to strings since they start as an object
 function join(d){
@@ -380,8 +367,7 @@ numericType -> (
   | "long"
 ) {% (d) => {
   const typeString = d[0].map((t) => t?.value).filter(t => !!t).join(" ");
-  let type = numericTypeMap[typeString];
-  return { type: type ? type : typeString };
+  return { type: typeString };
 }
 %}
 

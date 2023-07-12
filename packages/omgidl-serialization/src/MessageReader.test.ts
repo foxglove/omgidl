@@ -77,9 +77,9 @@ describe("MessageReader", () => {
       [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
       { sample: 18446744073709551615n },
     ],
-    [`struct a {float32 sample; };`, "a", float32Buffer([5.5]), { sample: 5.5 }],
+    [`struct a {float sample; };`, "a", float32Buffer([5.5]), { sample: 5.5 }],
     [
-      `struct a {float64 sample; };`,
+      `struct a {double sample; };`,
       "a",
       // eslint-disable-next-line @typescript-eslint/no-loss-of-precision
       new Uint8Array(Float64Array.of(0.123456789121212121212).buffer),
@@ -108,13 +108,13 @@ describe("MessageReader", () => {
       { blank: 0, arr: Int32Array.from([3, 7]) },
     ],
     [
-      `struct a {float32 arr[2];};`,
+      `struct a {float arr[2];};`,
       "a",
       float32Buffer([5.5, 6.5]),
       { arr: Float32Array.from([5.5, 6.5]) },
     ],
     [
-      `struct a {uint8 blank; float32 arr[2]; };`,
+      `struct a {uint8 blank; float arr[2]; };`,
       "a",
       [
         0x00,
@@ -124,7 +124,7 @@ describe("MessageReader", () => {
       { blank: 0, arr: Float32Array.from([5.5, 6.5]) },
     ],
     [
-      `struct a {sequence<float32> arr;};`,
+      `struct a {sequence<float> arr;};`,
       "a",
       [
         ...[0x02, 0x00, 0x00, 0x00], // length
@@ -133,7 +133,7 @@ describe("MessageReader", () => {
       { arr: Float32Array.from([5.5, 6.5]) },
     ],
     [
-      `struct a {uint8 blank; sequence<float32> arr;};`,
+      `struct a {uint8 blank; sequence<float> arr;};`,
       "a",
       [
         0x00,
@@ -144,7 +144,7 @@ describe("MessageReader", () => {
       { blank: 0, arr: Float32Array.from([5.5, 6.5]) },
     ],
     [
-      `struct a {sequence<float32> first; sequence<float32> second;};`,
+      `struct a {sequence<float> first; sequence<float> second;};`,
       "a",
       [
         ...[0x02, 0x00, 0x00, 0x00], // length

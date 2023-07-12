@@ -17,11 +17,6 @@ function buildIdlType(messageDefinition: string): MessageDefinition[] {
 
   const result = results[0]!;
   const processedResult = processIdlDefinitions(result);
-  for (const { definitions } of processedResult) {
-    for (const definition of definitions) {
-      definition.type = normalizeType(definition.type);
-    }
-  }
 
   return processedResult;
 }
@@ -38,14 +33,4 @@ function processIdlDefinitions(definitions: RawIdlDefinition[]): MessageDefiniti
   idlProcessor.resolveComplexTypes();
 
   return idlProcessor.toMessageDefinitions();
-}
-
-export function normalizeType(type: string): string {
-  // Normalize deprecated aliases
-  if (type === "char") {
-    return "uint8";
-  } else if (type === "byte") {
-    return "int8";
-  }
-  return type;
 }

@@ -20,9 +20,9 @@ function buildRos2idlType(messageDefinition: string): MessageDefinition[] {
   const results = parseIdl(idlConformedDef);
 
   for (const def of results) {
-    def.name = toRos2ResourceName(def.name!);
+    def.name = normalizeName(def.name!);
     for (const field of def.definitions) {
-      field.type = normalizeType(field.type);
+      field.type = normalizeName(field.type);
     }
   }
 
@@ -33,14 +33,10 @@ function toRos2ResourceName(name: string): string {
   return name.replaceAll("::", "/");
 }
 
-export function normalizeType(type: string): string {
+export function normalizeName(name: string): string {
   // Normalize deprecated aliases
-  if (type.includes("::")) {
-    return toRos2ResourceName(type);
-  } else if (type === "char") {
-    return "uint8";
-  } else if (type === "byte") {
-    return "int8";
+  if (name.includes("::")) {
+    return toRos2ResourceName(name);
   }
-  return type;
+  return name;
 }
