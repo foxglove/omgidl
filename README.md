@@ -30,6 +30,15 @@ The dependency flow is as follows:
 
 ## Deploy packages
 
+1. Open a PR updating the version of the packages that have new versions that need to be deployed.
+2. Land PR with change of version numbers and pull the latest on main locally
+3. Add git tags for each package you'd like to publish using the following prefixes
+   - `@foxglove/omgidl-parser` -> `omgidl-parser/vX.X.X`
+   - `@foxglove/omgidl-serialization` -> `omgidl-serialization/vX.X.X`
+   - `@foxglove/ros2idl-parser` -> `ros2idl-parser/vX.X.X`
+4. For example: if you're updating `@foxglove/omgidl-parser` to `v1.2.1` you would add the corresponding git tag by running `git tag -a omgidl-parser/v1.2.1`. For updating multiple packages on a single commit you can add multiple tags: `git tag -a omgidl-parser/v1.2.1 omgidl-serialization/v1.1.3` .
+5. After adding the tag run `git push --tags`
+
 ## Stay in touch
 
 Join our [Slack channel](https://foxglove.dev/join-slack) to ask questions, share feedback, and stay up to date on what our team is working on.
