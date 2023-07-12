@@ -83,7 +83,7 @@ lexer.next = (next => () => {
   return token;
 })(lexer.next);
 
-/*** Utiility functions ******/
+/*** Utility functions ******/
 
 // also used to parse tokens to strings since they start as an object
 function join(d){
