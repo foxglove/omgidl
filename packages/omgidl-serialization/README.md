@@ -1,18 +1,42 @@
-# @foxglove/rosmsg2-serialization
+# @foxglove/omgidl-serialization
 
-> _ROS 2 (Robot Operating System) message serialization, for reading and writing bags and network messages_
+> _OMG IDL message serialization, for reading and writing CDR and XCDR2 messages based on `.idl` schema_
 
-[![npm version](https://img.shields.io/npm/v/@foxglove/rosmsg2-serialization.svg?style=flat)](https://www.npmjs.com/package/@foxglove/rosmsg2-serialization)
+[![npm version](https://img.shields.io/npm/v/@foxglove/omgidl-serialization.svg?style=flat)](https://www.npmjs.com/package/@foxglove/omgidl-serialization)
 
 ## MessageReader
 
-Message reader deserializes ROS 2 CDR messages into plain objects. The messages are fully deserialized.
+Message reader deserializes CDR, and CDR2 messages into plain objects. The messages are fully deserialized.
 
 ```typescript
-import { MessageReader } from "@foxglove/rosmsg2-serialization";
+import { parseIdl } from "@foxglove/omgidl-parser";
+import { MessageReader } from "@foxglove/omgidl-serialization";
 
-// message definition comes from `parse()` in @foxglove/rosmsg
-const reader = new MessageReader(messageDefinition);
+const msgDef = `
+  module geometry_msgs {
+    struct PointStamped {
+      Header header;
+      Point point;
+    };
+  };
+  struct Header {
+    uint32 seq;
+    Time stamp;
+    string frame_id;
+  };
+  struct Time {
+    uint32 sec;
+    uint64 nsec;
+  };
+  struct Point {
+    float x;
+    float y;
+    float z;
+  };
+`;
+
+const messageDefinition = parseIdl(msgDef);
+const reader = new MessageReader("geometry_msgs::PointStamped", messageDefinition);
 
 // deserialize a buffer into an object
 const message = reader.readMessage([0x00, 0x01, ...]);
@@ -23,18 +47,42 @@ message.header.stamp;
 
 ## MessageWriter
 
-Convert an object, array, or primitive value into binary data using ROS 2 CDR message serialization.
+Convert an object, array, or primitive value into binary data using CDR or XCDR2 message serialization.
 
 ```Typescript
-import { MessageWriter } from "@foxglove/rosmsg2-serialization";
+import { MessageWriter } from "@foxglove/omgidl-serialization";
 
-// message definition comes from `parse()` in @foxglove/rosmsg
-const writer = new MessageWriter(pointStampedMessageDefinition);
+const msgDef = `
+  module geometry_msgs {
+    struct PointStamped {
+      Header header;
+      Point point;
+    };
+  };
+  struct Header {
+    uint32 seq;
+    Time stamp;
+    string frame_id;
+  };
+  struct Time {
+    uint32 sec;
+    uint64 nsec;
+  };
+  struct Point {
+    float x;
+    float y;
+    float z;
+  };
+`;
 
-// serialize the passed in object to a Uint8Array as a geometry_msgs/PointStamped message
+const messageDefinition = parseIdl(msgDef);
+
+const writer = new MessageWriter("geometry_msgs::PointStamped", messageDefinition, cdrOptions);
+
+// serialize the passed in object to a Uint8Array as a PointStamped message
 const uint8Array = writer.writeMessage({
   header: {
-    stamp: { sec: 0, nanosec: 0 },
+    stamp: { sec: 0, nsec: 0 },
     frame_id: ""
   },
   x: 1,
@@ -42,21 +90,3 @@ const uint8Array = writer.writeMessage({
   z: 0
 });
 ```
-
-### Test
-
-`yarn test`
-
-## License
-
-@foxglove/rosmsg2-serialization is licensed under the [MIT License](https://opensource.org/licenses/MIT).
-
-## Releasing
-
-1. Run `yarn version --[major|minor|patch]` to bump version
-2. Run `git push && git push --tags` to push new tag
-3. GitHub Actions will take care of the rest
-
-## Stay in touch
-
-Join our [Slack channel](https://foxglove.dev/join-slack) to ask questions, share feedback, and stay up to date on what our team is working on.
