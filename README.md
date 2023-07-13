@@ -25,8 +25,8 @@ Note: to ensure that tests from a downstream in-repo dependency are running agai
 
 The dependency flow is as follows:
 
-- `@foxglove/omgidl-serialization` -> `@foxglove/omgidl-parser`
-- `@foxglove/ros2idl-parser` -> `@foxglove/omgidl-parser`
+- `@foxglove/omgidl-serialization` depends on `@foxglove/omgidl-parser`
+- `@foxglove/ros2idl-parser` depends on `@foxglove/omgidl-parser`
 
 ## Deploy packages
 
