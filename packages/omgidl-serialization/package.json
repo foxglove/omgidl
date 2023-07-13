@@ -33,6 +33,7 @@
     "lint": "eslint --report-unused-disable-directives --fix .",
     "prepack": "yarn build",
     "prepublishOnly": "yarn lint:ci && yarn test",
+    "publishPublic": "yarn publish --access public",
     "test": "jest"
   },
   "engines": {
