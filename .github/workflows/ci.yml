@@ -3,7 +3,10 @@ name: CI
 on:
   push:
     branches: main
-    tags: v*
+    tags:
+      - "omgidl-parser/v*"
+      - "omgidl-serialization/v*"
+      - "ros2idl-parser/v*"
   pull_request:
     branches: "*"
 

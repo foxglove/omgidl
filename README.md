@@ -36,8 +36,8 @@ The dependency flow is as follows:
    - `@foxglove/omgidl-parser` -> `omgidl-parser/vX.X.X`
    - `@foxglove/omgidl-serialization` -> `omgidl-serialization/vX.X.X`
    - `@foxglove/ros2idl-parser` -> `ros2idl-parser/vX.X.X`
-4. For example: if you're updating `@foxglove/omgidl-parser` to `v1.2.1` you would add the corresponding git tag by running `git tag -a omgidl-parser/v1.2.1`. For updating multiple packages on a single commit you can add multiple tags: `git tag -a omgidl-parser/v1.2.1 omgidl-serialization/v1.1.3` .
-5. After adding the tag run `git push --tags`
+4. For example: if you're updating `@foxglove/omgidl-parser` to `v1.2.1` you would add the corresponding git tag by running `git tag omgidl-parser/v1.2.1`. For updating multiple packages on a single commit you can add multiple tags: `git tag omgidl-parser/v1.2.1 omgidl-serialization/v1.1.3` .
+5. After adding the tag run `git push origin refs/tags/<tag>` to push the specific tag to the remote
 
 ## Stay in touch
 
