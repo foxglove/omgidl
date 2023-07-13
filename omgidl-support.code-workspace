@@ -1,6 +1,7 @@
 {
   "folders": [
     {
+      "name": "omgidl-support",
       "path": "."
     },
     {
@@ -16,5 +17,8 @@
       "path": "packages/ros2idl-parser"
     }
   ],
-  "settings": {}
+  "settings": {
+    "jest.disabledWorkspaceFolders": ["omgidl-support"],
+    "jest.autoRevealOutput": "on-exec-error"
+  }
 }
