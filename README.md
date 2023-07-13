@@ -45,4 +45,4 @@ Join our [Slack channel](https://foxglove.dev/join-slack) to ask questions, shar
 
 ## License
 
-foxglove/omgidl-support and its packages are licensed under the [MIT License](https://opensource.org/licenses/MIT).
+foxglove/omgidl and its packages are licensed under the [MIT License](https://opensource.org/licenses/MIT).
