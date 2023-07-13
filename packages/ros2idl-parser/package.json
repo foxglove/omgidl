@@ -5,7 +5,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/foxglove/omgidl-support.git"
+    "url": "https://github.com/foxglove/omgidl.git"
   },
   "keywords": [
     "ros",
@@ -24,7 +24,7 @@
     "name": "Foxglove Technologies Inc",
     "email": "contact@foxglove.dev"
   },
-  "homepage": "https://github.com/foxglove/omgidl-support/packages/ros2idl-parser",
+  "homepage": "https://github.com/foxglove/omgidl/packages/ros2idl-parser",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "files": [

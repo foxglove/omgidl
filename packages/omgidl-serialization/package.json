@@ -13,13 +13,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/foxglove/omgidl-support.git"
+    "url": "https://github.com/foxglove/omgidl.git"
   },
   "author": {
     "name": "Foxglove Technologies Inc",
     "email": "contact@foxglove.dev"
   },
-  "homepage": "https://github.com/foxglove/omgidl-support/packages/omgidl-serialization",
+  "homepage": "https://github.com/foxglove/omgidl/packages/omgidl-serialization",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "files": [

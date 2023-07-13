@@ -1,7 +1,7 @@
 {
   "folders": [
     {
-      "name": "omgidl-support",
+      "name": "omgidl-mono",
       "path": "."
     },
     {
@@ -18,7 +18,7 @@
     }
   ],
   "settings": {
-    "jest.disabledWorkspaceFolders": ["omgidl-support"],
+    "jest.disabledWorkspaceFolders": ["omgidl-mono"],
     "jest.autoRevealOutput": "on-exec-error"
   }
 }
