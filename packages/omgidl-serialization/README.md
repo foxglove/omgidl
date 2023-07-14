@@ -90,3 +90,13 @@ const uint8Array = writer.writeMessage({
   z: 0
 });
 ```
+
+## Known Limitations
+
+Unsupported:
+
+- `@mutable` and `@appendable` annotations. We do not currently support reading of DHeaders and EMHeaders that would make this possible. Attempting to read messages from schemas that include these annotations may result in data being deserialized incorrectly.
+- `wchar` and `wstring` - These are written and read using custom implementations that are specific to someone's environment. They are read in by-default as `uint8` chars.
+- `union` types
+
+Also see the current IDL parser schema limitations [here](../omgidl-parser/README.md#omg-idl-subset-support)

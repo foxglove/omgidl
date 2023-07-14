@@ -8,6 +8,10 @@ This repo contains implementations for supporting OMG specifications within [Fox
 | `@foxglove/omgidl-serialization` | De/Serialize data using IDL to CDR and CDR2                               | [Extensible and Dynamic Types for DDS Specification](https://www.omg.org/spec/DDS-XTypes/1.2/PDF)                 | [![](https://shields.io/npm/v/@foxglove/omgidl-serialization)](https://www.npmjs.com/package/@foxglove/omgidl-serialization) |
 | `@foxglove/ros2idl-parser`       | `ros2idl` schema parser to definitions for serialization                  | [article](https://design.ros2.org/articles/idl_interface_definition.html), [repo](https://github.com/ros2/rosidl) | [![](https://shields.io/npm/v/@foxglove/ros2idl-parser)](https://www.npmjs.com/package/@foxglove/ros2idl-parser)             |
 
+See known limitations here:
+[Parser/Grammar Limitations](./packages/omgidl-parser/README.md#omg-idl-subset-support)
+[Serialization Limitations](./packages/omgidl-serialization/README.md#known-limitations)
+
 ## Setup
 
 ```
