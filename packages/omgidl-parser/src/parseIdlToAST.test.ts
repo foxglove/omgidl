@@ -1293,6 +1293,32 @@ module idl_parser {
       `;
     expect(() => parseIdlToAST(msgDef)).toThrow(/unexpected input/i);
   });
+  /**************** Not yet supported */
+  it("cannot parse extensible type @mutable", () => {
+    const msgDef = `
+      typedef float coord[2];
+      module msg {
+        @mutable
+        struct Point {
+            coord loc;
+        };
+      };
+      `;
+    expect(() => parseIdlToAST(msgDef)).toThrow(/unexpected mutable/i);
+  });
+  it("cannot parse extensible type @appendable", () => {
+    const msgDef = `
+      typedef float coord[2];
+      module msg {
+        @appendable
+        struct Point {
+            coord loc;
+        };
+      };
+      `;
+    expect(() => parseIdlToAST(msgDef)).toThrow(/unexpected appendable/i);
+  });
+
   /****************  Not supported by IDL (as far as I can tell) */
   it("cannot parse constants that reference other constants", () => {
     const msgDef = `

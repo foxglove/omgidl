@@ -38,6 +38,10 @@ const keywords = [
   , "unsigned"
   , "short"
   , "long"
+  
+  // Unsupported annotations - will cause errors because annotations use %NAME and not keywords
+  , "mutable"
+  , "appendable"
 ];
 
 const kwObject = keywords.reduce((obj, w) => {
