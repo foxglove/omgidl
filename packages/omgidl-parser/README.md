@@ -14,10 +14,35 @@ Output definitions can be passed to serializers along with a specified root sche
 
 ## OMG IDL Subset Support
 
-Known limitations:
+NOTE: numbers like `7.4.1` refer to sections of the [OMG IDL specification](https://www.omg.org/spec/IDL/4.2/PDF).
 
-- Multi-dimensional arrays are not supported
-- Unions are not supported
-- Annotations other than `@default` are currently discarded during parsing
-- Leading `::` is not supported in scoped identifiers
-- resolution of typedefs and constants is only guaranteed to work 1 level deep. In other words, typedefs and constants cannot reference other definitions that reference further definitions of constants or typedefs.
+- Grammar Features supported
+
+  - `7.4.1` Building Block Core Data Types (with exceptions below)
+  - support for extended numeric types `uint8`, `int8` ... `uint64`, `int64`
+    - Note `7.4.13` Building Block Extended Data-Types is not fully supported
+  - Literals (with some hexadecimal, character and `wide`-type exceptions)
+  - Blanks, horizontal and vertical tabs, newlines, form feeds, and comments (collective, "white space") as described below are ignored except as they serve to separate tokens
+  - Parse generic annotations (only defaultValue is read in to AST)
+
+- Unsupported grammar features
+
+  - `native` declarations
+  - forward declarations
+  - Constant expressions
+  - unary operators
+  - unions and cases
+  - multi-dimensional arrays
+  - default value annotation type checking
+  - identifiers prefixed with `::` scope
+  - `7.2.6.1` - Octal and hexadecimal integers are not supported (`014` and `0xC`)
+  - `7.2.6.2.1` wide character and wide string has limited support
+    - can be read in to schema but only considered `uint8`
+    - wide character and string literals are not supported (`L'X'`)
+  - `7.2.6.3` - wide string literals are not supported
+  - `7.2.3.1` - we do not check collision explicitly and we use case-sensitive identifiers whereas IDL requires identifiers to be case insensitive.
+  - `7.4.2`-`7.4.16` extended IDL building blocks not supported
+
+- Unsupported reference and type resolution features
+  - numeric type checking for constant usage
+  - we do not enforce type-based value ranges on constants in schema
