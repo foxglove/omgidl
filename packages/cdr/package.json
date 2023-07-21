@@ -1,0 +1,61 @@
+{
+  "name": "@foxglove/cdr",
+  "version": "2.1.0",
+  "description": "Common Data Representation serialization and deserialization library",
+  "license": "MIT",
+  "keywords": [
+    "cdr",
+    "dds",
+    "rtps",
+    "omg",
+    "serialization",
+    "deserialization",
+    "serde",
+    "ros2"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/foxglove/cdr.git"
+  },
+  "author": {
+    "name": "Foxglove Technologies",
+    "email": "support@foxglove.dev"
+  },
+  "homepage": "https://github.com/foxglove/cdr",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "yarn clean && tsc -b",
+    "clean": "rimraf dist *.tsbuildinfo",
+    "lint:ci": "eslint --report-unused-disable-directives .",
+    "lint": "eslint --report-unused-disable-directives --fix .",
+    "prepack": "yarn build",
+    "prepublishOnly": "yarn lint:ci && yarn test",
+    "test": "jest"
+  },
+  "engines": {
+    "node": ">= 14"
+  },
+  "devDependencies": {
+    "@foxglove/eslint-plugin": "0.17.0",
+    "@types/jest": "27.0.1",
+    "@typescript-eslint/eslint-plugin": "4.31.1",
+    "@typescript-eslint/parser": "4.31.1",
+    "eslint": "7.32.0",
+    "eslint-config-prettier": "8.3.0",
+    "eslint-plugin-es": "4.1.0",
+    "eslint-plugin-filenames": "1.3.2",
+    "eslint-plugin-import": "2.24.2",
+    "eslint-plugin-jest": "24.4.0",
+    "eslint-plugin-prettier": "4.0.0",
+    "jest": "27.2.0",
+    "prettier": "2.4.0",
+    "rimraf": "3.0.2",
+    "ts-jest": "27.0.5",
+    "typescript": "4.4.3"
+  }
+}
