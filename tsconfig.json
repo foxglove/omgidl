@@ -24,6 +24,7 @@
     "forceConsistentCasingInFileNames": true
   },
   "references": [
+    { "path": "packages/cdr" },
     { "path": "packages/omgidl-parser" },
     { "path": "packages/omgidl-serialization" },
     { "path": "packages/ros2idl-parser" }

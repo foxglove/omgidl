@@ -13,6 +13,10 @@
       "path": "packages/omgidl-serialization"
     },
     {
+      "name": "cdr",
+      "path": "packages/cdr"
+    },
+    {
       "name": "ros2idl-parser",
       "path": "packages/ros2idl-parser"
     }
