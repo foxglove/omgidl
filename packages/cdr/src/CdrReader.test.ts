@@ -128,6 +128,7 @@ describe("CdrReader", () => {
     expect(Array.from(array.values())).toEqual(expected);
   });
 
+  // eslint-disable-next-line jest/expect-expect
   it.each([
     ["float32Array", "float32", [-3.835, 0, Math.PI], 6],
     ["float64Array", "float64", [-3.835, 0, Math.PI], 15],

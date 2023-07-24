@@ -8,6 +8,11 @@ module.exports = {
       files: ["*.ts", "*.tsx"],
       extends: ["plugin:@foxglove/typescript"],
       parserOptions: { project: "tsconfig.json", tsconfigRootDir: __dirname },
+      rules: {
+        // no boolean parameters
+        "@foxglove/no-boolean-parameters": "off",
+        "@typescript-eslint/no-loss-of-precision": "off",
+      },
     },
   ],
 };
