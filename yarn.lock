@@ -457,6 +457,7 @@ __metadata:
   resolution: "@foxglove/cdr@workspace:packages/cdr"
   dependencies:
     rimraf: 3.0.2
+    typescript: 5.0.2
   languageName: unknown
   linkType: soft
 
