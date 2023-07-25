@@ -879,6 +879,37 @@ module rosidl_parser {
       },
     ]);
   });
+  it("normalizes the builtin_interfaces/msg/Time type for use in studio", () => {
+    const msgDef = `
+    module builtin_interfaces {
+      module msg {
+        struct Time {
+          int32 sec;
+          uint32 nanosec;
+        };
+      };
+    };
+    `;
+
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        definitions: [
+          {
+            isComplex: false,
+            name: "sec",
+            type: "int32",
+          },
+          {
+            isComplex: false,
+            name: "nsec",
+            type: "uint32",
+          },
+        ],
+        name: "builtin_interfaces/msg/Time",
+      },
+    ]);
+  });
   /****************  Not supported by IDL (as far as I can tell) */
   it("cannot parse multiple const declarations in a single line", () => {
     const msgDef = ` 

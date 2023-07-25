@@ -18,6 +18,14 @@ export function parseRos2idl(messageDefinition: string): MessageDefinition[] {
     for (const field of def.definitions) {
       field.type = normalizeName(field.type);
     }
+    // need to correct the builtin_interfaces/msg/Time nanosec field to nsec so that studio can use it
+    if (def.name === "builtin_interfaces/msg/Time") {
+      for (const field of def.definitions) {
+        if (field.name === "nanosec") {
+          field.name = "nsec";
+        }
+      }
+    }
   }
 
   return results;

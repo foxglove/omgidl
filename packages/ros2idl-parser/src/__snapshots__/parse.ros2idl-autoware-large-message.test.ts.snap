@@ -445,7 +445,7 @@ Array [
       },
       Object {
         "isComplex": false,
-        "name": "nanosec",
+        "name": "nsec",
         "type": "uint32",
       },
     ],
