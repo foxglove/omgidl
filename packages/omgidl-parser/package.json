@@ -54,7 +54,7 @@
     "prettier": "2.8.8",
     "rimraf": "5.0.0",
     "ts-jest": "29.0.3",
-    "ts-loader": "^9.4.3",
+    "ts-loader": "^9.4.4",
     "typescript": "5.0.2",
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4"
