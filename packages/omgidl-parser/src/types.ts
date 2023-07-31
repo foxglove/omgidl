@@ -1,5 +1,15 @@
 import { ConstantValue, MessageDefinitionField } from "@foxglove/message-definition";
 
+type UnresolvedConstantField = Omit<
+  MessageDefinitionField,
+  "arrayLength" | "upperBound" | "arrayUpperBound" | "value"
+> & {
+  arrayLength?: number | ResolveToConstantValue;
+  upperBound?: number | ResolveToConstantValue;
+  arrayUpperBound?: number | ResolveToConstantValue;
+  value?: ConstantValue | ResolveToConstantValue;
+};
+
 export type RawIdlDefinition = DefinitionNode;
 
 /** All possible top-level definitions that can be present in IDL schema */
@@ -22,12 +32,6 @@ export type BaseIDLNode = {
   name: string;
   /** Set to true if Node represents a constant value */
   isConstant?: boolean;
-  /**
-   * Map of a key on a MessageDefinitionField to the string identifier of the constant used in that field
-   * key example: value arrayLength, arrayUpperBound, defaultValue, upperBound
-   * This can be used to resolve those string identifiers to their respective values
-   */
-  constantUsage?: [keyof MessageDefinitionField, string][];
   annotations?: Record<string, AnyAnnotation>;
 };
 
@@ -46,20 +50,19 @@ export interface StructNode extends BaseIDLNode {
 }
 
 /** Node used to represent `const` declarations */
-export interface ConstantNode extends BaseIDLNode, MessageDefinitionField {
+export interface ConstantNode extends BaseIDLNode, UnresolvedConstantField {
   declarator: "const";
   isConstant: true;
-  /** literal value that constant represents */
-  value: ConstantValue;
+  value: ConstantValue | ResolveToConstantValue;
 }
 
 /** Node used to represent `struct-member` declarations */
-export interface StructMemberNode extends BaseIDLNode, MessageDefinitionField {
+export interface StructMemberNode extends BaseIDLNode, UnresolvedConstantField {
   declarator: "struct-member";
 }
 
 /** Node used to represent `typedef` declarations */
-export interface TypeDefNode extends BaseIDLNode, MessageDefinitionField {
+export interface TypeDefNode extends BaseIDLNode, UnresolvedConstantField {
   declarator: "typedef";
   /** Type identifier used in typedef declaration */
   type: string;

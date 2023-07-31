@@ -35,6 +35,13 @@ const SIMPLE_TYPES = new Set([
   ...Object.keys(numericTypeMap),
 ]);
 
+const POSSIBLE_UNRESOLVED_MEMBERS = [
+  "arrayLength",
+  "upperBound",
+  "arrayUpperBound",
+  "value",
+] as const;
+
 /** Class used for processing and resolving raw IDL node definitions */
 export class IDLNodeProcessor {
   definitions: RawIdlDefinition[];
@@ -112,10 +119,15 @@ export class IDLNodeProcessor {
       ) {
         continue;
       }
+
       // need to iterate through keys because this can occur on arrayLength, upperBound, arrayUpperBound, value, defaultValue
-      for (const [key, constantName] of node.constantUsage ?? []) {
+      for (const key of POSSIBLE_UNRESOLVED_MEMBERS) {
+        const value = node[key];
+        if (typeof value !== "object") {
+          continue;
+        }
         const constantNode = this.resolveConstantReference({
-          constantName,
+          constantName: value.name,
           nodeScopedIdentifier: scopedIdentifier,
         });
         // need to make sure we are updating the most up to date node
@@ -287,11 +299,43 @@ export class IDLNodeProcessor {
     if (node.declarator !== "struct-member" && node.declarator !== "const") {
       return undefined;
     }
-    const { declarator: _d, constantUsage: _cU, annotations, ...partialMessageDef } = node;
+    const {
+      declarator: _d,
+      arrayLength,
+      arrayUpperBound,
+      upperBound,
+      value,
+      annotations,
+      ...partialMessageDef
+    } = node;
+
+    if (
+      typeof arrayUpperBound === "object" ||
+      typeof arrayLength === "object" ||
+      typeof upperBound === "object" ||
+      typeof value === "object"
+    ) {
+      throw Error(`Constants not resolved for ${nodeScopedIdentifier}`);
+    }
+
     const fullMessageDef = {
       ...partialMessageDef,
       type: normalizeType(partialMessageDef.type),
-    };
+    } as MessageDefinitionField;
+
+    // avoid writing undefined to object fields
+    if (arrayLength != undefined) {
+      fullMessageDef.arrayLength = arrayLength;
+    }
+    if (arrayUpperBound != undefined) {
+      fullMessageDef.arrayUpperBound = arrayUpperBound;
+    }
+    if (upperBound != undefined) {
+      fullMessageDef.upperBound = upperBound;
+    }
+    if (value != undefined) {
+      fullMessageDef.value = value;
+    }
 
     const maybeDefault = annotations?.default;
     if (maybeDefault && maybeDefault.type !== "no-params") {
@@ -300,11 +344,15 @@ export class IDLNodeProcessor {
       if (typeof defaultValue !== "object") {
         fullMessageDef.defaultValue = defaultValue;
       } else {
-        // because annotations is nested in it's own objects, it doesn't show up in constant usage
+        // We need to do resolve this here for now instead of in `resolveConstants`
+        // because the annotations could be supplied by a typedef that is not resolved until later
         const defaultValueNode = this.resolveConstantReference({
           constantName: defaultValue.name,
           nodeScopedIdentifier,
         });
+        if (typeof defaultValueNode.value === "object") {
+          throw new Error(`Did not resolve default value for ${nodeScopedIdentifier}`);
+        }
         fullMessageDef.defaultValue = defaultValueNode.value;
       }
     }

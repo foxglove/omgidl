@@ -1135,7 +1135,6 @@ module idl_parser {
                       upperBound: 23,
                     },
                     {
-                      constantUsage: [["upperBound", "UNSIGNED_LONG_CONSTANT"]],
                       isComplex: false,
                       declarator: "struct-member",
                       name: "constant_bounded_wstring_value",
@@ -1385,7 +1384,6 @@ module idl_parser {
                     usesConstant: true,
                   },
                   valueText: "COLORS::RED",
-                  constantUsage: [["value", "COLORS::RED"]],
                 },
               ],
             },
