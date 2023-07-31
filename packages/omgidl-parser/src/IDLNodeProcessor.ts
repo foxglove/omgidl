@@ -118,7 +118,8 @@ export class IDLNodeProcessor {
           constantName,
           nodeScopedIdentifier: scopedIdentifier,
         });
-        // is the node we're currently on
+        // need to make sure we are updating the most up to date node
+        // guaranteed to exist since it's the one we are iterating over
         const possiblyUpdatedNode = this.map.get(scopedIdentifier)!;
         this.map.set(scopedIdentifier, {
           ...possiblyUpdatedNode,
