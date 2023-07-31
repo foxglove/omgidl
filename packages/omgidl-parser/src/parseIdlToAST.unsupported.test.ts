@@ -40,32 +40,6 @@ describe("Unsupported IDL grammar features", () => {
     expect(() => parseIdlToAST(msgDef)).toThrow();
   });
 
-  it("cannot parse extensible type @mutable", () => {
-    const msgDef = `
-      typedef float coord[2];
-      module msg {
-        @mutable
-        struct Point {
-            coord loc;
-        };
-      };
-      `;
-    expect(() => parseIdlToAST(msgDef)).toThrow(/unexpected mutable/i);
-  });
-
-  it("cannot parse extensible type @appendable", () => {
-    const msgDef = `
-      typedef float coord[2];
-      module msg {
-        @appendable
-        struct Point {
-            coord loc;
-        };
-      };
-      `;
-    expect(() => parseIdlToAST(msgDef)).toThrow(/unexpected appendable/i);
-  });
-
   it("fails forward struct declarations", () => {
     const msgDef = `
       struct Foo;
