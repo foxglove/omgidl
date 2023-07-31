@@ -639,19 +639,6 @@ module rosidl_parser {
     );
     expect(types).toEqual([
       {
-        name: "",
-        definitions: [
-          {
-            name: "UNSIGNED_LONG_CONSTANT",
-            type: "uint32",
-            isConstant: true,
-            isComplex: false,
-            value: 42,
-            valueText: "42",
-          },
-        ],
-      },
-      {
         name: "rosidl_parser::msg::MyMessage",
         definitions: [
           {
@@ -717,6 +704,19 @@ module rosidl_parser {
             isArray: true,
             arrayLength: 23,
             isComplex: false,
+          },
+        ],
+      },
+      {
+        name: "",
+        definitions: [
+          {
+            name: "UNSIGNED_LONG_CONSTANT",
+            type: "uint32",
+            isConstant: true,
+            isComplex: false,
+            value: 42,
+            valueText: "42",
           },
         ],
       },
