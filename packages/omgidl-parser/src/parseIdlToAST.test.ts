@@ -352,91 +352,169 @@ module idl_parser {
                   declarator: "struct",
                   definitions: [
                     {
-                      defaultValue: 19000000000,
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 19000000000 },
+                        },
+                      },
                       isComplex: false,
                       declarator: "struct-member",
                       name: "int_and_frac_with_positive_scientific",
                       type: "float",
                     },
                     {
-                      defaultValue: 19000000000,
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 19000000000 },
+                        },
+                      },
                       isComplex: false,
                       declarator: "struct-member",
                       name: "int_and_frac_with_explicit_positive_scientific",
                       type: "float",
                     },
                     {
-                      defaultValue: 1.1e-10,
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 1.1e-10 },
+                        },
+                      },
                       isComplex: false,
                       declarator: "struct-member",
                       name: "int_and_frac_with_negative_scientific",
                       type: "float",
                     },
                     {
-                      defaultValue: 0.00009,
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 0.00009 },
+                        },
+                      },
                       isComplex: false,
                       declarator: "struct-member",
                       name: "int_and_frac",
                       type: "float",
                     },
                     {
-                      defaultValue: 1,
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 1 },
+                        },
+                      },
                       isComplex: false,
                       declarator: "struct-member",
                       name: "int_with_empty_frac",
                       type: "float",
                     },
                     {
-                      defaultValue: 0.1,
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 0.1 },
+                        },
+                      },
                       isComplex: false,
                       declarator: "struct-member",
                       name: "frac_only",
                       type: "float",
                     },
                     {
-                      defaultValue: 900000,
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 900000 },
+                        },
+                      },
                       isComplex: false,
                       declarator: "struct-member",
                       name: "int_with_positive_scientific",
                       type: "float",
                     },
                     {
-                      defaultValue: 900000,
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 900000 },
+                        },
+                      },
                       isComplex: false,
                       declarator: "struct-member",
                       name: "int_with_explicit_positive_scientific",
                       type: "float",
                     },
                     {
-                      defaultValue: 0.00009,
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 0.00009 },
+                        },
+                      },
                       isComplex: false,
                       declarator: "struct-member",
                       name: "int_with_negative_scientific",
                       type: "float",
                     },
                     {
-                      defaultValue: 8.7,
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 8.7 },
+                        },
+                      },
                       isComplex: false,
                       declarator: "struct-member",
                       name: "fixed_int_and_frac",
                       type: "float",
                     },
                     {
-                      defaultValue: 4,
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 4 },
+                        },
+                      },
                       isComplex: false,
                       declarator: "struct-member",
                       name: "fixed_int_with_dot_only",
                       type: "float",
                     },
                     {
-                      defaultValue: 0.3,
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 0.3 },
+                        },
+                      },
                       isComplex: false,
                       declarator: "struct-member",
                       name: "fixed_frac_only",
                       type: "float",
                     },
                     {
-                      defaultValue: 7,
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 7 },
+                        },
+                      },
                       isComplex: false,
                       declarator: "struct-member",
                       name: "fixed_int_only",
@@ -535,48 +613,118 @@ module idl_parser {
     expect(types).toEqual([
       [
         {
+          name: "idl_parser",
           declarator: "module",
           definitions: [
             {
+              name: "msg",
               declarator: "module",
               definitions: [
                 {
+                  name: "MyMessage",
                   declarator: "struct",
+                  annotations: {
+                    verbatim: {
+                      name: "verbatim",
+                      type: "named-params",
+                      namedParams: {
+                        language: "comment",
+                        text: "Documentation of MyMessage.Adjacent string literal.",
+                      },
+                    },
+                    transfer_mode: {
+                      name: "transfer_mode",
+                      type: "const-param",
+                      value: { usesConstant: true, name: "SHMEM_REF" },
+                    },
+                  },
                   definitions: [
                     {
-                      defaultValue: 123,
-                      isComplex: false,
-                      declarator: "struct-member",
                       name: "unsigned_short_value",
+                      isComplex: false,
+                      declarator: "struct-member",
                       type: "unsigned short",
+                      annotations: {
+                        default: {
+                          name: "default",
+                          type: "named-params",
+                          namedParams: { value: 123 },
+                        },
+                      },
                     },
                     {
-                      isComplex: false,
-                      declarator: "struct-member",
                       name: "long_value",
-                      type: "long",
-                    },
-                    {
                       isComplex: false,
                       declarator: "struct-member",
+                      type: "long",
+                      annotations: {
+                        key: {
+                          name: "key",
+                          type: "no-params",
+                        },
+                        range: {
+                          name: "range",
+                          type: "named-params",
+                          namedParams: {
+                            min: -10,
+                            max: 10,
+                          },
+                        },
+                      },
+                    },
+                    {
                       name: "unsigned_long_value",
+                      isComplex: false,
+                      declarator: "struct-member",
                       type: "unsigned long",
+                      annotations: {
+                        verbatim: {
+                          name: "verbatim",
+                          type: "named-params",
+                          namedParams: {
+                            language: "comment",
+                            text: "",
+                          },
+                        },
+                        arbitrary_annotation: {
+                          name: "arbitrary_annotation",
+                          type: "named-params",
+                          namedParams: {
+                            key1: "value1",
+                            key2: true,
+                            key3: 0.0,
+                            key4: 10,
+                          },
+                        },
+                        key: {
+                          name: "key",
+                          type: "no-params",
+                        },
+                      },
                     },
                     {
                       isComplex: false,
                       declarator: "struct-member",
                       name: "uint32_with_default",
                       type: "uint32",
-                      defaultValue: 100,
+                      annotations: {
+                        id: {
+                          name: "id",
+                          type: "const-param",
+                          value: 100,
+                        },
+                        default: {
+                          name: "default",
+                          type: "const-param",
+                          value: 100,
+                        },
+                      },
                     },
                   ],
-                  name: "MyMessage",
                 },
               ],
-              name: "msg",
             },
           ],
-          name: "idl_parser",
         },
       ],
     ]);
@@ -600,9 +748,11 @@ module idl_parser {
     expect(types).toEqual([
       [
         {
+          name: "idl_parser",
           declarator: "module",
           definitions: [
             {
+              name: "action",
               declarator: "module",
               definitions: [
                 {
@@ -614,13 +764,16 @@ module idl_parser {
                   type: "int32",
                 },
                 {
-                  defaultValue: 5,
+                  annotations: {
+                    default: { name: "default", type: "named-params", namedParams: { value: 5 } },
+                  },
                   declarator: "typedef",
                   isComplex: false,
                   name: "shortWithDefault",
                   type: "short",
                 },
                 {
+                  name: "MyAction_Goal",
                   declarator: "struct",
                   definitions: [
                     {
@@ -634,13 +787,10 @@ module idl_parser {
                       type: "shortWithDefault",
                     },
                   ],
-                  name: "MyAction_Goal",
                 },
               ],
-              name: "action",
             },
           ],
-          name: "idl_parser",
         },
       ],
     ]);
@@ -1121,14 +1271,18 @@ module idl_parser {
           declarator: "struct",
           definitions: [
             {
-              defaultValue: 5,
+              annotations: {
+                default: { name: "default", type: "named-params", namedParams: { value: 5 } },
+              },
               isComplex: false,
               declarator: "struct-member",
               name: "int1",
               type: "int32",
             },
             {
-              defaultValue: 5,
+              annotations: {
+                default: { name: "default", type: "named-params", namedParams: { value: 5 } },
+              },
               isComplex: false,
               declarator: "struct-member",
               name: "int2",
@@ -1240,14 +1394,18 @@ module idl_parser {
               declarator: "struct",
               definitions: [
                 {
-                  defaultValue: {
-                    name: "COLORS::GREEN",
-                    usesConstant: true,
+                  annotations: {
+                    default: {
+                      name: "default",
+                      type: "named-params",
+                      namedParams: {
+                        value: { usesConstant: true, name: "COLORS::GREEN" },
+                      },
+                    },
                   },
                   declarator: "struct-member",
                   name: "color",
                   type: "COLORS",
-                  constantUsage: [["defaultValue", "COLORS::GREEN"]],
                 },
               ],
             },

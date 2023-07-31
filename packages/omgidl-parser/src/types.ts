@@ -28,6 +28,7 @@ export type BaseIDLNode = {
    * This can be used to resolve those string identifiers to their respective values
    */
   constantUsage?: [keyof MessageDefinitionField, string][];
+  annotations?: Record<string, AnyAnnotation>;
 };
 
 /** Node used to represent `module` declarations */
@@ -70,3 +71,22 @@ export interface EnumNode extends BaseIDLNode {
   /** Contained enumerator strings in order of declaration */
   enumerators: string[];
 }
+
+export type AnyAnnotation = AnnotationNamedParams | AnnotationNoParams | AnnotationConstParam;
+export interface BaseAnnotation {
+  type: "no-params" | "named-params" | "const-param";
+  name: string;
+}
+export interface AnnotationNoParams extends BaseAnnotation {
+  type: "no-params";
+}
+export interface AnnotationNamedParams extends BaseAnnotation {
+  type: "named-params";
+  namedParams: Record<string, ConstantValue | ResolveToConstantValue>;
+}
+export interface AnnotationConstParam extends BaseAnnotation {
+  type: "const-param";
+  value: ConstantValue | ResolveToConstantValue;
+}
+
+type ResolveToConstantValue = { usesConstant: true; name: string };

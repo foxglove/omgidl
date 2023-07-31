@@ -96,7 +96,7 @@ function join(d){
 
 // used for combining AST components
 function extend(objs) {
-  return objs.reduce((r, p) => ({ ...r, ...p }), {});
+  return objs.filter(Boolean).reduce((r, p) => ({ ...r, ...p }), {});
 }
 
 function noop() {
@@ -138,10 +138,10 @@ main -> (importDcl:* definition):+ {% d => {
 # support <import> or "import" includes - just ignored
 importDcl -> "#" "include" (%STRING | "<" %NAME ("/" %NAME):* "." "idl" ">") {% noop %}
 
-moduleDcl  -> multiAnnotations "module" fieldName "{" (definition):+ "}" {%
+moduleDcl  -> "module" fieldName "{" (definition):+ "}" {%
 function processModule(d) {
-  const moduleName = d[2].name;
-  const defs = d[4];
+  const moduleName = d[1].name;
+  const defs = d[3];
   // need to return array here to keep same signature as processComplexModule
   return {
     declarator: "module",
@@ -151,27 +151,22 @@ function processModule(d) {
 }
 %}
 
-definition -> (
+definition -> multiAnnotations (
     typeDcl
   | constantDcl
   | moduleDcl
-) semi {% d => d[0][0] %}
+) semi {% d => {
+	const annotations = d[0];
+	const declaration = d[1][0];
+	return extend([annotations, declaration]);
+}%}
 
 typeDcl -> (
-    structWithAnnotations
-  | typedefWithAnnotations
-  | enumWithAnnotations
+    struct
+  | typedef
+  | enum
 ) {% d => d[0][0] %}
 
-structWithAnnotations -> multiAnnotations struct {%
- // default values don't apply to structs so we can just ignore all annotations on structs
- d => d[1]
-%}
-
-enumWithAnnotations -> multiAnnotations enum {%
- // default values don't apply to enums so we can just ignore all annotations on enums
- d => d[1]
-%}
 
 enum ->  "enum" fieldName "{" fieldName ("," fieldName):* "}" {% d => {
   const name = d[1].name;
@@ -198,32 +193,30 @@ struct -> "struct" fieldName "{" (member):+ "}" {% d => {
   };
 } %}
 
-typedefWithAnnotations -> multiAnnotations (
-   typedef allTypes fieldName arrayLength
- | typedef allTypes fieldName
- | typedef sequenceType fieldName
+typedef -> "typedef" (
+   allTypes fieldName arrayLength
+ | allTypes fieldName
+ | sequenceType fieldName
 ) {% d => {
-  const def = aggregateConstantUsage(extend(d.flat(1)));
+  const definition = d[1];
+  const astNode = aggregateConstantUsage(extend(definition));
   
   return {
     declarator: "typedef",
-    ...def,
+    ...astNode,
   };
 } %}
 
-typedef -> "typedef" {% noop %}
-constantDcl -> multiAnnotations constType{% d => d[1] %}
+constantDcl -> constType {% d => d[0] %}
 
 member -> fieldWithAnnotation semi {% d => d[0] %}
 
 fieldWithAnnotation -> multiAnnotations fieldDcl {% d=> {
-  let possibleAnnotations = [];
-  if(d[0]) {
-    possibleAnnotations = d[0];
-  }
+  
+  const annotations = d[0]
   const fields = d[1];
   const finalDefs = fields.map((def) =>
-    aggregateConstantUsage(extend([...possibleAnnotations, def]))
+    aggregateConstantUsage(extend([annotations, def]))
   );
   return finalDefs;
 } %}
@@ -250,28 +243,47 @@ multiFieldNames -> fieldName ("," fieldName):* {%
 
 multiAnnotations -> annotation:* {%
   d => {
-    return d[0] ? d[0].filter(d => d !== null) : null;
+    return d[0].length > 0 ? {annotations: d[0].reduce((record, annotation) => {
+      record[annotation.name] = annotation;
+      return record;
+    }, {}) } : null;
   }
 %}
 
 annotation -> at %NAME ("(" annotationParams ")"):? {% d => {
   const annotationName = d[1].value;
-  if(annotationName === "default") {
-    const params = d[2] ? d[2][1] : {};
-    const defaultValue = params.value;
-    return {defaultValue};
+  const params = d[2] ? d[2][1] : undefined;
+  if(params == undefined) {
+    return { type: 'no-params', name: annotationName };
   }
-  return null
+  // named params in the form of [{<name>: <value>}, ...]
+  if(Array.isArray(params)) {
+    const namedParamsRecord = extend(params);
+    return {
+      type: 'named-params',
+      name: annotationName,
+      namedParams: namedParamsRecord
+    };
+  }
+
+  // can only be constant param
+  return { type: "const-param", value: params, name: annotationName };
 } %}
 
-annotationParams -> (multipleNamedAnnotationParams | literal) {% d => d[0][0] %}
+annotationParams -> (multipleNamedAnnotationParams | constAnnotationParam) {% d => d[0][0] %}
 
-multipleNamedAnnotationParams -> namedAnnotationParams ("," namedAnnotationParams):* {%
-  d => extend([d[0], ...d[1].flatMap(([, param]) => param)])
+multipleNamedAnnotationParams -> namedAnnotationParam ("," namedAnnotationParam):* {%
+  d => ([d[0], ...d[1].flatMap(([, param]) => param)]) // returns array
 %}
 
-namedAnnotationParams -> (%NAME assignment) {% d => ({[d[0][0].value]: d[0][1].value}) %}
- | (%NAME) {% /** constants */ noop %} 
+constAnnotationParam -> %NAME {% d => 
+  // should match `variableAssignment` constant usage structure for consistency
+  // between named and const annotation types
+  ({usesConstant: true, name: d[0].value})
+%}
+ | literal {% d => d[0].value %}
+
+namedAnnotationParam -> (%NAME assignment) {% d => ({[d[0][0].value]: d[0][1].value}) %}
 
 at -> "@" {% noop %}
 
@@ -317,7 +329,15 @@ floatAssignment ->   %EQ (SIGNED_FLOAT | FLOAT) {% ([, num]) => ({valueText: num
 intAssignment -> %EQ (SIGNED_INT | INT) {% ([, num]) => ({valueText: num[0], value: parseInt(num[0])}) %}
 stringAssignment -> %EQ STR {% ([, str]) => ({valueText: str, value: str}) %}
 booleanAssignment -> %EQ BOOLEAN {% ([, bool]) => ({valueText: bool, value: bool === "TRUE"}) %}
-variableAssignment -> %EQ %NAME {% ([, name]) => ({valueText: name.value, value: {usesConstant: true, name: name.value}}) %}
+variableAssignment -> %EQ %NAME {% ([, name]) => 
+  ({
+    valueText: name.value,
+    value: {
+      usesConstant: true,
+      name: name.value
+    }
+  })
+%}
 
 allTypes -> (
     primitiveTypes
