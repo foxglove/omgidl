@@ -1294,6 +1294,39 @@ module rosidl_parser {
       },
     ]);
   });
+  it("prioritizes typedef usage annotations over typedef declaration annotations", () => {
+    const msgDef = `
+    @default(value=2)
+    typedef uint8 byteWithDefault;
+    struct JustACoupleNumbers {
+      byteWithDefault byteWithSameDefault;
+      @default(value=4)
+      byteWithDefault byteWithDifferentDefault;
+    };
+   `;
+
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        name: "JustACoupleNumbers",
+        definitions: [
+          {
+            name: "byteWithSameDefault",
+            type: "uint8",
+            isComplex: false,
+            defaultValue: 2,
+          },
+          {
+            name: "byteWithDifferentDefault",
+            type: "uint8",
+            isComplex: false,
+            defaultValue: 4,
+          },
+        ],
+      },
+    ]);
+  });
+
   // **************** Not supported in our implementation yet
   it("cannot parse typedefs that reference other typedefs", () => {
     const msgDef = `

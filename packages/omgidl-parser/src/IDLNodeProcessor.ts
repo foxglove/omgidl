@@ -219,8 +219,18 @@ export class IDLNodeProcessor {
       }
       if (typeNode.declarator === "typedef") {
         // apply typedef definition to struct member
-        const { declarator: _d, name: _name, ...partialDef } = typeNode;
-        this.map.set(scopedIdentifier, { ...node, ...partialDef });
+        const {
+          declarator: _d,
+          name: _name,
+          annotations: typedefAnnotations,
+          ...partialDef
+        } = typeNode;
+
+        this.map.set(scopedIdentifier, {
+          ...node,
+          ...partialDef,
+          annotations: { ...typedefAnnotations, ...node.annotations },
+        });
       } else if (typeNode.declarator === "struct") {
         this.map.set(scopedIdentifier, { ...node, isComplex: true });
       } else {
