@@ -4,7 +4,7 @@ import {
   MessageDefinitionField,
 } from "@foxglove/message-definition";
 
-import { RawIdlDefinition, AnyIDLNode, StructMemberNode } from "./types";
+import { RawIdlDefinition, AnyIDLNode, ConstantNode } from "./types";
 
 const numericTypeMap: Record<string, string> = {
   "unsigned short": "uint16",
@@ -34,6 +34,13 @@ const SIMPLE_TYPES = new Set([
   "uint64",
   ...Object.keys(numericTypeMap),
 ]);
+
+const POSSIBLE_UNRESOLVED_MEMBERS = [
+  "arrayLength",
+  "upperBound",
+  "arrayUpperBound",
+  "value",
+] as const;
 
 /** Class used for processing and resolving raw IDL node definitions */
 export class IDLNodeProcessor {
@@ -112,26 +119,47 @@ export class IDLNodeProcessor {
       ) {
         continue;
       }
+
       // need to iterate through keys because this can occur on arrayLength, upperBound, arrayUpperBound, value, defaultValue
-      for (const [key, constantName] of node.constantUsage ?? []) {
-        const constantNode = resolveScopedOrLocalNodeReference({
-          usedIdentifier: constantName,
-          scopedIdentifierOfUsageNode: scopedIdentifier,
-          definitionMap: this.map,
+      for (const key of POSSIBLE_UNRESOLVED_MEMBERS) {
+        const value = node[key];
+        if (typeof value !== "object") {
+          continue;
+        }
+        const constantNode = this.resolveConstantReference({
+          constantName: value.name,
+          nodeScopedIdentifier: scopedIdentifier,
         });
         // need to make sure we are updating the most up to date node
+        // guaranteed to exist since it's the one we are iterating over
         const possiblyUpdatedNode = this.map.get(scopedIdentifier)!;
-        if (constantNode != undefined && constantNode.declarator === "const") {
-          this.map.set(scopedIdentifier, { ...possiblyUpdatedNode, [key]: constantNode.value });
-        } else {
-          throw new Error(
-            `Could not find constant <${constantName}> for field <${
-              possiblyUpdatedNode.name ?? "undefined"
-            }> in <${scopedIdentifier}>`,
-          );
-        }
+        this.map.set(scopedIdentifier, {
+          ...possiblyUpdatedNode,
+          [key]: constantNode.value,
+        });
       }
     }
+  }
+
+  private resolveConstantReference({
+    constantName,
+    nodeScopedIdentifier,
+  }: {
+    constantName: string;
+    nodeScopedIdentifier: string;
+  }): ConstantNode {
+    const constantNode = resolveScopedOrLocalNodeReference({
+      usedIdentifier: constantName,
+      scopedIdentifierOfUsageNode: nodeScopedIdentifier,
+      definitionMap: this.map,
+    });
+    // need to make sure we are updating the most up to date node
+    if (!constantNode || constantNode.declarator !== "const") {
+      throw new Error(
+        `Could not find constant <${constantName}> used in <${nodeScopedIdentifier}>`,
+      );
+    }
+    return constantNode;
   }
 
   /**  Resolve typedefs that reference structs as complex*/
@@ -191,8 +219,18 @@ export class IDLNodeProcessor {
       }
       if (typeNode.declarator === "typedef") {
         // apply typedef definition to struct member
-        const { declarator: _d, name: _name, ...partialDef } = typeNode;
-        this.map.set(scopedIdentifier, { ...node, ...partialDef });
+        const {
+          declarator: _d,
+          name: _name,
+          annotations: typedefAnnotations,
+          ...partialDef
+        } = typeNode;
+
+        this.map.set(scopedIdentifier, {
+          ...node,
+          ...partialDef,
+          annotations: { ...typedefAnnotations, ...node.annotations },
+        });
       } else if (typeNode.declarator === "struct") {
         this.map.set(scopedIdentifier, { ...node, isComplex: true });
       } else {
@@ -206,6 +244,7 @@ export class IDLNodeProcessor {
   /** Convert to Message Definitions for serialization and usage in foxglove studio's Raw Message panel. Returned in order of original definitions*/
   toMessageDefinitions(): MessageDefinition[] {
     const messageDefinitions: MessageDefinition[] = [];
+    const topLevelConstantDefinitions: MessageDefinitionField[] = [];
 
     // flatten for output to message definition
     // Because the map entries are in original insertion order, they should reflect the original order of the definitions
@@ -215,19 +254,15 @@ export class IDLNodeProcessor {
         messageDefinitions.push({
           name: namespacedName,
           definitions: node.definitions
-            .map((d) =>
-              idlNodeToMessageDefinitionField(
-                this.map.get(toScopedIdentifier([namespacedName, d.name])) as StructMemberNode,
-              ),
+            .map((def) =>
+              this.idlNodeToMessageDefinitionField(toScopedIdentifier([namespacedName, def.name])),
             )
             .filter(Boolean) as MessageDefinitionField[],
         });
       } else if (node.declarator === "module") {
         const fieldDefinitions = node.definitions
-          .map((d) =>
-            idlNodeToMessageDefinitionField(
-              this.map.get(toScopedIdentifier([namespacedName, d.name])) as StructMemberNode,
-            ),
+          .map((def) =>
+            this.idlNodeToMessageDefinitionField(toScopedIdentifier([namespacedName, def.name])),
           )
           .filter(Boolean) as MessageDefinitionField[];
         if (fieldDefinitions.length > 0) {
@@ -238,10 +273,8 @@ export class IDLNodeProcessor {
         }
       } else if (node.declarator === "enum") {
         const fieldDefinitions = node.enumerators
-          .map((e) =>
-            idlNodeToMessageDefinitionField(
-              this.map.get(toScopedIdentifier([namespacedName, e])) as StructMemberNode,
-            ),
+          .map((enumMember) =>
+            this.idlNodeToMessageDefinitionField(toScopedIdentifier([namespacedName, enumMember])),
           )
           .filter(Boolean) as MessageDefinitionField[];
         if (fieldDefinitions.length > 0) {
@@ -250,29 +283,92 @@ export class IDLNodeProcessor {
             definitions: fieldDefinitions,
           });
         }
-      } else if (node.name === namespacedName) {
-        const fieldDefinition = idlNodeToMessageDefinitionField(node);
+      } else if (node.name === namespacedName && node.isConstant === true) {
+        // handles top-level constants that aren't within a module
+        const fieldDefinition = this.idlNodeToMessageDefinitionField(node.name);
         if (fieldDefinition) {
-          messageDefinitions.push({ name: "", definitions: [fieldDefinition] });
+          topLevelConstantDefinitions.push(fieldDefinition);
         }
       }
     }
 
+    if (topLevelConstantDefinitions.length > 0) {
+      messageDefinitions.push({ name: "", definitions: topLevelConstantDefinitions });
+    }
+
     return messageDefinitions;
   }
-}
 
-export function idlNodeToMessageDefinitionField(
-  node: AnyIDLNode,
-): MessageDefinitionField | undefined {
-  if (node.declarator !== "struct-member" && node.declarator !== "const") {
-    return undefined;
+  private idlNodeToMessageDefinitionField(
+    nodeScopedIdentifier: string,
+  ): MessageDefinitionField | undefined {
+    const node = this.map.get(nodeScopedIdentifier);
+    if (!node) {
+      return undefined;
+    }
+    if (node.declarator !== "struct-member" && node.declarator !== "const") {
+      return undefined;
+    }
+    const {
+      declarator: _d,
+      arrayLength,
+      arrayUpperBound,
+      upperBound,
+      value,
+      annotations,
+      ...partialMessageDef
+    } = node;
+
+    if (
+      typeof arrayUpperBound === "object" ||
+      typeof arrayLength === "object" ||
+      typeof upperBound === "object" ||
+      typeof value === "object"
+    ) {
+      throw Error(`Constants not resolved for ${nodeScopedIdentifier}`);
+    }
+
+    const fullMessageDef = {
+      ...partialMessageDef,
+      type: normalizeType(partialMessageDef.type),
+    } as MessageDefinitionField;
+
+    // avoid writing undefined to object fields
+    if (arrayLength != undefined) {
+      fullMessageDef.arrayLength = arrayLength;
+    }
+    if (arrayUpperBound != undefined) {
+      fullMessageDef.arrayUpperBound = arrayUpperBound;
+    }
+    if (upperBound != undefined) {
+      fullMessageDef.upperBound = upperBound;
+    }
+    if (value != undefined) {
+      fullMessageDef.value = value;
+    }
+
+    const maybeDefault = annotations?.default;
+    if (maybeDefault && maybeDefault.type !== "no-params") {
+      const defaultValue =
+        maybeDefault.type === "const-param" ? maybeDefault.value : maybeDefault.namedParams.value;
+      if (typeof defaultValue !== "object") {
+        fullMessageDef.defaultValue = defaultValue;
+      } else {
+        // We need to do resolve this here for now instead of in `resolveConstants`
+        // because the annotations could be supplied by a typedef that is not resolved until later
+        const defaultValueNode = this.resolveConstantReference({
+          constantName: defaultValue.name,
+          nodeScopedIdentifier,
+        });
+        if (typeof defaultValueNode.value === "object") {
+          throw new Error(`Did not resolve default value for ${nodeScopedIdentifier}`);
+        }
+        fullMessageDef.defaultValue = defaultValueNode.value;
+      }
+    }
+
+    return fullMessageDef;
   }
-  const { declarator: _d, constantUsage: _cU, ...messageDefinition } = node;
-  return {
-    ...messageDefinition,
-    type: normalizeType(messageDefinition.type),
-  };
 }
 
 export function resolveScopedOrLocalNodeReference({

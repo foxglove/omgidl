@@ -10,7 +10,6 @@ Array [
         "type": "std_msgs/msg/Header",
       },
       Object {
-        "arrayUpperBound": undefined,
         "isArray": true,
         "isComplex": true,
         "name": "objects",
@@ -32,7 +31,6 @@ Array [
         "type": "float32",
       },
       Object {
-        "arrayUpperBound": undefined,
         "isArray": true,
         "isComplex": true,
         "name": "classification",
@@ -187,7 +185,6 @@ Array [
   Object {
     "definitions": Array [
       Object {
-        "arrayUpperBound": undefined,
         "isArray": true,
         "isComplex": true,
         "name": "points",
@@ -431,7 +428,6 @@ Array [
         "isComplex": false,
         "name": "frame_id",
         "type": "string",
-        "upperBound": undefined,
       },
     ],
     "name": "std_msgs/msg/Header",

@@ -639,19 +639,6 @@ module rosidl_parser {
     );
     expect(types).toEqual([
       {
-        name: "",
-        definitions: [
-          {
-            name: "UNSIGNED_LONG_CONSTANT",
-            type: "uint32",
-            isConstant: true,
-            isComplex: false,
-            value: 42,
-            valueText: "42",
-          },
-        ],
-      },
-      {
         name: "rosidl_parser::msg::MyMessage",
         definitions: [
           {
@@ -717,6 +704,19 @@ module rosidl_parser {
             isArray: true,
             arrayLength: 23,
             isComplex: false,
+          },
+        ],
+      },
+      {
+        name: "",
+        definitions: [
+          {
+            name: "UNSIGNED_LONG_CONSTANT",
+            type: "uint32",
+            isConstant: true,
+            isComplex: false,
+            value: 42,
+            valueText: "42",
           },
         ],
       },
@@ -1294,6 +1294,39 @@ module rosidl_parser {
       },
     ]);
   });
+  it("prioritizes typedef usage annotations over typedef declaration annotations", () => {
+    const msgDef = `
+    @default(value=2)
+    typedef uint8 byteWithDefault;
+    struct JustACoupleNumbers {
+      byteWithDefault byteWithSameDefault;
+      @default(value=4)
+      byteWithDefault byteWithDifferentDefault;
+    };
+   `;
+
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        name: "JustACoupleNumbers",
+        definitions: [
+          {
+            name: "byteWithSameDefault",
+            type: "uint8",
+            isComplex: false,
+            defaultValue: 2,
+          },
+          {
+            name: "byteWithDifferentDefault",
+            type: "uint8",
+            isComplex: false,
+            defaultValue: 4,
+          },
+        ],
+      },
+    ]);
+  });
+
   // **************** Not supported in our implementation yet
   it("cannot parse typedefs that reference other typedefs", () => {
     const msgDef = `
