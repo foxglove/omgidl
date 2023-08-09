@@ -9,15 +9,13 @@ describe("IDL grammar", () => {
     `;
 
     expect(parseIdlToAST(schema)).toEqual([
-      [
-        {
-          declarator: "struct",
-          definitions: [
-            { isComplex: false, declarator: "struct-member", name: "input_value", type: "int32" },
-          ],
-          name: "MyAction_Goal",
-        },
-      ],
+      {
+        declarator: "struct",
+        definitions: [
+          { isComplex: false, declarator: "struct-member", name: "input_value", type: "int32" },
+        ],
+        name: "MyAction_Goal",
+      },
     ]);
   });
 
@@ -36,47 +34,45 @@ describe("IDL grammar", () => {
     `;
 
     expect(parseIdlToAST(schema)).toEqual([
-      [
-        {
-          name: "idl_parser",
-          declarator: "module",
-          definitions: [
-            {
-              name: "action",
-              declarator: "module",
-              definitions: [
-                {
-                  name: "MyAction_Goal_Constants",
-                  declarator: "module",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "SHORT_CONSTANT",
-                      type: "short",
-                      value: -23,
-                      valueText: "-23",
-                    },
-                  ],
-                },
-                {
-                  name: "MyAction_Goal",
-                  declarator: "struct",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "input_value",
-                      type: "int32",
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ],
+      {
+        name: "idl_parser",
+        declarator: "module",
+        definitions: [
+          {
+            name: "action",
+            declarator: "module",
+            definitions: [
+              {
+                name: "MyAction_Goal_Constants",
+                declarator: "module",
+                definitions: [
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "SHORT_CONSTANT",
+                    type: "short",
+                    value: -23,
+                    valueText: "-23",
+                  },
+                ],
+              },
+              {
+                name: "MyAction_Goal",
+                declarator: "struct",
+                definitions: [
+                  {
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "input_value",
+                    type: "int32",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
     ]);
   });
   it("parses all numerical types", () => {
@@ -105,128 +101,126 @@ describe("IDL grammar", () => {
     `;
 
     expect(parseIdlToAST(schema)).toEqual([
-      [
-        {
-          name: "All_Numbers",
-          declarator: "struct",
-          definitions: [
-            {
-              type: "unsigned short",
-              name: "unsigned_short_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "long",
-              name: "long_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "unsigned long",
-              name: "unsigned_long_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "long long",
-              name: "long_long_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "unsigned long long",
-              name: "unsigned_long_long_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "float",
-              name: "float_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "double",
-              name: "double_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "char",
-              name: "char_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "wchar",
-              name: "wchar_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "bool",
-              name: "boolean_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "octet",
-              name: "octet_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "int8",
-              name: "int8_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "uint8",
-              name: "uint8_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "int16",
-              name: "int16_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "uint16",
-              name: "uint16_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "int32",
-              name: "int32_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "uint32",
-              name: "uint32_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "int64",
-              name: "int64_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-            {
-              type: "uint64",
-              name: "uint64_value",
-              isComplex: false,
-              declarator: "struct-member",
-            },
-          ],
-        },
-      ],
+      {
+        name: "All_Numbers",
+        declarator: "struct",
+        definitions: [
+          {
+            type: "unsigned short",
+            name: "unsigned_short_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "long",
+            name: "long_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "unsigned long",
+            name: "unsigned_long_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "long long",
+            name: "long_long_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "unsigned long long",
+            name: "unsigned_long_long_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "float",
+            name: "float_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "double",
+            name: "double_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "char",
+            name: "char_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "wchar",
+            name: "wchar_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "bool",
+            name: "boolean_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "octet",
+            name: "octet_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "int8",
+            name: "int8_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "uint8",
+            name: "uint8_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "int16",
+            name: "int16_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "uint16",
+            name: "uint16_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "int32",
+            name: "int32_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "uint32",
+            name: "uint32_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "int64",
+            name: "int64_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+          {
+            type: "uint64",
+            name: "uint64_value",
+            isComplex: false,
+            declarator: "struct-member",
+          },
+        ],
+      },
     ]);
   });
   it("parses a module full of numeric constants", () => {
@@ -245,62 +239,60 @@ module idl_parser {
     `,
     );
     expect(types).toEqual([
-      [
-        {
-          declarator: "module",
-          definitions: [
-            {
-              declarator: "module",
-              definitions: [
-                {
-                  declarator: "module",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "SHORT_CONSTANT",
-                      type: "short",
-                      value: -23,
-                      valueText: "-23",
-                    },
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "UNSIGNED_LONG_CONSTANT",
-                      type: "unsigned long",
-                      value: 42,
-                      valueText: "42",
-                    },
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "FLOAT_CONSTANT",
-                      type: "float",
-                      value: 1.25,
-                      valueText: "1.25",
-                    },
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "EXP_DOUBLE_CONSTANT",
-                      type: "double",
-                      value: 0.00125,
-                      valueText: "1.25e-3",
-                    },
-                  ],
-                  name: "MyMessage_Constants",
-                },
-              ],
-              name: "msg",
-            },
-          ],
-          name: "idl_parser",
-        },
-      ],
+      {
+        declarator: "module",
+        definitions: [
+          {
+            declarator: "module",
+            definitions: [
+              {
+                declarator: "module",
+                definitions: [
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "SHORT_CONSTANT",
+                    type: "short",
+                    value: -23,
+                    valueText: "-23",
+                  },
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "UNSIGNED_LONG_CONSTANT",
+                    type: "unsigned long",
+                    value: 42,
+                    valueText: "42",
+                  },
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "FLOAT_CONSTANT",
+                    type: "float",
+                    value: 1.25,
+                    valueText: "1.25",
+                  },
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "EXP_DOUBLE_CONSTANT",
+                    type: "double",
+                    value: 0.00125,
+                    valueText: "1.25e-3",
+                  },
+                ],
+                name: "MyMessage_Constants",
+              },
+            ],
+            name: "msg",
+          },
+        ],
+        name: "idl_parser",
+      },
     ]);
   });
   it("parses a module with various floating point default values", () => {
@@ -341,195 +333,193 @@ module idl_parser {
     `,
     );
     expect(types).toEqual([
-      [
-        {
-          declarator: "module",
-          definitions: [
-            {
-              declarator: "module",
-              definitions: [
-                {
-                  declarator: "struct",
-                  definitions: [
-                    {
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 19000000000 },
-                        },
+      {
+        declarator: "module",
+        definitions: [
+          {
+            declarator: "module",
+            definitions: [
+              {
+                declarator: "struct",
+                definitions: [
+                  {
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 19000000000 },
                       },
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "int_and_frac_with_positive_scientific",
-                      type: "float",
                     },
-                    {
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 19000000000 },
-                        },
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "int_and_frac_with_positive_scientific",
+                    type: "float",
+                  },
+                  {
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 19000000000 },
                       },
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "int_and_frac_with_explicit_positive_scientific",
-                      type: "float",
                     },
-                    {
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 1.1e-10 },
-                        },
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "int_and_frac_with_explicit_positive_scientific",
+                    type: "float",
+                  },
+                  {
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 1.1e-10 },
                       },
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "int_and_frac_with_negative_scientific",
-                      type: "float",
                     },
-                    {
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 0.00009 },
-                        },
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "int_and_frac_with_negative_scientific",
+                    type: "float",
+                  },
+                  {
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 0.00009 },
                       },
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "int_and_frac",
-                      type: "float",
                     },
-                    {
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 1 },
-                        },
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "int_and_frac",
+                    type: "float",
+                  },
+                  {
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 1 },
                       },
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "int_with_empty_frac",
-                      type: "float",
                     },
-                    {
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 0.1 },
-                        },
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "int_with_empty_frac",
+                    type: "float",
+                  },
+                  {
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 0.1 },
                       },
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "frac_only",
-                      type: "float",
                     },
-                    {
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 900000 },
-                        },
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "frac_only",
+                    type: "float",
+                  },
+                  {
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 900000 },
                       },
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "int_with_positive_scientific",
-                      type: "float",
                     },
-                    {
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 900000 },
-                        },
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "int_with_positive_scientific",
+                    type: "float",
+                  },
+                  {
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 900000 },
                       },
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "int_with_explicit_positive_scientific",
-                      type: "float",
                     },
-                    {
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 0.00009 },
-                        },
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "int_with_explicit_positive_scientific",
+                    type: "float",
+                  },
+                  {
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 0.00009 },
                       },
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "int_with_negative_scientific",
-                      type: "float",
                     },
-                    {
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 8.7 },
-                        },
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "int_with_negative_scientific",
+                    type: "float",
+                  },
+                  {
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 8.7 },
                       },
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "fixed_int_and_frac",
-                      type: "float",
                     },
-                    {
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 4 },
-                        },
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "fixed_int_and_frac",
+                    type: "float",
+                  },
+                  {
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 4 },
                       },
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "fixed_int_with_dot_only",
-                      type: "float",
                     },
-                    {
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 0.3 },
-                        },
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "fixed_int_with_dot_only",
+                    type: "float",
+                  },
+                  {
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 0.3 },
                       },
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "fixed_frac_only",
-                      type: "float",
                     },
-                    {
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 7 },
-                        },
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "fixed_frac_only",
+                    type: "float",
+                  },
+                  {
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 7 },
                       },
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "fixed_int_only",
-                      type: "float",
                     },
-                  ],
-                  name: "MyMessage",
-                },
-              ],
-              name: "msg",
-            },
-          ],
-          name: "idl_parser",
-        },
-      ],
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "fixed_int_only",
+                    type: "float",
+                  },
+                ],
+                name: "MyMessage",
+              },
+            ],
+            name: "msg",
+          },
+        ],
+        name: "idl_parser",
+      },
     ]);
   });
   it("parses a module with customTypes", () => {
@@ -547,45 +537,43 @@ module idl_parser {
     `,
     );
     expect(types).toEqual([
-      [
-        {
-          declarator: "module",
-          definitions: [
-            {
-              declarator: "module",
-              definitions: [
-                {
-                  declarator: "struct",
-                  definitions: [
-                    {
-                      declarator: "struct-member",
-                      name: "single_point",
-                      type: "geometry::msg::Point",
-                    },
-                    {
-                      declarator: "struct-member",
-                      arrayLength: 10,
-                      isArray: true,
-                      name: "points_with_length",
-                      type: "geometry::msg::Point",
-                    },
-                    {
-                      declarator: "struct-member",
-                      arrayUpperBound: undefined,
-                      isArray: true,
-                      name: "points_with_length_sequence",
-                      type: "geometry::msg::Point",
-                    },
-                  ],
-                  name: "MyMessage",
-                },
-              ],
-              name: "msg",
-            },
-          ],
-          name: "idl_parser",
-        },
-      ],
+      {
+        declarator: "module",
+        definitions: [
+          {
+            declarator: "module",
+            definitions: [
+              {
+                declarator: "struct",
+                definitions: [
+                  {
+                    declarator: "struct-member",
+                    name: "single_point",
+                    type: "geometry::msg::Point",
+                  },
+                  {
+                    declarator: "struct-member",
+                    arrayLength: 10,
+                    isArray: true,
+                    name: "points_with_length",
+                    type: "geometry::msg::Point",
+                  },
+                  {
+                    declarator: "struct-member",
+                    arrayUpperBound: undefined,
+                    isArray: true,
+                    name: "points_with_length_sequence",
+                    type: "geometry::msg::Point",
+                  },
+                ],
+                name: "MyMessage",
+              },
+            ],
+            name: "msg",
+          },
+        ],
+        name: "idl_parser",
+      },
     ]);
   });
   it("parses a module with arbitrary annotations including default values", () => {
@@ -611,122 +599,120 @@ module idl_parser {
     `,
     );
     expect(types).toEqual([
-      [
-        {
-          name: "idl_parser",
-          declarator: "module",
-          definitions: [
-            {
-              name: "msg",
-              declarator: "module",
-              definitions: [
-                {
-                  name: "MyMessage",
-                  declarator: "struct",
-                  annotations: {
-                    verbatim: {
-                      name: "verbatim",
-                      type: "named-params",
-                      namedParams: {
-                        language: "comment",
-                        text: "Documentation of MyMessage.Adjacent string literal.",
-                      },
-                    },
-                    transfer_mode: {
-                      name: "transfer_mode",
-                      type: "const-param",
-                      value: { usesConstant: true, name: "SHMEM_REF" },
+      {
+        name: "idl_parser",
+        declarator: "module",
+        definitions: [
+          {
+            name: "msg",
+            declarator: "module",
+            definitions: [
+              {
+                name: "MyMessage",
+                declarator: "struct",
+                annotations: {
+                  verbatim: {
+                    name: "verbatim",
+                    type: "named-params",
+                    namedParams: {
+                      language: "comment",
+                      text: "Documentation of MyMessage.Adjacent string literal.",
                     },
                   },
-                  definitions: [
-                    {
-                      name: "unsigned_short_value",
-                      isComplex: false,
-                      declarator: "struct-member",
-                      type: "unsigned short",
-                      annotations: {
-                        default: {
-                          name: "default",
-                          type: "named-params",
-                          namedParams: { value: 123 },
-                        },
-                      },
-                    },
-                    {
-                      name: "long_value",
-                      isComplex: false,
-                      declarator: "struct-member",
-                      type: "long",
-                      annotations: {
-                        key: {
-                          name: "key",
-                          type: "no-params",
-                        },
-                        range: {
-                          name: "range",
-                          type: "named-params",
-                          namedParams: {
-                            min: -10,
-                            max: 10,
-                          },
-                        },
-                      },
-                    },
-                    {
-                      name: "unsigned_long_value",
-                      isComplex: false,
-                      declarator: "struct-member",
-                      type: "unsigned long",
-                      annotations: {
-                        verbatim: {
-                          name: "verbatim",
-                          type: "named-params",
-                          namedParams: {
-                            language: "comment",
-                            text: "",
-                          },
-                        },
-                        arbitrary_annotation: {
-                          name: "arbitrary_annotation",
-                          type: "named-params",
-                          namedParams: {
-                            key1: "value1",
-                            key2: true,
-                            key3: 0.0,
-                            key4: 10,
-                          },
-                        },
-                        key: {
-                          name: "key",
-                          type: "no-params",
-                        },
-                      },
-                    },
-                    {
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "uint32_with_default",
-                      type: "uint32",
-                      annotations: {
-                        id: {
-                          name: "id",
-                          type: "const-param",
-                          value: 100,
-                        },
-                        default: {
-                          name: "default",
-                          type: "const-param",
-                          value: 100,
-                        },
-                      },
-                    },
-                  ],
+                  transfer_mode: {
+                    name: "transfer_mode",
+                    type: "const-param",
+                    value: { usesConstant: true, name: "SHMEM_REF" },
+                  },
                 },
-              ],
-            },
-          ],
-        },
-      ],
+                definitions: [
+                  {
+                    name: "unsigned_short_value",
+                    isComplex: false,
+                    declarator: "struct-member",
+                    type: "unsigned short",
+                    annotations: {
+                      default: {
+                        name: "default",
+                        type: "named-params",
+                        namedParams: { value: 123 },
+                      },
+                    },
+                  },
+                  {
+                    name: "long_value",
+                    isComplex: false,
+                    declarator: "struct-member",
+                    type: "long",
+                    annotations: {
+                      key: {
+                        name: "key",
+                        type: "no-params",
+                      },
+                      range: {
+                        name: "range",
+                        type: "named-params",
+                        namedParams: {
+                          min: -10,
+                          max: 10,
+                        },
+                      },
+                    },
+                  },
+                  {
+                    name: "unsigned_long_value",
+                    isComplex: false,
+                    declarator: "struct-member",
+                    type: "unsigned long",
+                    annotations: {
+                      verbatim: {
+                        name: "verbatim",
+                        type: "named-params",
+                        namedParams: {
+                          language: "comment",
+                          text: "",
+                        },
+                      },
+                      arbitrary_annotation: {
+                        name: "arbitrary_annotation",
+                        type: "named-params",
+                        namedParams: {
+                          key1: "value1",
+                          key2: true,
+                          key3: 0.0,
+                          key4: 10,
+                        },
+                      },
+                      key: {
+                        name: "key",
+                        type: "no-params",
+                      },
+                    },
+                  },
+                  {
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "uint32_with_default",
+                    type: "uint32",
+                    annotations: {
+                      id: {
+                        name: "id",
+                        type: "const-param",
+                        value: 100,
+                      },
+                      default: {
+                        name: "default",
+                        type: "const-param",
+                        value: 100,
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
     ]);
   });
   it("parses a module with a typedefs used in a struct", () => {
@@ -746,53 +732,51 @@ module idl_parser {
     `,
     );
     expect(types).toEqual([
-      [
-        {
-          name: "idl_parser",
-          declarator: "module",
-          definitions: [
-            {
-              name: "action",
-              declarator: "module",
-              definitions: [
-                {
-                  arrayUpperBound: 10,
-                  declarator: "typedef",
-                  isArray: true,
-                  isComplex: false,
-                  name: "int32arr",
-                  type: "int32",
+      {
+        name: "idl_parser",
+        declarator: "module",
+        definitions: [
+          {
+            name: "action",
+            declarator: "module",
+            definitions: [
+              {
+                arrayUpperBound: 10,
+                declarator: "typedef",
+                isArray: true,
+                isComplex: false,
+                name: "int32arr",
+                type: "int32",
+              },
+              {
+                annotations: {
+                  default: { name: "default", type: "named-params", namedParams: { value: 5 } },
                 },
-                {
-                  annotations: {
-                    default: { name: "default", type: "named-params", namedParams: { value: 5 } },
+                declarator: "typedef",
+                isComplex: false,
+                name: "shortWithDefault",
+                type: "short",
+              },
+              {
+                name: "MyAction_Goal",
+                declarator: "struct",
+                definitions: [
+                  {
+                    declarator: "struct-member",
+                    name: "intArray",
+                    type: "int32arr",
                   },
-                  declarator: "typedef",
-                  isComplex: false,
-                  name: "shortWithDefault",
-                  type: "short",
-                },
-                {
-                  name: "MyAction_Goal",
-                  declarator: "struct",
-                  definitions: [
-                    {
-                      declarator: "struct-member",
-                      name: "intArray",
-                      type: "int32arr",
-                    },
-                    {
-                      declarator: "struct-member",
-                      name: "short5",
-                      type: "shortWithDefault",
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ],
+                  {
+                    declarator: "struct-member",
+                    name: "short5",
+                    type: "shortWithDefault",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
     ]);
   });
   it("parses a module with an multiple enclosed structs and modules", () => {
@@ -823,101 +807,99 @@ module idl_parser {
     `,
     );
     expect(types).toEqual([
-      [
-        {
-          declarator: "module",
-          definitions: [
-            {
-              declarator: "module",
-              definitions: [
-                {
-                  declarator: "module",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "SHORT_CONSTANT",
-                      type: "short",
-                      value: -23,
-                      valueText: "-23",
-                    },
-                  ],
-                  name: "MyAction_Goal_Constants",
-                },
-                {
-                  declarator: "struct",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "input_value",
-                      type: "int32",
-                    },
-                  ],
-                  name: "MyAction_Goal",
-                },
-                {
-                  declarator: "module",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "UNSIGNED_LONG_CONSTANT",
-                      type: "unsigned long",
-                      value: 42,
-                      valueText: "42",
-                    },
-                  ],
-                  name: "MyAction_Result_Constants",
-                },
-                {
-                  declarator: "struct",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "output_value",
-                      type: "uint32",
-                    },
-                  ],
-                  name: "MyAction_Result",
-                },
-                {
-                  declarator: "module",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "FLOAT_CONSTANT",
-                      type: "float",
-                      value: 1.25,
-                      valueText: "1.25",
-                    },
-                  ],
-                  name: "MyAction_Feedback_Constants",
-                },
-                {
-                  declarator: "struct",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "progress_value",
-                      type: "float",
-                    },
-                  ],
-                  name: "MyAction_Feedback",
-                },
-              ],
-              name: "action",
-            },
-          ],
-          name: "idl_parser",
-        },
-      ],
+      {
+        declarator: "module",
+        definitions: [
+          {
+            declarator: "module",
+            definitions: [
+              {
+                declarator: "module",
+                definitions: [
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "SHORT_CONSTANT",
+                    type: "short",
+                    value: -23,
+                    valueText: "-23",
+                  },
+                ],
+                name: "MyAction_Goal_Constants",
+              },
+              {
+                declarator: "struct",
+                definitions: [
+                  {
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "input_value",
+                    type: "int32",
+                  },
+                ],
+                name: "MyAction_Goal",
+              },
+              {
+                declarator: "module",
+                definitions: [
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "UNSIGNED_LONG_CONSTANT",
+                    type: "unsigned long",
+                    value: 42,
+                    valueText: "42",
+                  },
+                ],
+                name: "MyAction_Result_Constants",
+              },
+              {
+                declarator: "struct",
+                definitions: [
+                  {
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "output_value",
+                    type: "uint32",
+                  },
+                ],
+                name: "MyAction_Result",
+              },
+              {
+                declarator: "module",
+                definitions: [
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "FLOAT_CONSTANT",
+                    type: "float",
+                    value: 1.25,
+                    valueText: "1.25",
+                  },
+                ],
+                name: "MyAction_Feedback_Constants",
+              },
+              {
+                declarator: "struct",
+                definitions: [
+                  {
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "progress_value",
+                    type: "float",
+                  },
+                ],
+                name: "MyAction_Feedback",
+              },
+            ],
+            name: "action",
+          },
+        ],
+        name: "idl_parser",
+      },
     ]);
   });
 
@@ -942,47 +924,45 @@ module idl_parser {
 
     // same as above
     expect(types).toEqual([
-      [
-        {
-          declarator: "module",
-          definitions: [
-            {
-              declarator: "module",
-              definitions: [
-                {
-                  declarator: "module",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "SHORT_CONSTANT",
-                      type: "short",
-                      value: -23,
-                      valueText: "-23",
-                    },
-                  ],
-                  name: "MyAction_Goal_Constants",
-                },
-                {
-                  declarator: "struct",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "input_value",
-                      type: "int32",
-                    },
-                  ],
-                  name: "MyAction_Goal",
-                },
-              ],
-              name: "action",
-            },
-          ],
-          name: "idl_parser",
-        },
-      ],
+      {
+        declarator: "module",
+        definitions: [
+          {
+            declarator: "module",
+            definitions: [
+              {
+                declarator: "module",
+                definitions: [
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "SHORT_CONSTANT",
+                    type: "short",
+                    value: -23,
+                    valueText: "-23",
+                  },
+                ],
+                name: "MyAction_Goal_Constants",
+              },
+              {
+                declarator: "struct",
+                definitions: [
+                  {
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "input_value",
+                    type: "int32",
+                  },
+                ],
+                name: "MyAction_Goal",
+              },
+            ],
+            name: "action",
+          },
+        ],
+        name: "idl_parser",
+      },
     ]);
   });
   it("parses a module full of string constants", () => {
@@ -1001,66 +981,64 @@ module idl_parser {
     `,
     );
     expect(types).toEqual([
-      [
-        {
-          declarator: "module",
-          definitions: [
-            {
-              declarator: "module",
-              definitions: [
-                {
-                  declarator: "module",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "STRING_CONSTANT",
-                      type: "string",
-                      upperBound: undefined,
-                      value: "string_value",
-                      valueText: "string_value",
-                    },
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "WSTRING_CONSTANT",
-                      type: "string",
-                      upperBound: undefined,
-                      value: "wstring_value_™",
-                      valueText: "wstring_value_™",
-                    },
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "EMPTY_STRING_CONSTANT",
-                      type: "string",
-                      upperBound: undefined,
-                      value: "",
-                      valueText: "",
-                    },
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "COMBINED_STRING_CONSTANT",
-                      type: "string",
-                      upperBound: undefined,
-                      value: "part1 part2 part3",
-                      valueText: "part1 part2 part3",
-                    },
-                  ],
-                  name: "MyMessage_Constants",
-                },
-              ],
-              name: "msg",
-            },
-          ],
-          name: "idl_parser",
-        },
-      ],
+      {
+        declarator: "module",
+        definitions: [
+          {
+            declarator: "module",
+            definitions: [
+              {
+                declarator: "module",
+                definitions: [
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "STRING_CONSTANT",
+                    type: "string",
+                    upperBound: undefined,
+                    value: "string_value",
+                    valueText: "string_value",
+                  },
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "WSTRING_CONSTANT",
+                    type: "string",
+                    upperBound: undefined,
+                    value: "wstring_value_™",
+                    valueText: "wstring_value_™",
+                  },
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "EMPTY_STRING_CONSTANT",
+                    type: "string",
+                    upperBound: undefined,
+                    value: "",
+                    valueText: "",
+                  },
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "COMBINED_STRING_CONSTANT",
+                    type: "string",
+                    upperBound: undefined,
+                    value: "part1 part2 part3",
+                    valueText: "part1 part2 part3",
+                  },
+                ],
+                name: "MyMessage_Constants",
+              },
+            ],
+            name: "msg",
+          },
+        ],
+        name: "idl_parser",
+      },
     ]);
   });
   it("parses a module of all array types", () => {
@@ -1088,111 +1066,109 @@ module idl_parser {
     );
 
     expect(types).toEqual([
-      [
-        {
-          declarator: "module",
-          definitions: [
-            {
-              declarator: "module",
-              definitions: [
-                {
-                  declarator: "module",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      isConstant: true,
-                      declarator: "const",
-                      name: "UNSIGNED_LONG_CONSTANT",
-                      type: "unsigned long",
-                      value: 42,
-                      valueText: "42",
-                    },
-                  ],
-                  name: "MyMessage_Constants",
-                },
-                {
-                  declarator: "struct",
-                  definitions: [
-                    {
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "bounded_string_value",
-                      type: "string",
-                      upperBound: 5,
-                    },
-                    {
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "wstring_value",
-                      type: "string",
-                      upperBound: undefined,
-                    },
-                    {
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "bounded_wstring_value",
-                      type: "string",
-                      upperBound: 23,
-                    },
-                    {
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "constant_bounded_wstring_value",
-                      type: "string",
-                      upperBound: { name: "UNSIGNED_LONG_CONSTANT", usesConstant: true },
-                    },
-                    {
-                      arrayUpperBound: undefined,
-                      isArray: true,
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "unbounded_short_values",
-                      type: "short",
-                    },
-                    {
-                      arrayUpperBound: 5,
-                      isArray: true,
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "bounded_short_values",
-                      type: "short",
-                    },
-                    {
-                      arrayUpperBound: undefined,
-                      isArray: true,
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "unbounded_values_of_bounded_strings",
-                      type: "string",
-                      upperBound: 3,
-                    },
-                    {
-                      arrayUpperBound: 4,
-                      isArray: true,
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "bounded_values_of_bounded_strings",
-                      type: "string",
-                      upperBound: 3,
-                    },
-                    {
-                      arrayLength: 23,
-                      isArray: true,
-                      isComplex: false,
-                      declarator: "struct-member",
-                      name: "array_short_values",
-                      type: "short",
-                    },
-                  ],
-                  name: "MyMessage",
-                },
-              ],
-              name: "msg",
-            },
-          ],
-          name: "idl_parser",
-        },
-      ],
+      {
+        declarator: "module",
+        definitions: [
+          {
+            declarator: "module",
+            definitions: [
+              {
+                declarator: "module",
+                definitions: [
+                  {
+                    isComplex: false,
+                    isConstant: true,
+                    declarator: "const",
+                    name: "UNSIGNED_LONG_CONSTANT",
+                    type: "unsigned long",
+                    value: 42,
+                    valueText: "42",
+                  },
+                ],
+                name: "MyMessage_Constants",
+              },
+              {
+                declarator: "struct",
+                definitions: [
+                  {
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "bounded_string_value",
+                    type: "string",
+                    upperBound: 5,
+                  },
+                  {
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "wstring_value",
+                    type: "string",
+                    upperBound: undefined,
+                  },
+                  {
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "bounded_wstring_value",
+                    type: "string",
+                    upperBound: 23,
+                  },
+                  {
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "constant_bounded_wstring_value",
+                    type: "string",
+                    upperBound: { name: "UNSIGNED_LONG_CONSTANT", usesConstant: true },
+                  },
+                  {
+                    arrayUpperBound: undefined,
+                    isArray: true,
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "unbounded_short_values",
+                    type: "short",
+                  },
+                  {
+                    arrayUpperBound: 5,
+                    isArray: true,
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "bounded_short_values",
+                    type: "short",
+                  },
+                  {
+                    arrayUpperBound: undefined,
+                    isArray: true,
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "unbounded_values_of_bounded_strings",
+                    type: "string",
+                    upperBound: 3,
+                  },
+                  {
+                    arrayUpperBound: 4,
+                    isArray: true,
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "bounded_values_of_bounded_strings",
+                    type: "string",
+                    upperBound: 3,
+                  },
+                  {
+                    arrayLength: 23,
+                    isArray: true,
+                    isComplex: false,
+                    declarator: "struct-member",
+                    name: "array_short_values",
+                    type: "short",
+                  },
+                ],
+                name: "MyMessage",
+              },
+            ],
+            name: "msg",
+          },
+        ],
+        name: "idl_parser",
+      },
     ]);
   });
   it("can parse comments", () => {
@@ -1218,42 +1194,40 @@ module idl_parser {
     `;
     const types = parseIdlToAST(msgDef);
     expect(types).toEqual([
-      [
-        {
-          declarator: "module",
-          definitions: [
-            {
-              declarator: "module",
-              definitions: [
-                {
-                  isComplex: false,
-                  isConstant: true,
-                  declarator: "const",
-                  name: "tricky",
-                  type: "string",
-                  upperBound: undefined,
-                  value: "/** is this a comment? */ // hopefully not",
-                  valueText: "/** is this a comment? */ // hopefully not",
-                },
-              ],
-              name: "MyAction_Goal_Constants",
-            },
-            {
-              declarator: "struct",
-              definitions: [
-                {
-                  isComplex: false,
-                  declarator: "struct-member",
-                  name: "input_value",
-                  type: "int32",
-                },
-              ],
-              name: "MyAction_Goal",
-            },
-          ],
-          name: "action",
-        },
-      ],
+      {
+        declarator: "module",
+        definitions: [
+          {
+            declarator: "module",
+            definitions: [
+              {
+                isComplex: false,
+                isConstant: true,
+                declarator: "const",
+                name: "tricky",
+                type: "string",
+                upperBound: undefined,
+                value: "/** is this a comment? */ // hopefully not",
+                valueText: "/** is this a comment? */ // hopefully not",
+              },
+            ],
+            name: "MyAction_Goal_Constants",
+          },
+          {
+            declarator: "struct",
+            definitions: [
+              {
+                isComplex: false,
+                declarator: "struct-member",
+                name: "input_value",
+                type: "int32",
+              },
+            ],
+            name: "MyAction_Goal",
+          },
+        ],
+        name: "action",
+      },
     ]);
   });
   it("can parse multiple forward declarations on same line with default annotation", () => {
@@ -1265,32 +1239,30 @@ module idl_parser {
     `;
     const types = parseIdlToAST(msgDef);
     expect(types).toEqual([
-      [
-        {
-          declarator: "struct",
-          definitions: [
-            {
-              annotations: {
-                default: { name: "default", type: "named-params", namedParams: { value: 5 } },
-              },
-              isComplex: false,
-              declarator: "struct-member",
-              name: "int1",
-              type: "int32",
+      {
+        declarator: "struct",
+        definitions: [
+          {
+            annotations: {
+              default: { name: "default", type: "named-params", namedParams: { value: 5 } },
             },
-            {
-              annotations: {
-                default: { name: "default", type: "named-params", namedParams: { value: 5 } },
-              },
-              isComplex: false,
-              declarator: "struct-member",
-              name: "int2",
-              type: "int32",
+            isComplex: false,
+            declarator: "struct-member",
+            name: "int1",
+            type: "int32",
+          },
+          {
+            annotations: {
+              default: { name: "default", type: "named-params", namedParams: { value: 5 } },
             },
-          ],
-          name: "MyAction_Goal",
-        },
-      ],
+            isComplex: false,
+            declarator: "struct-member",
+            name: "int2",
+            type: "int32",
+          },
+        ],
+        name: "MyAction_Goal",
+      },
     ]);
   });
   it("parses enums", () => {
@@ -1303,13 +1275,11 @@ module idl_parser {
     `;
     const types = parseIdlToAST(msgDef);
     expect(types).toEqual([
-      [
-        {
-          declarator: "enum",
-          name: "COLORS",
-          enumerators: ["RED", "GREEN", "BLUE"],
-        },
-      ],
+      {
+        declarator: "enum",
+        name: "COLORS",
+        enumerators: ["RED", "GREEN", "BLUE"],
+      },
     ]);
   });
   it("parses enums in modules", () => {
@@ -1324,19 +1294,17 @@ module idl_parser {
     `;
     const types = parseIdlToAST(msgDef);
     expect(types).toEqual([
-      [
-        {
-          declarator: "module",
-          name: "Scene",
-          definitions: [
-            {
-              declarator: "enum",
-              name: "COLORS",
-              enumerators: ["RED", "GREEN", "BLUE"],
-            },
-          ],
-        },
-      ],
+      {
+        declarator: "module",
+        name: "Scene",
+        definitions: [
+          {
+            declarator: "enum",
+            name: "COLORS",
+            enumerators: ["RED", "GREEN", "BLUE"],
+          },
+        ],
+      },
     ]);
   });
   it("parses enums used as constants", () => {
@@ -1359,57 +1327,55 @@ module idl_parser {
     `;
     const types = parseIdlToAST(msgDef);
     expect(types).toEqual([
-      [
-        {
-          declarator: "enum",
-          name: "COLORS",
-          enumerators: ["RED", "GREEN", "BLUE"],
-        },
-        {
-          declarator: "module",
-          name: "Scene",
-          definitions: [
-            {
-              name: "DefaultColors",
-              declarator: "module",
-              definitions: [
-                {
-                  isConstant: true,
-                  isComplex: false,
-                  declarator: "const",
-                  name: "red",
-                  type: "COLORS",
-                  value: {
-                    name: "COLORS::RED",
-                    usesConstant: true,
-                  },
-                  valueText: "COLORS::RED",
+      {
+        declarator: "enum",
+        name: "COLORS",
+        enumerators: ["RED", "GREEN", "BLUE"],
+      },
+      {
+        declarator: "module",
+        name: "Scene",
+        definitions: [
+          {
+            name: "DefaultColors",
+            declarator: "module",
+            definitions: [
+              {
+                isConstant: true,
+                isComplex: false,
+                declarator: "const",
+                name: "red",
+                type: "COLORS",
+                value: {
+                  name: "COLORS::RED",
+                  usesConstant: true,
                 },
-              ],
-            },
-            {
-              name: "Line",
-              declarator: "struct",
-              definitions: [
-                {
-                  annotations: {
-                    default: {
-                      name: "default",
-                      type: "named-params",
-                      namedParams: {
-                        value: { usesConstant: true, name: "COLORS::GREEN" },
-                      },
+                valueText: "COLORS::RED",
+              },
+            ],
+          },
+          {
+            name: "Line",
+            declarator: "struct",
+            definitions: [
+              {
+                annotations: {
+                  default: {
+                    name: "default",
+                    type: "named-params",
+                    namedParams: {
+                      value: { usesConstant: true, name: "COLORS::GREEN" },
                     },
                   },
-                  declarator: "struct-member",
-                  name: "color",
-                  type: "COLORS",
                 },
-              ],
-            },
-          ],
-        },
-      ],
+                declarator: "struct-member",
+                name: "color",
+                type: "COLORS",
+              },
+            ],
+          },
+        ],
+      },
     ]);
   });
   it("parses multiple top level typedefs referencing each other", () => {
@@ -1418,22 +1384,20 @@ module idl_parser {
     typedef sequence<shortSeq> shortSeqSeq;
     `;
     expect(parseIdlToAST(msgDef)).toEqual([
-      [
-        {
-          name: "shortSeq",
-          declarator: "typedef",
-          isArray: true,
-          arrayUpperBound: undefined,
-          isComplex: false,
-          type: "short",
-        },
-        {
-          name: "shortSeqSeq",
-          declarator: "typedef",
-          isArray: true,
-          type: "shortSeq",
-        },
-      ],
+      {
+        name: "shortSeq",
+        declarator: "typedef",
+        isArray: true,
+        arrayUpperBound: undefined,
+        isComplex: false,
+        type: "short",
+      },
+      {
+        name: "shortSeqSeq",
+        declarator: "typedef",
+        isArray: true,
+        type: "shortSeq",
+      },
     ]);
   });
   /****************  Not supported by IDL (as far as I can tell) */

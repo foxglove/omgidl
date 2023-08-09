@@ -62,18 +62,16 @@ describe("Unsupported IDL grammar features", () => {
     const short SHORT_CONSTANT = 014;
       `;
     expect(parseIdlToAST(msgDef)).toEqual([
-      [
-        {
-          name: "SHORT_CONSTANT",
-          declarator: "const",
-          isConstant: true,
-          isComplex: false,
-          type: "short",
-          // This should be 12, but the parser doesn't support octal literals
-          value: 14,
-          valueText: "014",
-        },
-      ],
+      {
+        name: "SHORT_CONSTANT",
+        declarator: "const",
+        isConstant: true,
+        isComplex: false,
+        type: "short",
+        // This should be 12, but the parser doesn't support octal literals
+        value: 14,
+        valueText: "014",
+      },
     ]);
   });
 

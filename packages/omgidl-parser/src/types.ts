@@ -1,4 +1,8 @@
-import { ConstantValue, MessageDefinitionField } from "@foxglove/message-definition";
+import {
+  ConstantValue,
+  MessageDefinition,
+  MessageDefinitionField,
+} from "@foxglove/message-definition";
 
 type UnresolvedConstantField = Omit<
   MessageDefinitionField,
@@ -93,3 +97,12 @@ export interface AnnotationConstParam extends BaseAnnotation {
 }
 
 type ResolveToConstantValue = { usesConstant: true; name: string };
+
+export type AnnotatedMessageDefinitionField = MessageDefinitionField & {
+  annotations?: Record<string, AnyAnnotation>;
+};
+
+export type AnnotatedMessageDefinition = Omit<MessageDefinition, "definitions"> & {
+  annotations?: Record<string, AnyAnnotation>;
+  definitions: AnnotatedMessageDefinitionField[];
+};

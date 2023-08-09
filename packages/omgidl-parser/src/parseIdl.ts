@@ -9,15 +9,13 @@ import { parseIdlToAST } from "./parseIdlToAST";
  * @returns - parsed message definition
  */
 export function parseIdl(messageDefinition: string): MessageDefinition[] {
-  const results = parseIdlToAST(messageDefinition);
+  const rawIdlDefinitions = parseIdlToAST(messageDefinition);
 
-  const result = results[0]!;
-
-  const idlProcessor = new IDLNodeProcessor(result);
+  const idlProcessor = new IDLNodeProcessor(rawIdlDefinitions);
   idlProcessor.resolveEnumTypes();
   idlProcessor.resolveConstants();
   idlProcessor.resolveTypeDefs();
-  idlProcessor.resolveComplexTypes();
+  idlProcessor.resolveStructMemberComplexity();
 
-  return idlProcessor.toMessageDefinitions();
+  return idlProcessor.toAnnotatedMessageDefinitions();
 }

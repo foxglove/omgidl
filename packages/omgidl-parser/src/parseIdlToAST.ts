@@ -3,8 +3,10 @@ import { Parser } from "nearley";
 import { IDL_GRAMMAR } from "./grammar";
 import { RawIdlDefinition } from "./types";
 
-/** Uses the IDL grammar to initialize and use a Nearley parser to read the string argument */
-export function parseIdlToAST(definition: string): RawIdlDefinition[][] {
+/** Uses the IDL grammar to initialize and use a Nearley parser to read the string argument
+ * @returns - array of parsed IDL definitions
+ */
+export function parseIdlToAST(definition: string): RawIdlDefinition[] {
   const parser = new Parser(IDL_GRAMMAR);
   parser.feed(definition);
   parser.finish();
@@ -18,5 +20,6 @@ export function parseIdlToAST(definition: string): RawIdlDefinition[][] {
   if (results.length > 1) {
     throw new Error(`Ambiguous grammar: '${definition}'`);
   }
-  return results;
+  // narrowed it down to 1 array of definitions
+  return results[0]!;
 }

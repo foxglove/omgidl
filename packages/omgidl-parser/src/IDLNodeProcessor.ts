@@ -4,7 +4,13 @@ import {
   MessageDefinitionField,
 } from "@foxglove/message-definition";
 
-import { RawIdlDefinition, AnyIDLNode, ConstantNode } from "./types";
+import {
+  RawIdlDefinition,
+  AnyIDLNode,
+  ConstantNode,
+  AnnotatedMessageDefinition,
+  AnnotatedMessageDefinitionField,
+} from "./types";
 
 const numericTypeMap: Record<string, string> = {
   "unsigned short": "uint16",
@@ -196,7 +202,7 @@ export class IDLNodeProcessor {
   }
 
   /** Resolve struct-members that refer to complex types as complex */
-  resolveComplexTypes(): void {
+  resolveStructMemberComplexity(): void {
     // resolve non-primitive struct member types
     for (const [scopedIdentifier, node] of this.map.entries()) {
       if (node.declarator !== "struct-member") {
@@ -226,11 +232,17 @@ export class IDLNodeProcessor {
           ...partialDef
         } = typeNode;
 
-        this.map.set(scopedIdentifier, {
+        const newNode = {
           ...node,
           ...partialDef,
-          annotations: { ...typedefAnnotations, ...node.annotations },
-        });
+        };
+
+        const annotations = { ...typedefAnnotations, ...node.annotations };
+        if (Object.keys(annotations).length > 0) {
+          newNode.annotations = annotations;
+        }
+
+        this.map.set(scopedIdentifier, newNode);
       } else if (typeNode.declarator === "struct") {
         this.map.set(scopedIdentifier, { ...node, isComplex: true });
       } else {
@@ -241,47 +253,45 @@ export class IDLNodeProcessor {
     }
   }
 
-  /** Convert to Message Definitions for serialization and usage in foxglove studio's Raw Message panel. Returned in order of original definitions*/
   toMessageDefinitions(): MessageDefinition[] {
-    const messageDefinitions: MessageDefinition[] = [];
+    const idlMsgDefs = this.toAnnotatedMessageDefinitions();
+
+    return idlMsgDefs.map(toMessageDefinition);
+  }
+
+  /** Convert to Message Definitions for serialization and usage in foxglove studio's Raw Message panel. Returned in order of original definitions*/
+  toAnnotatedMessageDefinitions(): AnnotatedMessageDefinition[] {
+    const messageDefinitions: AnnotatedMessageDefinition[] = [];
     const topLevelConstantDefinitions: MessageDefinitionField[] = [];
 
     // flatten for output to message definition
     // Because the map entries are in original insertion order, they should reflect the original order of the definitions
     // This is important for ros2idl compatibility
     for (const [namespacedName, node] of this.map.entries()) {
-      if (node.declarator === "struct") {
-        messageDefinitions.push({
-          name: namespacedName,
-          definitions: node.definitions
-            .map((def) =>
-              this.idlNodeToMessageDefinitionField(toScopedIdentifier([namespacedName, def.name])),
-            )
-            .filter(Boolean) as MessageDefinitionField[],
-        });
-      } else if (node.declarator === "module") {
-        const fieldDefinitions = node.definitions
+      if (
+        node.declarator === "struct" ||
+        node.declarator === "module" ||
+        node.declarator === "enum"
+      ) {
+        const isEnum = node.declarator === "enum";
+        const members = isEnum ? node.enumerators : node.definitions;
+        const definitionFields = members
           .map((def) =>
-            this.idlNodeToMessageDefinitionField(toScopedIdentifier([namespacedName, def.name])),
+            this.idlNodeToMessageDefinitionField(
+              toScopedIdentifier([namespacedName, typeof def === "string" ? def : def.name]),
+            ),
           )
-          .filter(Boolean) as MessageDefinitionField[];
-        if (fieldDefinitions.length > 0) {
-          messageDefinitions.push({
+          .filter(Boolean) as AnnotatedMessageDefinitionField[];
+        if (definitionFields.length > 0) {
+          const def: AnnotatedMessageDefinition = {
             name: namespacedName,
-            definitions: fieldDefinitions,
-          });
-        }
-      } else if (node.declarator === "enum") {
-        const fieldDefinitions = node.enumerators
-          .map((enumMember) =>
-            this.idlNodeToMessageDefinitionField(toScopedIdentifier([namespacedName, enumMember])),
-          )
-          .filter(Boolean) as MessageDefinitionField[];
-        if (fieldDefinitions.length > 0) {
-          messageDefinitions.push({
-            name: namespacedName,
-            definitions: fieldDefinitions,
-          });
+            definitions: definitionFields,
+          };
+
+          if (node.annotations) {
+            def.annotations = node.annotations;
+          }
+          messageDefinitions.push(def);
         }
       } else if (node.name === namespacedName && node.isConstant === true) {
         // handles top-level constants that aren't within a module
@@ -301,7 +311,7 @@ export class IDLNodeProcessor {
 
   private idlNodeToMessageDefinitionField(
     nodeScopedIdentifier: string,
-  ): MessageDefinitionField | undefined {
+  ): AnnotatedMessageDefinitionField | undefined {
     const node = this.map.get(nodeScopedIdentifier);
     if (!node) {
       return undefined;
@@ -331,7 +341,7 @@ export class IDLNodeProcessor {
     const fullMessageDef = {
       ...partialMessageDef,
       type: normalizeType(partialMessageDef.type),
-    } as MessageDefinitionField;
+    } as AnnotatedMessageDefinitionField;
 
     // avoid writing undefined to object fields
     if (arrayLength != undefined) {
@@ -367,8 +377,22 @@ export class IDLNodeProcessor {
       }
     }
 
+    if (annotations) {
+      fullMessageDef.annotations = annotations;
+    }
+
     return fullMessageDef;
   }
+}
+
+// Removes `annotation` field from the Definition and DefinitionField objects
+function toMessageDefinition(idlMsgDef: AnnotatedMessageDefinition): MessageDefinition {
+  const { definitions, annotations: _a, ...partialDef } = idlMsgDef;
+  const fieldDefinitions = definitions.map((def) => {
+    const { annotations: _an, ...partialFieldDef } = def;
+    return partialFieldDef;
+  });
+  return { ...partialDef, definitions: fieldDefinitions };
 }
 
 export function resolveScopedOrLocalNodeReference({
