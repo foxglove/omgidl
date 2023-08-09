@@ -1,3 +1,4 @@
+import { CdrWriter, EncapsulationKind } from "@foxglove/cdr";
 import { parseIdl } from "@foxglove/omgidl-parser";
 
 import { MessageReader } from "./MessageReader";
@@ -395,10 +396,139 @@ module builtin_interfaces {
       ],
     });
   });
+
+  it("reads simple mutable struct", () => {
+    const msgDef = `
+        @mutable
+        struct Address {
+            octet pointer;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(1); // first writes dHeader for struct object - not taken into consideration for objects
+    writer.emHeader(true, 1, 1); // then writes emHeader for struct object
+    writer.uint8(0x0f); // then writes the octet
+
+    const rootDef = "Address";
+    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+
+    expect(reader.readMessage(writer.data)).toEqual({ pointer: 15 });
+  });
+
+  it("reads simple nested mutable struct", () => {
+    const msgDef = `
+        @mutable
+        struct Address {
+            octet pointer;
+        };
+        @mutable
+        struct Person {
+          double heightMeters;
+          Address address;
+          uint8 age;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    const data = {
+      heightMeters: 1.8,
+      address: {
+        pointer: 15,
+      },
+      age: 30,
+    };
+
+    writer.dHeader(1);
+    writer.emHeader(true, 1, 8); // heightMeters emHeader
+    writer.float64(data.heightMeters);
+    writer.emHeader(true, 2, 4 + 4 + 1); // address emHeader
+    // dHeader for inner object not written again because the object size is already specified in the emHeader
+    writer.emHeader(true, 1, 1); // pointer emHeader
+    writer.uint8(data.address.pointer);
+    writer.emHeader(true, 3, 1); // age emHeader
+    writer.uint8(data.age);
+
+    const rootDef = "Person";
+    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+
+    expect(reader.readMessage(writer.data)).toEqual({
+      heightMeters: 1.8,
+      address: { pointer: 15 },
+      age: 30,
+    });
+  });
+  it("reads mutable structs with arrays", () => {
+    const msgDef = `
+        @mutable
+        struct Plot {
+          string name;
+          sequence<double> xValues;
+          sequence<double> yValues;
+          uint32 count;
+        };
+    `;
+
+    const writer = new CdrWriter({ size: 256, kind: EncapsulationKind.PL_CDR2_LE });
+    const data = {
+      name: "MPG",
+      xValues: [1, 2, 3],
+      yValues: [4, 5, 6],
+      count: 3,
+    };
+
+    writer.dHeader(1);
+    writer.emHeader(true, 1, data.name.length + 1); // "name" field emHeader. add 1 for null terminator
+    writer.string(data.name, false); // don't write length again
+    writer.emHeader(true, 2, 3 * 8); // xValues emHeader
+    writer.float64Array(data.xValues, false); // do not write length of array again. Already included in emHeader
+
+    writer.emHeader(true, 3, 3 * 8); // yValues emHeader
+    writer.float64Array(data.yValues, false); // do not write length of array again. Already included in emHeader
+
+    writer.emHeader(true, 4, 4); // count emHeader
+    writer.uint32(data.count);
+
+    const rootDef = "Plot";
+    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+
+    expect(reader.readMessage(writer.data)).toEqual({
+      name: "MPG",
+      xValues: new Float64Array([1, 2, 3]),
+      yValues: new Float64Array([4, 5, 6]),
+      count: 3,
+    });
+  });
+
   it("throws if rootDef is not found", () => {
     const msgDef = `
     struct a { int8 sample; };
     `;
     expect(() => new MessageReader("b", parseIdl(msgDef))).toThrow(/"b" not found/i);
+  });
+
+  it("throws when id annotation does not match emHeader", () => {
+    const msgDef = `
+        @mutable
+        struct Address {
+            @id(1) octet pointer1;
+            @id(2) octet pointer2;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(1); // first writes dHeader for struct object - not taken into consideration for objects
+    writer.emHeader(true, 1, 1); // then writes emHeader for struct object
+    writer.uint8(0x0f); // then writes the octet
+
+    writer.emHeader(true, 3, 1); // write wrong annotation
+    writer.uint8(0x0f); // then writes the octet
+
+    const rootDef = "Address";
+    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+
+    expect(() => reader.readMessage(writer.data)).toThrow(
+      /expected 2 but emheader contained 3 for field "pointer2"/i,
+    );
   });
 });

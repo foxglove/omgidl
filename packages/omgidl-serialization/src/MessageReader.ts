@@ -1,7 +1,13 @@
 import { CdrReader } from "@foxglove/cdr";
-import { MessageDefinition, MessageDefinitionField } from "@foxglove/message-definition";
+import {
+  AnnotatedMessageDefinition,
+  AnnotatedMessageDefinitionField,
+} from "@foxglove/omgidl-parser";
 
-export type Deserializer = (reader: CdrReader) => boolean | number | bigint | string;
+export type Deserializer = (
+  reader: CdrReader,
+  length?: number,
+) => boolean | number | bigint | string;
 export type ArrayDeserializer = (
   reader: CdrReader,
   count: number,
@@ -20,19 +26,19 @@ export type ArrayDeserializer = (
   | string[];
 
 export class MessageReader<T = unknown> {
-  rootDefinition: MessageDefinitionField[];
-  definitions: Map<string, MessageDefinitionField[]>;
+  rootDefinition: AnnotatedMessageDefinition;
+  definitions: Map<string, AnnotatedMessageDefinition>;
 
-  constructor(rootDefinitionName: string, definitions: MessageDefinition[]) {
+  constructor(rootDefinitionName: string, definitions: AnnotatedMessageDefinition[]) {
     const rootDefinition = definitions.find((def) => def.name === rootDefinitionName);
     if (rootDefinition == undefined) {
       throw new Error(
         `Root definition name "${rootDefinitionName}" not found in schema definitions.`,
       );
     }
-    this.rootDefinition = rootDefinition.definitions;
-    this.definitions = new Map<string, MessageDefinitionField[]>(
-      definitions.map((def) => [def.name ?? "", def.definitions]),
+    this.rootDefinition = rootDefinition;
+    this.definitions = new Map<string, AnnotatedMessageDefinition>(
+      definitions.map((def) => [def.name ?? "", def]),
     );
   }
 
@@ -40,59 +46,121 @@ export class MessageReader<T = unknown> {
   // known or available
   readMessage<R = T>(buffer: ArrayBufferView): R {
     const reader = new CdrReader(buffer);
-    return this.readComplexType(this.rootDefinition, reader) as R;
+    const usesDelimiterHeader = reader.usesDelimiterHeader;
+    const usesMemberHeader = reader.usesMemberHeader;
+
+    return this.readComplexType(this.rootDefinition, reader, {
+      isTopLevel: true,
+      usesDelimiterHeader,
+      usesMemberHeader,
+    }) as R;
   }
 
   private readComplexType(
-    definition: MessageDefinitionField[],
+    complexDef: AnnotatedMessageDefinition,
     reader: CdrReader,
+    options: {
+      isTopLevel: boolean;
+      usesDelimiterHeader: boolean;
+      usesMemberHeader: boolean;
+    },
   ): Record<string, unknown> {
     const msg: Record<string, unknown> = {};
-    for (const field of definition) {
+
+    const { usesDelimiterHeader, usesMemberHeader, isTopLevel } = options;
+    const { typeUsesDelimiterHeader, typeUsesMemberHeader } = getHeaderNeeds(complexDef);
+
+    const readDelimiterHeader = usesDelimiterHeader && typeUsesDelimiterHeader;
+    const readMemberHeader = usesMemberHeader && typeUsesMemberHeader;
+
+    // Delimiter header is only read/written at top level
+    if (isTopLevel && readDelimiterHeader) {
+      reader.dHeader();
+    }
+
+    const childOptions = {
+      isTopLevel: false,
+      usesDelimiterHeader,
+      usesMemberHeader,
+    };
+
+    for (const field of complexDef.definitions) {
       if (field.isConstant === true) {
         continue;
+      }
+      const definitionId = getDefinitionId(field);
+
+      let fieldLength = field.arrayLength;
+      if (readMemberHeader) {
+        const { id, objectSize: objectSizeBytes } = reader.emHeader();
+        const itemSize = typeToByteLength[field.type];
+        if (itemSize != undefined) {
+          fieldLength ??= Math.ceil(objectSizeBytes / itemSize);
+        }
+        // this can help spot misalignments in reading the data
+        if (definitionId != undefined && id !== definitionId) {
+          throw Error(
+            `CDR message deserializer error. Expected ${definitionId} but EMHEADER contained ${id} for field "${
+              field.name
+            }" in ${complexDef.name ?? "unknown"}`,
+          );
+        }
       }
 
       if (field.isComplex === true) {
         // Complex type
-        const nestedDefinition = this.definitions.get(field.type);
-        if (nestedDefinition == undefined) {
+        const nestedComplexDef = this.definitions.get(field.type);
+        if (nestedComplexDef == undefined) {
           throw new Error(`Unrecognized complex type ${field.type}`);
         }
 
         if (field.isArray === true) {
           // For dynamic length arrays we need to read a uint32 prefix
-          const arrayLength = field.arrayLength ?? reader.sequenceLength();
+          const arrayLength = fieldLength ?? reader.sequenceLength();
           const array = [];
           for (let i = 0; i < arrayLength; i++) {
-            array.push(this.readComplexType(nestedDefinition, reader));
+            array.push(this.readComplexType(nestedComplexDef, reader, childOptions));
           }
           msg[field.name] = array;
         } else {
-          msg[field.name] = this.readComplexType(nestedDefinition, reader);
+          msg[field.name] = this.readComplexType(nestedComplexDef, reader, childOptions);
         }
       } else {
-        // Primitive type
         if (field.isArray === true) {
           const deser = typedArrayDeserializers.get(field.type);
           if (deser == undefined) {
             throw new Error(`Unrecognized primitive array type ${field.type}[]`);
           }
           // For dynamic length arrays we need to read a uint32 prefix
-          const arrayLength = field.arrayLength ?? reader.sequenceLength();
+          const arrayLength = fieldLength ?? reader.sequenceLength();
           msg[field.name] = deser(reader, arrayLength);
         } else {
           const deser = deserializers.get(field.type);
           if (deser == undefined) {
             throw new Error(`Unrecognized primitive type ${field.type}`);
           }
-          msg[field.name] = deser(reader);
+          msg[field.name] = deser(reader, fieldLength);
         }
       }
     }
     return msg;
   }
 }
+
+const typeToByteLength: Record<string, number> = {
+  bool: 1,
+  int8: 1,
+  uint8: 1,
+  int16: 2,
+  uint16: 2,
+  int32: 4,
+  uint32: 4,
+  int64: 8,
+  uint64: 8,
+  float32: 4,
+  float64: 8,
+  string: 1,
+};
 
 const deserializers = new Map<string, Deserializer>([
   ["bool", (reader) => Boolean(reader.int8())],
@@ -106,7 +174,7 @@ const deserializers = new Map<string, Deserializer>([
   ["uint64", (reader) => reader.uint64()],
   ["float32", (reader) => reader.float32()],
   ["float64", (reader) => reader.float64()],
-  ["string", (reader) => reader.string()],
+  ["string", (reader, length) => reader.string(length)],
 ]);
 
 const typedArrayDeserializers = new Map<string, ArrayDeserializer>([
@@ -138,4 +206,42 @@ function readStringArray(reader: CdrReader, count: number): string[] {
     array[i] = reader.string();
   }
   return array;
+}
+
+function getHeaderNeeds(definition: AnnotatedMessageDefinition): {
+  typeUsesDelimiterHeader: boolean;
+  typeUsesMemberHeader: boolean;
+} {
+  const { annotations } = definition;
+
+  if (!annotations) {
+    return { typeUsesDelimiterHeader: false, typeUsesMemberHeader: false };
+  }
+
+  if ("mutable" in annotations) {
+    return { typeUsesDelimiterHeader: true, typeUsesMemberHeader: true };
+  }
+  if ("appendable" in annotations) {
+    return { typeUsesDelimiterHeader: true, typeUsesMemberHeader: false };
+  }
+  return { typeUsesDelimiterHeader: false, typeUsesMemberHeader: false };
+}
+
+function getDefinitionId(definition: AnnotatedMessageDefinitionField): number | undefined {
+  const { annotations } = definition;
+
+  if (!annotations) {
+    return undefined;
+  }
+
+  if (!("id" in annotations)) {
+    return undefined;
+  }
+
+  const id = annotations.id;
+  if (id != undefined && id.type === "const-param" && typeof id.value === "number") {
+    return id.value;
+  }
+
+  return undefined;
 }
