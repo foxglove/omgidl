@@ -101,7 +101,9 @@ export class IDLNodeProcessor {
       });
       if (!typeNode) {
         throw new Error(
-          `Could not find type <${type}> for field <${node.name ?? "undefined"}> in <${node.name}>`,
+          `Could not find type <${type}> for ${node.declarator} <${node.name ?? "undefined"}> in <${
+            getParentScopedIdentifier(scopedIdentifier) ?? "global scope"
+          }>`,
         );
       }
       if (typeNode.declarator === "enum") {
@@ -186,7 +188,7 @@ export class IDLNodeProcessor {
       if (typeNode.declarator === "typedef") {
         // To fully support this we would need to either make multiple passes or recursively resolve typedefs
         throw new Error(
-          `We do not support typedefs that reference other typedefs ${node.name} -> ${typeNode.name}`,
+          `We do not support typedefs that reference other typedefs ${node.name} -> ${type}`,
         );
       }
       if (typeNode.declarator === "struct") {
@@ -411,6 +413,14 @@ function toScopedIdentifier(path: string[]): string {
 
 function fromScopedIdentifier(path: string): string[] {
   return path.split("::");
+}
+
+function getParentScopedIdentifier(scopedIdentifier: string): string | undefined {
+  const path = fromScopedIdentifier(scopedIdentifier);
+  if (path.length === 1) {
+    return undefined;
+  }
+  return toScopedIdentifier(path.slice(0, -1));
 }
 
 function normalizeType(type: string): string {
