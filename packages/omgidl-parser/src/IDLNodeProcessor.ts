@@ -101,9 +101,9 @@ export class IDLNodeProcessor {
       });
       if (!typeNode) {
         throw new Error(
-          `Could not find type <${type}> for ${node.declarator} <${node.name ?? "undefined"}> in <${
-            getParentScopedIdentifier(scopedIdentifier) ?? "global scope"
-          }>`,
+          `Could not find type <${type}> for ${node.declarator} <${
+            node.name ?? "undefined"
+          }> in <${getParentScopedIdentifier(scopedIdentifier)}>`,
         );
       }
       if (typeNode.declarator === "enum") {
@@ -415,10 +415,11 @@ function fromScopedIdentifier(path: string): string[] {
   return path.split("::");
 }
 
-function getParentScopedIdentifier(scopedIdentifier: string): string | undefined {
+/** Used for error messages. Returns "global scope" when there is no parent scoped identifier */
+function getParentScopedIdentifier(scopedIdentifier: string): string {
   const path = fromScopedIdentifier(scopedIdentifier);
   if (path.length === 1) {
-    return undefined;
+    return "global scope";
   }
   return toScopedIdentifier(path.slice(0, -1));
 }
