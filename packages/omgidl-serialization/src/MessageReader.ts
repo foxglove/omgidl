@@ -6,8 +6,13 @@ import {
 
 export type Deserializer = (
   reader: CdrReader,
+  /**
+   * Optional length only applied for string types as character length.
+   * Prevents reader from reading sequence length again if already read via header.
+   */
   length?: number,
 ) => boolean | number | bigint | string;
+
 export type ArrayDeserializer = (
   reader: CdrReader,
   count: number,
@@ -93,7 +98,7 @@ export class MessageReader<T = unknown> {
       let fieldLength = field.arrayLength;
       if (readMemberHeader) {
         const { id, objectSize: objectSizeBytes } = reader.emHeader();
-        const itemSize = typeToByteLength[field.type];
+        const itemSize = typeToByteLength(field.type);
         if (itemSize != undefined) {
           fieldLength ??= Math.ceil(objectSizeBytes / itemSize);
         }
@@ -147,20 +152,28 @@ export class MessageReader<T = unknown> {
   }
 }
 
-const typeToByteLength: Record<string, number> = {
-  bool: 1,
-  int8: 1,
-  uint8: 1,
-  int16: 2,
-  uint16: 2,
-  int32: 4,
-  uint32: 4,
-  int64: 8,
-  uint64: 8,
-  float32: 4,
-  float64: 8,
-  string: 1,
-};
+function typeToByteLength(type: string): number | undefined {
+  switch (type) {
+    case "bool":
+    case "int8":
+    case "uint8":
+    case "string":
+      return 1;
+    case "int16":
+    case "uint16":
+      return 2;
+    case "int32":
+    case "uint32":
+    case "float32":
+      return 4;
+    case "int64":
+    case "uint64":
+    case "float64":
+      return 8;
+    default:
+      return undefined;
+  }
+}
 
 const deserializers = new Map<string, Deserializer>([
   ["bool", (reader) => Boolean(reader.int8())],
