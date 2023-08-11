@@ -95,8 +95,10 @@ const uint8Array = writer.writeMessage({
 
 Unsupported:
 
-- `@mutable` and `@appendable` annotations. We do not currently support reading of DHeaders and EMHeaders that would make this possible. Attempting to read messages from schemas that include these annotations may result in data being deserialized incorrectly.
+- `PL_CDR` (XCDR1) - We don't support reading `PL_CDR`headers. Expect for messages to be fail deserialization or be deserialized incorrectly
 - `wchar` and `wstring` - These are written and read using custom implementations that are specific to someone's environment. They are read in by-default as `uint8` chars.
 - `union` types
+
+NOTE: `MessageWriter` does not support writing XCDR2 `PL_CDR2` and `DELIMITED_CDR2` encoded messages. However we can deserialize these encapsulation kinds in `MessageReader`.
 
 Also see the current IDL parser schema limitations [here](../omgidl-parser/README.md#omg-idl-subset-support)
