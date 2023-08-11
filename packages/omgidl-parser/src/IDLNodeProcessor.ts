@@ -59,6 +59,7 @@ export class IDLNodeProcessor {
     this.map = new Map();
     this.buildMap();
   }
+
   /** Initializes map of IDL nodes to their scoped namespaces */
   buildMap(): void {
     for (const definition of this.definitions) {

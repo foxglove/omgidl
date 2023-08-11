@@ -1,5 +1,5 @@
 import { MessageDefinition } from "@foxglove/message-definition";
-import { IDLNodeProcessor, parseIdlToAST } from "@foxglove/omgidl-parser";
+import { parseIdlToMessageDefinition } from "@foxglove/omgidl-parser";
 
 /**
  * Parses `ros2idl` schema into flattened message definitions for serialization/deserialization.
@@ -11,15 +11,7 @@ export function parseRos2idl(messageDefinition: string): MessageDefinition[] {
   // conform to conforming idl and just read it all in a single parse so that we don't have to call parse multiple times
   const idlConformedDef = messageDefinition.replaceAll(ROS2IDL_HEADER, "");
 
-  const rawDefinitions = parseIdlToAST(idlConformedDef);
-
-  const idlProcessor = new IDLNodeProcessor(rawDefinitions);
-  idlProcessor.resolveEnumTypes();
-  idlProcessor.resolveConstants();
-  idlProcessor.resolveTypeDefs();
-  idlProcessor.resolveStructMemberComplexity();
-
-  const results = idlProcessor.toMessageDefinitions();
+  const results = parseIdlToMessageDefinition(idlConformedDef);
   for (const def of results) {
     def.name = normalizeName(def.name!);
     for (const field of def.definitions) {
