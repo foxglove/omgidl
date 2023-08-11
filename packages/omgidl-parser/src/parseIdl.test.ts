@@ -270,6 +270,15 @@ describe("omgidl parser tests", () => {
             name: "short5",
             type: "int16",
             defaultValue: 5,
+            annotations: {
+              default: {
+                name: "default",
+                type: "named-params",
+                namedParams: {
+                  value: 5,
+                },
+              },
+            },
           },
         ],
         name: "rosidl_parser::action::MyAction_Goal",
@@ -748,28 +757,105 @@ module rosidl_parser {
     expect(types).toEqual([
       {
         name: "rosidl_parser::msg::MyMessage",
+        annotations: {
+          verbatim: {
+            name: "verbatim",
+            type: "named-params",
+            namedParams: {
+              language: "comment",
+              text: "Documentation of MyMessage.Adjacent string literal.",
+            },
+          },
+          transfer_mode: {
+            name: "transfer_mode",
+            type: "const-param",
+            value: {
+              usesConstant: true,
+              name: "SHMEM_REF",
+            },
+          },
+        },
         definitions: [
           {
             defaultValue: 123,
             type: "uint16",
             name: "unsigned_short_value",
             isComplex: false,
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 123,
+                },
+                type: "named-params",
+              },
+            },
           },
           {
             type: "int32",
             name: "long_value",
             isComplex: false,
+            annotations: {
+              key: {
+                name: "key",
+                type: "no-params",
+              },
+              range: {
+                name: "range",
+                type: "named-params",
+                namedParams: {
+                  max: 10,
+                  min: -10,
+                },
+              },
+            },
           },
           {
             type: "uint32",
             name: "unsigned_long_value",
             isComplex: false,
+            annotations: {
+              arbitrary_annotation: {
+                name: "arbitrary_annotation",
+                namedParams: {
+                  key1: "value1",
+                  key2: true,
+                  key3: 0,
+                  key4: 10,
+                },
+                type: "named-params",
+              },
+              key: {
+                name: "key",
+                type: "no-params",
+              },
+              verbatim: {
+                name: "verbatim",
+                namedParams: {
+                  language: "comment",
+                  text: "",
+                },
+                type: "named-params",
+              },
+            },
           },
           {
             type: "uint32",
             name: "uint32_with_default",
             isComplex: false,
             defaultValue: 200,
+            annotations: {
+              id: {
+                name: "id",
+                type: "const-param",
+                value: 100,
+              },
+              default: {
+                name: "default",
+                type: "const-param",
+                value: 200,
+              },
+            },
           },
         ],
       },
@@ -872,87 +958,204 @@ module geometry {
     );
     expect(types).toEqual([
       {
-        name: "rosidl_parser::msg::MyMessage",
         definitions: [
           {
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 19000000000,
+                },
+                type: "named-params",
+              },
+            },
             defaultValue: 19000000000,
-            type: "float32",
+            isComplex: false,
             name: "int_and_frac_with_positive_scientific",
-            isComplex: false,
+            type: "float32",
           },
           {
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 19000000000,
+                },
+                type: "named-params",
+              },
+            },
             defaultValue: 19000000000,
-            type: "float32",
+            isComplex: false,
             name: "int_and_frac_with_explicit_positive_scientific",
-            isComplex: false,
+            type: "float32",
           },
           {
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 1.1e-10,
+                },
+                type: "named-params",
+              },
+            },
             defaultValue: 1.1e-10,
-            type: "float32",
+            isComplex: false,
             name: "int_and_frac_with_negative_scientific",
-            isComplex: false,
+            type: "float32",
           },
           {
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 0.00009,
+                },
+                type: "named-params",
+              },
+            },
             defaultValue: 0.00009,
-            type: "float32",
+            isComplex: false,
             name: "int_and_frac",
-            isComplex: false,
+            type: "float32",
           },
           {
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 1,
+                },
+                type: "named-params",
+              },
+            },
             defaultValue: 1,
-            type: "float32",
+            isComplex: false,
             name: "int_with_empty_frac",
-            isComplex: false,
+            type: "float32",
           },
           {
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 0.1,
+                },
+                type: "named-params",
+              },
+            },
             defaultValue: 0.1,
-            type: "float32",
+            isComplex: false,
             name: "frac_only",
-            isComplex: false,
+            type: "float32",
           },
           {
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 900000,
+                },
+                type: "named-params",
+              },
+            },
             defaultValue: 900000,
-            type: "float32",
+            isComplex: false,
             name: "int_with_positive_scientific",
-            isComplex: false,
+            type: "float32",
           },
           {
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 900000,
+                },
+                type: "named-params",
+              },
+            },
             defaultValue: 900000,
-            type: "float32",
+            isComplex: false,
             name: "int_with_explicit_positive_scientific",
-            isComplex: false,
+            type: "float32",
           },
           {
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 0.00009,
+                },
+                type: "named-params",
+              },
+            },
             defaultValue: 0.00009,
-            type: "float32",
+            isComplex: false,
             name: "int_with_negative_scientific",
-            isComplex: false,
+            type: "float32",
           },
           {
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 8.7,
+                },
+                type: "named-params",
+              },
+            },
             defaultValue: 8.7,
-            type: "float32",
+            isComplex: false,
             name: "fixed_int_and_frac",
-            isComplex: false,
+            type: "float32",
           },
           {
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 4,
+                },
+                type: "named-params",
+              },
+            },
             defaultValue: 4,
-            type: "float32",
+            isComplex: false,
             name: "fixed_int_with_dot_only",
-            isComplex: false,
+            type: "float32",
           },
           {
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 0.3,
+                },
+                type: "named-params",
+              },
+            },
             defaultValue: 0.3,
-            type: "float32",
-            name: "fixed_frac_only",
             isComplex: false,
+            name: "fixed_frac_only",
+            type: "float32",
           },
           {
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 7,
+                },
+                type: "named-params",
+              },
+            },
             defaultValue: 7,
-            type: "float32",
-            name: "fixed_int_only",
             isComplex: false,
+            name: "fixed_int_only",
+            type: "float32",
           },
         ],
+        name: "rosidl_parser::msg::MyMessage",
       },
     ]);
   });
@@ -1079,12 +1282,30 @@ module rosidl_parser {
             isComplex: false,
             name: "int1",
             type: "int32",
+            annotations: {
+              default: {
+                name: "default",
+                type: "named-params",
+                namedParams: {
+                  value: 5,
+                },
+              },
+            },
           },
           {
             defaultValue: 5,
             isComplex: false,
             name: "int2",
             type: "int32",
+            annotations: {
+              default: {
+                name: "default",
+                type: "named-params",
+                namedParams: {
+                  value: 5,
+                },
+              },
+            },
           },
         ],
         name: "action::MyAction_Goal",
@@ -1289,6 +1510,15 @@ module rosidl_parser {
             type: "uint32",
             isComplex: false,
             defaultValue: 1,
+            annotations: {
+              default: {
+                name: "default",
+                type: "named-params",
+                namedParams: {
+                  value: { usesConstant: true, name: "COLORS::GREEN" },
+                },
+              },
+            },
           },
         ],
       },
@@ -1308,21 +1538,39 @@ module rosidl_parser {
     const types = parse(msgDef);
     expect(types).toEqual([
       {
-        name: "JustACoupleNumbers",
         definitions: [
           {
             name: "byteWithSameDefault",
             type: "uint8",
-            isComplex: false,
             defaultValue: 2,
+            isComplex: false,
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 2,
+                },
+                type: "named-params",
+              },
+            },
           },
           {
             name: "byteWithDifferentDefault",
             type: "uint8",
-            isComplex: false,
             defaultValue: 4,
+            isComplex: false,
+            annotations: {
+              default: {
+                name: "default",
+                namedParams: {
+                  value: 4,
+                },
+                type: "named-params",
+              },
+            },
           },
         ],
+        name: "JustACoupleNumbers",
       },
     ]);
   });
