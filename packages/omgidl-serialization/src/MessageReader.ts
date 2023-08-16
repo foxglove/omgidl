@@ -2,6 +2,7 @@ import { CdrReader } from "@foxglove/cdr";
 import {
   AnnotatedMessageDefinition,
   AnnotatedMessageDefinitionField,
+  IDLMessageDefinition,
 } from "@foxglove/omgidl-parser";
 
 export type Deserializer = (
@@ -31,10 +32,10 @@ export type ArrayDeserializer = (
   | string[];
 
 export class MessageReader<T = unknown> {
-  rootDefinition: AnnotatedMessageDefinition;
-  definitions: Map<string, AnnotatedMessageDefinition>;
+  rootDefinition: IDLMessageDefinition;
+  definitions: Map<string, IDLMessageDefinition>;
 
-  constructor(rootDefinitionName: string, definitions: AnnotatedMessageDefinition[]) {
+  constructor(rootDefinitionName: string, definitions: IDLMessageDefinition[]) {
     const rootDefinition = definitions.find((def) => def.name === rootDefinitionName);
     if (rootDefinition == undefined) {
       throw new Error(
@@ -42,7 +43,7 @@ export class MessageReader<T = unknown> {
       );
     }
     this.rootDefinition = rootDefinition;
-    this.definitions = new Map<string, AnnotatedMessageDefinition>(
+    this.definitions = new Map<string, IDLMessageDefinition>(
       definitions.map((def) => [def.name ?? "", def]),
     );
   }
@@ -62,7 +63,7 @@ export class MessageReader<T = unknown> {
   }
 
   private readComplexType(
-    complexDef: AnnotatedMessageDefinition,
+    complexDef: IDLMessageDefinition,
     reader: CdrReader,
     options: {
       isTopLevel: boolean;
@@ -95,13 +96,10 @@ export class MessageReader<T = unknown> {
       }
       const definitionId = getDefinitionId(field);
 
-      let fieldLength = field.arrayLength;
+      let emHeaderSizeBytes = undefined;
       if (readMemberHeader) {
         const { id, objectSize: objectSizeBytes } = reader.emHeader();
-        const itemSize = typeToByteLength(field.type);
-        if (itemSize != undefined) {
-          fieldLength ??= Math.ceil(objectSizeBytes / itemSize);
-        }
+        emHeaderSizeBytes = objectSizeBytes;
         // this can help spot misalignments in reading the data
         if (definitionId != undefined && id !== definitionId) {
           throw Error(
@@ -121,35 +119,79 @@ export class MessageReader<T = unknown> {
 
         if (field.isArray === true) {
           // For dynamic length arrays we need to read a uint32 prefix
-          const arrayLength = fieldLength ?? reader.sequenceLength();
-          const array = [];
-          for (let i = 0; i < arrayLength; i++) {
-            array.push(this.readComplexType(nestedComplexDef, reader, childOptions));
-          }
+          const arrayLengths = field.arrayLengths ?? [reader.sequenceLength()];
+
+          const complexDeserializer = () => {
+            return this.readComplexType(nestedComplexDef, reader, childOptions);
+          };
+          const array = readNestedArray(complexDeserializer, arrayLengths, 0);
           msg[field.name] = array;
         } else {
           msg[field.name] = this.readComplexType(nestedComplexDef, reader, childOptions);
         }
       } else {
+        const typeLength = typeToByteLength(field.type);
+        if (typeLength == undefined) {
+          throw new Error(`Unrecognized primitive type ${field.type}`);
+        }
+        const headerSpecifiedLength =
+          emHeaderSizeBytes != undefined ? Math.ceil(emHeaderSizeBytes / typeLength) : undefined;
+
         if (field.isArray === true) {
           const deser = typedArrayDeserializers.get(field.type);
           if (deser == undefined) {
             throw new Error(`Unrecognized primitive array type ${field.type}[]`);
           }
-          // For dynamic length arrays we need to read a uint32 prefix
-          const arrayLength = fieldLength ?? reader.sequenceLength();
-          msg[field.name] = deser(reader, arrayLength);
+
+          const arrayLengths =
+            field.arrayLengths ??
+            // the byteLength written in the header doesn't help us determine count of strings in the array
+            // This will be the next field in the message
+            (field.type === "string"
+              ? [reader.sequenceLength()]
+              : [headerSpecifiedLength ?? reader.sequenceLength()]);
+
+          if (arrayLengths.length > 1) {
+            const typedArrayDeserializer = () => {
+              return deser(reader, arrayLengths[arrayLengths.length - 1]!);
+            };
+
+            // last arrayLengths length is handled in deserializer. It returns an array
+            msg[field.name] = readNestedArray(typedArrayDeserializer, arrayLengths.slice(0, -1), 0);
+          } else {
+            msg[field.name] = deser(reader, arrayLengths[0]!);
+          }
         } else {
           const deser = deserializers.get(field.type);
           if (deser == undefined) {
             throw new Error(`Unrecognized primitive type ${field.type}`);
           }
-          msg[field.name] = deser(reader, fieldLength);
+
+          // fieldLength only used for `string` type primitives
+          msg[field.name] = deser(reader, headerSpecifiedLength);
         }
       }
     }
     return msg;
   }
+}
+
+function readNestedArray(deser: () => unknown, arrayLengths: number[], depth: number): unknown[] {
+  if (depth > arrayLengths.length - 1 || depth < 0) {
+    throw Error(`Invalid depth ${depth} for array of length ${arrayLengths.length}`);
+  }
+
+  const array = [];
+
+  for (let i = 0; i < arrayLengths[depth]!; i++) {
+    if (depth === arrayLengths.length - 1) {
+      array.push(deser());
+    } else {
+      array.push(readNestedArray(deser, arrayLengths, depth + 1));
+    }
+  }
+
+  return array;
 }
 
 function typeToByteLength(type: string): number | undefined {

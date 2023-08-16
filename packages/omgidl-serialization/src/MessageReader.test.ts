@@ -190,6 +190,18 @@ describe("MessageReader", () => {
       { first: new Uint8Array([0, -1, -128, 127]) },
     ],
     [
+      `struct a {uint8 first[2][2];};`,
+      "a",
+      [0x00, 0xff, 0x80, 0x7f],
+      { first: [new Uint8Array([0, -1]), new Uint8Array([-128, 127])] },
+    ],
+    [
+      `struct a {uint8 first[2][1];};`,
+      "a",
+      [0xff, 0x80],
+      { first: [new Uint8Array([-1]), new Uint8Array([-128])] },
+    ],
+    [
       `struct a {string first[2];};`,
       "a",
       [...serializeString("one"), ...serializeString("longer string")],

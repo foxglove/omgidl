@@ -4,6 +4,7 @@ import {
   MessageDefinition,
   MessageDefinitionField,
 } from "@foxglove/message-definition";
+import { IDLMessageDefinitionField } from "@foxglove/omgidl-parser";
 
 type PrimitiveWriter = (value: unknown, defaultValue: DefaultValue, writer: CdrWriter) => void;
 type PrimitiveArrayWriter = (value: unknown, defaultValue: DefaultValue, writer: CdrWriter) => void;
@@ -75,7 +76,7 @@ export class MessageWriter {
       );
     }
     this.rootDefinition = rootDefinition.definitions;
-    this.definitions = new Map<string, MessageDefinitionField[]>(
+    this.definitions = new Map<string, IDLMessageDefinitionField[]>(
       definitions.map((def) => [def.name ?? "", def.definitions]),
     );
     this.cdrOptions = cdrOptions ?? {};
@@ -102,7 +103,11 @@ export class MessageWriter {
     return writer.data;
   }
 
-  private byteSize(definition: MessageDefinitionField[], message: unknown, offset: number): number {
+  private byteSize(
+    definition: IDLMessageDefinitionField[],
+    message: unknown,
+    offset: number,
+  ): number {
     const messageObj = message as Record<string, unknown> | undefined;
     let newOffset = offset;
 
@@ -114,11 +119,14 @@ export class MessageWriter {
       const nestedMessage = messageObj?.[field.name];
 
       if (field.isArray === true) {
-        const arrayLength = field.arrayLength ?? fieldLength(nestedMessage);
+        const arrayLength = field.arrayLengths
+          ? field.arrayLengths[0]!
+          : fieldLength(nestedMessage);
+
         const dataIsArray = Array.isArray(nestedMessage) || ArrayBuffer.isView(nestedMessage);
         const dataArray = (dataIsArray ? nestedMessage : []) as unknown[];
 
-        if (field.arrayLength == undefined) {
+        if (field.arrayLengths == undefined) {
           // uint32 array length for dynamic arrays
           newOffset += padding(newOffset, 4);
           newOffset += 4;
@@ -169,7 +177,11 @@ export class MessageWriter {
     return newOffset;
   }
 
-  private write(definition: MessageDefinitionField[], message: unknown, writer: CdrWriter): void {
+  private write(
+    definition: IDLMessageDefinitionField[],
+    message: unknown,
+    writer: CdrWriter,
+  ): void {
     const messageObj = message as Record<string, unknown> | undefined;
 
     for (const field of definition) {
@@ -180,11 +192,14 @@ export class MessageWriter {
       const nestedMessage = messageObj?.[field.name];
 
       if (field.isArray === true) {
-        const arrayLength = field.arrayLength ?? fieldLength(nestedMessage);
+        const arrayLength = field.arrayLengths
+          ? field.arrayLengths[0]!
+          : fieldLength(nestedMessage);
+
         const dataIsArray = Array.isArray(nestedMessage) || ArrayBuffer.isView(nestedMessage);
         const dataArray = (dataIsArray ? nestedMessage : []) as unknown[];
 
-        if (field.arrayLength == undefined) {
+        if (field.arrayLengths == undefined) {
           // uint32 array length for dynamic arrays
           writer.sequenceLength(arrayLength);
         }

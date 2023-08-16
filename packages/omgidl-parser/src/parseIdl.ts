@@ -14,9 +14,9 @@ export function parseIdl(messageDefinition: string): AnnotatedMessageDefinition[
 
   const idlProcessor = new IDLNodeProcessor(rawIdlDefinitions);
   idlProcessor.resolveEnumTypes();
-  idlProcessor.resolveConstants();
-  idlProcessor.resolveTypeDefs();
-  idlProcessor.resolveStructMemberComplexity();
+  idlProcessor.resolveConstantUsage();
+  idlProcessor.resolveTypeDefComplexity();
+  idlProcessor.resolveStructMember();
 
   return idlProcessor.toAnnotatedMessageDefinitions();
 }
@@ -31,9 +31,9 @@ export function parseIdlToMessageDefinition(messageDefinition: string): MessageD
 
   const idlProcessor = new IDLNodeProcessor(rawIdlDefinitions);
   idlProcessor.resolveEnumTypes();
-  idlProcessor.resolveConstants();
-  idlProcessor.resolveTypeDefs();
-  idlProcessor.resolveStructMemberComplexity();
+  idlProcessor.resolveConstantUsage();
+  idlProcessor.resolveTypeDefComplexity();
+  idlProcessor.resolveStructMember();
 
   return idlProcessor.toMessageDefinitions();
 }

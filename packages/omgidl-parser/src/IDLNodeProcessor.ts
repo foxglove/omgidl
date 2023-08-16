@@ -10,6 +10,7 @@ import {
   ConstantNode,
   AnnotatedMessageDefinition,
   AnnotatedMessageDefinitionField,
+  IDLMessageDefinition,
 } from "./types";
 
 const numericTypeMap: Record<string, string> = {
@@ -42,7 +43,7 @@ const SIMPLE_TYPES = new Set([
 ]);
 
 const POSSIBLE_UNRESOLVED_MEMBERS = [
-  "arrayLength",
+  "arrayLengths",
   "upperBound",
   "arrayUpperBound",
   "value",
@@ -119,7 +120,7 @@ export class IDLNodeProcessor {
     }
   }
 
-  resolveConstants(): void {
+  resolveConstantUsage(): void {
     for (const [scopedIdentifier, node] of this.map.entries()) {
       if (
         node.declarator !== "struct-member" &&
@@ -131,20 +132,44 @@ export class IDLNodeProcessor {
 
       // need to iterate through keys because this can occur on arrayLength, upperBound, arrayUpperBound, value, defaultValue
       for (const key of POSSIBLE_UNRESOLVED_MEMBERS) {
-        const value = node[key];
-        if (typeof value !== "object") {
+        const keyValue = node[key];
+        let finalKeyValue = undefined;
+        if (Array.isArray(keyValue)) {
+          const arrayLengths = keyValue;
+
+          let arrayLengthsResolved = false;
+          const finalArrayLengths = arrayLengths.map((arrayLength) => {
+            if (typeof arrayLength === "number") {
+              return arrayLength;
+            }
+            arrayLengthsResolved = true;
+            const constantNode = this.resolveConstantReference({
+              constantName: arrayLength.name,
+              nodeScopedIdentifier: scopedIdentifier,
+            });
+            return constantNode.value;
+          });
+          if (arrayLengthsResolved) {
+            finalKeyValue = finalArrayLengths;
+          }
+        } else if (typeof keyValue === "object") {
+          const constantNode = this.resolveConstantReference({
+            constantName: keyValue.name,
+            nodeScopedIdentifier: scopedIdentifier,
+          });
+          finalKeyValue = constantNode.value;
+        }
+
+        if (finalKeyValue == undefined) {
           continue;
         }
-        const constantNode = this.resolveConstantReference({
-          constantName: value.name,
-          nodeScopedIdentifier: scopedIdentifier,
-        });
+
         // need to make sure we are updating the most up to date node
         // guaranteed to exist since it's the one we are iterating over
         const possiblyUpdatedNode = this.map.get(scopedIdentifier)!;
         this.map.set(scopedIdentifier, {
           ...possiblyUpdatedNode,
-          [key]: constantNode.value,
+          [key]: finalKeyValue,
         });
       }
     }
@@ -172,7 +197,7 @@ export class IDLNodeProcessor {
   }
 
   /**  Resolve typedefs that reference structs as complex*/
-  resolveTypeDefs(): void {
+  resolveTypeDefComplexity(): void {
     // assume that typedefs can't reference other typedefs
     for (const [scopedIdentifier, node] of this.map.entries()) {
       if (node.declarator !== "typedef") {
@@ -204,8 +229,8 @@ export class IDLNodeProcessor {
     }
   }
 
-  /** Resolve struct-members that refer to complex types as complex */
-  resolveStructMemberComplexity(): void {
+  /** Resolve struct-members definitions that use typedefs or reference other complex types */
+  resolveStructMember(): void {
     // resolve non-primitive struct member types
     for (const [scopedIdentifier, node] of this.map.entries()) {
       if (node.declarator !== "struct-member") {
@@ -232,6 +257,7 @@ export class IDLNodeProcessor {
           declarator: _d,
           name: _name,
           annotations: typedefAnnotations,
+          arrayLengths: typedefArrayLengths,
           ...partialDef
         } = typeNode;
 
@@ -239,6 +265,15 @@ export class IDLNodeProcessor {
           ...node,
           ...partialDef,
         };
+        if (typedefArrayLengths) {
+          const arrayLengths = [];
+          if (node.arrayLengths) {
+            // important that node arrayLengths are pushed first to maintain dimensional order: outermost first
+            arrayLengths.push(...node.arrayLengths);
+          }
+          arrayLengths.push(...typedefArrayLengths);
+          newNode.arrayLengths = arrayLengths;
+        }
 
         const annotations = { ...typedefAnnotations, ...node.annotations };
         if (Object.keys(annotations).length > 0) {
@@ -324,7 +359,7 @@ export class IDLNodeProcessor {
     }
     const {
       declarator: _d,
-      arrayLength,
+      arrayLengths,
       arrayUpperBound,
       upperBound,
       value,
@@ -334,10 +369,13 @@ export class IDLNodeProcessor {
 
     if (
       typeof arrayUpperBound === "object" ||
-      typeof arrayLength === "object" ||
       typeof upperBound === "object" ||
       typeof value === "object"
     ) {
+      throw Error(`Constants not resolved for ${nodeScopedIdentifier}`);
+    }
+
+    if (arrayLengths?.find((len) => typeof len === "object") != undefined) {
       throw Error(`Constants not resolved for ${nodeScopedIdentifier}`);
     }
 
@@ -347,8 +385,8 @@ export class IDLNodeProcessor {
     } as AnnotatedMessageDefinitionField;
 
     // avoid writing undefined to object fields
-    if (arrayLength != undefined) {
-      fullMessageDef.arrayLength = arrayLength;
+    if (arrayLengths != undefined) {
+      fullMessageDef.arrayLengths = arrayLengths as number[];
     }
     if (arrayUpperBound != undefined) {
       fullMessageDef.arrayUpperBound = arrayUpperBound;
@@ -389,12 +427,20 @@ export class IDLNodeProcessor {
 }
 
 // Removes `annotation` field from the Definition and DefinitionField objects
-function toMessageDefinition(idlMsgDef: AnnotatedMessageDefinition): MessageDefinition {
+function toMessageDefinition(idlMsgDef: IDLMessageDefinition): MessageDefinition {
   const { definitions, annotations: _a, ...partialDef } = idlMsgDef;
   const fieldDefinitions = definitions.map((def) => {
-    const { annotations: _an, ...partialFieldDef } = def;
-    return partialFieldDef;
+    const { annotations: _an, arrayLengths, ...partialFieldDef } = def;
+    const fieldDef = { ...partialFieldDef };
+    if (arrayLengths != undefined && arrayLengths.length > 0) {
+      if (arrayLengths.length > 1) {
+        throw new Error(`Multi-dimensional arrays are not supported in MessageDefinition type`);
+      }
+      (fieldDef as MessageDefinitionField).arrayLength = arrayLengths[0]!;
+    }
+    return fieldDef;
   });
+
   return { ...partialDef, definitions: fieldDefinitions };
 }
 

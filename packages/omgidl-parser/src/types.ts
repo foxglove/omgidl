@@ -8,10 +8,11 @@ type UnresolvedConstantField = Omit<
   MessageDefinitionField,
   "arrayLength" | "upperBound" | "arrayUpperBound" | "value"
 > & {
-  arrayLength?: number | ResolveToConstantValue;
   upperBound?: number | ResolveToConstantValue;
   arrayUpperBound?: number | ResolveToConstantValue;
   value?: ConstantValue | ResolveToConstantValue;
+  /** Outermost arrays are first */
+  arrayLengths?: (number | ResolveToConstantValue)[];
 };
 
 export type RawIdlDefinition = DefinitionNode;
@@ -98,11 +99,17 @@ export interface AnnotationConstParam extends BaseAnnotation {
 
 type ResolveToConstantValue = { usesConstant: true; name: string };
 
-export type AnnotatedMessageDefinitionField = MessageDefinitionField & {
+export type IDLMessageDefinition = Omit<MessageDefinition, "definitions"> & {
   annotations?: Record<string, AnyAnnotation>;
+  definitions: IDLMessageDefinitionField[];
 };
 
-export type AnnotatedMessageDefinition = Omit<MessageDefinition, "definitions"> & {
+export type IDLMessageDefinitionField = Omit<MessageDefinitionField, "arrayLength"> & {
   annotations?: Record<string, AnyAnnotation>;
-  definitions: AnnotatedMessageDefinitionField[];
+  // multidimensional arrays
+  arrayLengths?: number[];
 };
+
+// Short-sighted type names that are now deprecated
+export type AnnotatedMessageDefinition = IDLMessageDefinition;
+export type AnnotatedMessageDefinitionField = IDLMessageDefinitionField;
