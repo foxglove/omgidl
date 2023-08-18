@@ -135,7 +135,9 @@ export class MessageReader<T = unknown> {
           throw new Error(`Unrecognized primitive type ${field.type}`);
         }
         const headerSpecifiedLength =
-          emHeaderSizeBytes != undefined ? Math.ceil(emHeaderSizeBytes / typeLength) : undefined;
+          emHeaderSizeBytes != undefined ? Math.floor(emHeaderSizeBytes / typeLength) : undefined;
+        const remainderBytes =
+          emHeaderSizeBytes != undefined ? emHeaderSizeBytes % typeLength : undefined;
 
         if (field.isArray === true) {
           const deser = typedArrayDeserializers.get(field.type);
@@ -159,7 +161,15 @@ export class MessageReader<T = unknown> {
             // last arrayLengths length is handled in deserializer. It returns an array
             msg[field.name] = readNestedArray(typedArrayDeserializer, arrayLengths.slice(0, -1), 0);
           } else {
-            msg[field.name] = deser(reader, arrayLengths[0]!);
+            // Special case can happen where the emHeader is not divisible by the typeLength and there is a remainder of 4 bytes.
+            // 4 bytes of 0's are printed after the header length
+            // This can happen for 8 byte typeLength types.
+            if (arrayLengths[0] === 0 && remainderBytes === 4) {
+              reader.sequenceLength();
+              msg[field.name] = deser(reader, 0);
+            } else {
+              msg[field.name] = deser(reader, arrayLengths[0]!);
+            }
           }
         } else {
           const deser = deserializers.get(field.type);
@@ -171,6 +181,9 @@ export class MessageReader<T = unknown> {
           msg[field.name] = deser(reader, headerSpecifiedLength);
         }
       }
+    }
+    if (readMemberHeader) {
+      reader.sentinelHeader();
     }
     return msg;
   }

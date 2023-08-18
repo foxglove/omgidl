@@ -470,6 +470,7 @@ module builtin_interfaces {
       age: 30,
     });
   });
+
   it("reads mutable structs with arrays", () => {
     const msgDef = `
         @mutable
@@ -509,6 +510,62 @@ module builtin_interfaces {
       xValues: new Float64Array([1, 2, 3]),
       yValues: new Float64Array([4, 5, 6]),
       count: 3,
+    });
+  });
+
+  it("reads multi-dimensional fixed size arrays", () => {
+    const msgDef = `
+        @mutable
+        struct Grid {
+          float table[2][3];
+        };
+    `;
+
+    const data = {
+      grid: [
+        [1, 2, 3],
+        [4, 5, 6],
+      ],
+    };
+    const writer = new CdrWriter({ size: 1028, kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(true, 1, data.grid.length * data.grid[0]!.length * 4); // size of grid
+    for (const row of data.grid) {
+      writer.float32Array(row, false); // do not write length for fixed-size arrays
+    }
+    writer.sentinelHeader();
+
+    const rootDef = "Grid";
+    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+    expect(reader.readMessage(writer.data)).toEqual({
+      table: [new Float32Array([1, 2, 3]), new Float32Array([4, 5, 6])],
+    });
+  });
+
+  // it("Reads array of complex types", () => {
+  // });
+
+  it("PL_CDR: reads an empty double (8-byte) array", () => {
+    const msgDef = `
+        @mutable
+        struct Array {
+          sequence<double> numbers;
+        };
+    `;
+
+    const writer = new CdrWriter({ size: 256, kind: EncapsulationKind.PL_CDR_LE });
+    const data = {
+      numbers: [],
+    };
+
+    writer.emHeader(true, 1, data.numbers.length + 4); // writes 4 because the sequence length is after it
+    writer.sequenceLength(0);
+    writer.sentinelHeader(); // PL_CDR writes sentinel header at end of structures
+
+    const rootDef = "Array";
+    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+
+    expect(reader.readMessage(writer.data)).toEqual({
+      numbers: new Float64Array([]),
     });
   });
 
