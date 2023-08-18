@@ -527,12 +527,11 @@ module builtin_interfaces {
         [4, 5, 6],
       ],
     };
-    const writer = new CdrWriter({ size: 1028, kind: EncapsulationKind.PL_CDR_LE });
+    const writer = new CdrWriter({ size: 1028, kind: EncapsulationKind.PL_CDR2_LE });
     writer.emHeader(true, 1, data.grid.length * data.grid[0]!.length * 4); // size of grid
     for (const row of data.grid) {
       writer.float32Array(row, false); // do not write length for fixed-size arrays
     }
-    writer.sentinelHeader();
 
     const rootDef = "Grid";
     const reader = new MessageReader(rootDef, parseIdl(msgDef));
@@ -541,10 +540,7 @@ module builtin_interfaces {
     });
   });
 
-  // it("Reads array of complex types", () => {
-  // });
-
-  it("PL_CDR: reads an empty double (8-byte) array", () => {
+  it("PL_CDR2: reads an empty double (8-byte) array", () => {
     const msgDef = `
         @mutable
         struct Array {
@@ -552,14 +548,13 @@ module builtin_interfaces {
         };
     `;
 
-    const writer = new CdrWriter({ size: 256, kind: EncapsulationKind.PL_CDR_LE });
+    const writer = new CdrWriter({ size: 256, kind: EncapsulationKind.PL_CDR2_LE });
     const data = {
       numbers: [],
     };
 
     writer.emHeader(true, 1, data.numbers.length + 4); // writes 4 because the sequence length is after it
     writer.sequenceLength(0);
-    writer.sentinelHeader(); // PL_CDR writes sentinel header at end of structures
 
     const rootDef = "Array";
     const reader = new MessageReader(rootDef, parseIdl(msgDef));
