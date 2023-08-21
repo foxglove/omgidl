@@ -178,6 +178,9 @@ export class MessageReader<T = unknown> {
         }
       }
     }
+    if (readMemberHeader) {
+      reader.sentinelHeader();
+    }
     return msg;
   }
 }

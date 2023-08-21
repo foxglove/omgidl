@@ -471,6 +471,71 @@ module builtin_interfaces {
     });
   });
 
+  it("PL_CDRv1: reads simple mutable struct", () => {
+    const msgDef = `
+        @mutable
+        struct Address {
+            octet pointer;
+        };
+    `;
+
+    // PL_CDRv1 does not have dHeaders and uses sentinel headers
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(true, 1, 1); // then writes emHeader for struct object
+    writer.uint8(0x0f); // then writes the octet
+    writer.sentinelHeader();
+
+    const rootDef = "Address";
+    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+
+    expect(reader.readMessage(writer.data)).toEqual({ pointer: 15 });
+  });
+
+  it("PL_CDRv1: reads simple nested mutable struct", () => {
+    const msgDef = `
+        @mutable
+        struct Address {
+            octet pointer;
+        };
+        @mutable
+        struct Person {
+          double heightMeters;
+          Address address;
+          uint8 age;
+        };
+    `;
+
+    // PL_CDRv1 does not have dHeaders and uses sentinel headers
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    const data = {
+      heightMeters: 1.8,
+      address: {
+        pointer: 15,
+      },
+      age: 30,
+    };
+
+    writer.emHeader(true, 1, 8); // heightMeters emHeader
+    writer.float64(data.heightMeters);
+    writer.emHeader(true, 2, 4 + 4 + 1); // address emHeader
+    // dHeader for inner object not written again because the object size is already specified in the emHeader
+    writer.emHeader(true, 1, 1); // pointer emHeader
+    writer.uint8(data.address.pointer);
+    writer.sentinelHeader();
+    writer.emHeader(true, 3, 1); // age emHeader
+    writer.uint8(data.age);
+    writer.sentinelHeader();
+
+    const rootDef = "Person";
+    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+
+    expect(reader.readMessage(writer.data)).toEqual({
+      heightMeters: 1.8,
+      address: { pointer: 15 },
+      age: 30,
+    });
+  });
+
   it("reads mutable structs with arrays", () => {
     const msgDef = `
         @mutable
