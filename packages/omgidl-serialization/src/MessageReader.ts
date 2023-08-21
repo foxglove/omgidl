@@ -1,9 +1,5 @@
 import { CdrReader } from "@foxglove/cdr";
-import {
-  AnnotatedMessageDefinition,
-  AnnotatedMessageDefinitionField,
-  IDLMessageDefinition,
-} from "@foxglove/omgidl-parser";
+import { IDLMessageDefinition, IDLMessageDefinitionField } from "@foxglove/omgidl-parser";
 
 export type Deserializer = (
   reader: CdrReader,
@@ -273,7 +269,7 @@ function readStringArray(reader: CdrReader, count: number): string[] {
   return array;
 }
 
-function getHeaderNeeds(definition: AnnotatedMessageDefinition): {
+function getHeaderNeeds(definition: IDLMessageDefinition): {
   typeUsesDelimiterHeader: boolean;
   typeUsesMemberHeader: boolean;
 } {
@@ -292,7 +288,7 @@ function getHeaderNeeds(definition: AnnotatedMessageDefinition): {
   return { typeUsesDelimiterHeader: false, typeUsesMemberHeader: false };
 }
 
-function getDefinitionId(definition: AnnotatedMessageDefinitionField): number | undefined {
+function getDefinitionId(definition: IDLMessageDefinitionField): number | undefined {
   const { annotations } = definition;
 
   if (!annotations) {

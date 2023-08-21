@@ -8,9 +8,8 @@ import {
   RawIdlDefinition,
   AnyIDLNode,
   ConstantNode,
-  AnnotatedMessageDefinition,
-  AnnotatedMessageDefinitionField,
   IDLMessageDefinition,
+  IDLMessageDefinitionField,
 } from "./types";
 
 const numericTypeMap: Record<string, string> = {
@@ -289,14 +288,14 @@ export class IDLNodeProcessor {
   }
 
   toMessageDefinitions(): MessageDefinition[] {
-    const idlMsgDefs = this.toAnnotatedMessageDefinitions();
+    const idlMsgDefs = this.toIDLMessageDefinitions();
 
     return idlMsgDefs.map(toMessageDefinition);
   }
 
   /** Convert to Message Definitions for serialization and usage in foxglove studio's Raw Message panel. Returned in order of original definitions*/
-  toAnnotatedMessageDefinitions(): AnnotatedMessageDefinition[] {
-    const messageDefinitions: AnnotatedMessageDefinition[] = [];
+  toIDLMessageDefinitions(): IDLMessageDefinition[] {
+    const messageDefinitions: IDLMessageDefinition[] = [];
     const topLevelConstantDefinitions: MessageDefinitionField[] = [];
 
     // flatten for output to message definition
@@ -316,9 +315,9 @@ export class IDLNodeProcessor {
               toScopedIdentifier([namespacedName, typeof def === "string" ? def : def.name]),
             ),
           )
-          .filter(Boolean) as AnnotatedMessageDefinitionField[];
+          .filter(Boolean) as IDLMessageDefinitionField[];
         if (definitionFields.length > 0) {
-          const def: AnnotatedMessageDefinition = {
+          const def: IDLMessageDefinition = {
             name: namespacedName,
             definitions: definitionFields,
           };
@@ -346,7 +345,7 @@ export class IDLNodeProcessor {
 
   private idlNodeToMessageDefinitionField(
     nodeScopedIdentifier: string,
-  ): AnnotatedMessageDefinitionField | undefined {
+  ): IDLMessageDefinitionField | undefined {
     const node = this.map.get(nodeScopedIdentifier);
     if (!node) {
       return undefined;
@@ -379,7 +378,7 @@ export class IDLNodeProcessor {
     const fullMessageDef = {
       ...partialMessageDef,
       type: normalizeType(partialMessageDef.type),
-    } as AnnotatedMessageDefinitionField;
+    } as IDLMessageDefinitionField;
 
     // avoid writing undefined to object fields
     if (arrayLengths != undefined) {
