@@ -187,7 +187,19 @@ describe("MessageReader", () => {
       `struct a {uint8 first[4];};`,
       "a",
       [0x00, 0xff, 0x80, 0x7f],
-      { first: new Uint8Array([0, -1, -128, 127]) },
+      { first: new Uint8Array([0x00, 0xff, 0x80, 0x7f]) },
+    ],
+    [
+      `struct a {uint8 first[2][2];};`,
+      "a",
+      [0x00, 0xff, 0x80, 0x7f],
+      { first: [new Uint8Array([0x00, 0xff]), new Uint8Array([0x80, 0x7f])] },
+    ],
+    [
+      `struct a {uint8 first[2][1];};`,
+      "a",
+      [0xff, 0x80],
+      { first: [new Uint8Array([0xff]), new Uint8Array([0x80])] },
     ],
     [
       `struct a {string first[2];};`,
@@ -458,6 +470,7 @@ module builtin_interfaces {
       age: 30,
     });
   });
+
   it("reads mutable structs with arrays", () => {
     const msgDef = `
         @mutable
@@ -497,6 +510,57 @@ module builtin_interfaces {
       xValues: new Float64Array([1, 2, 3]),
       yValues: new Float64Array([4, 5, 6]),
       count: 3,
+    });
+  });
+
+  it("reads multi-dimensional fixed size arrays", () => {
+    const msgDef = `
+        @mutable
+        struct Grid {
+          float table[2][3];
+        };
+    `;
+
+    const data = {
+      grid: [
+        [1, 2, 3],
+        [4, 5, 6],
+      ],
+    };
+    const writer = new CdrWriter({ size: 1028, kind: EncapsulationKind.PL_CDR2_LE });
+    writer.emHeader(true, 1, data.grid.length * data.grid[0]!.length * 4); // size of grid
+    for (const row of data.grid) {
+      writer.float32Array(row, false); // do not write length for fixed-size arrays
+    }
+
+    const rootDef = "Grid";
+    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+    expect(reader.readMessage(writer.data)).toEqual({
+      table: [new Float32Array([1, 2, 3]), new Float32Array([4, 5, 6])],
+    });
+  });
+
+  it("reads an empty double (8-byte) array", () => {
+    const msgDef = `
+        @mutable
+        struct Array {
+          sequence<double> numbers;
+        };
+    `;
+
+    const writer = new CdrWriter({ size: 256, kind: EncapsulationKind.PL_CDR2_LE });
+    const data = {
+      numbers: [],
+    };
+
+    writer.emHeader(true, 1, data.numbers.length + 4); // writes 4 because the sequence length is after it
+    writer.sequenceLength(0);
+
+    const rootDef = "Array";
+    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+
+    expect(reader.readMessage(writer.data)).toEqual({
+      numbers: new Float64Array([]),
     });
   });
 

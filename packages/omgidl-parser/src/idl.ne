@@ -178,7 +178,7 @@ struct -> "struct" fieldName "{" (member):+ "}" {% d => {
 } %}
 
 typedef -> "typedef" (
-   allTypes fieldName arrayLength
+   allTypes fieldName arrayLengths
  | allTypes fieldName
  | sequenceType fieldName
 ) {% d => {
@@ -206,7 +206,7 @@ fieldWithAnnotation -> multiAnnotations fieldDcl {% d=> {
 } %}
 
 fieldDcl -> (
-     allTypes  multiFieldNames arrayLength
+     allTypes  multiFieldNames arrayLengths
    | allTypes multiFieldNames
    | sequenceType multiFieldNames
  ) {% (d) => {
@@ -296,8 +296,17 @@ sequenceType -> "sequence" "<" allTypes ("," (INT|%NAME) ):? ">" {% d => {
   };
 }%}
 
+arrayLengths -> arrayLength:+ {%
+	(d) => {
+		const arrInfo = {isArray: true};
+		const arrLengthList = d.flat(2).filter((num) => num != undefined);
+		arrInfo.arrayLengths = arrLengthList;
+    return arrInfo;
+	}
+%}
+
 arrayLength -> "[" (INT|%NAME) "]" {%
-  ([, intOrName]) => ({isArray: true, arrayLength: getIntOrConstantValue(intOrName ? intOrName[0] : undefined) })
+  ([, intOrName]) => (getIntOrConstantValue(intOrName ? intOrName[0] : undefined))
 %}
 
 assignment -> (

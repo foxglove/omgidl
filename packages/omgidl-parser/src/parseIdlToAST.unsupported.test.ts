@@ -32,14 +32,6 @@ describe("Unsupported IDL grammar features", () => {
     expect(() => parseIdlToAST(msgDef)).toThrow(/union/i);
   });
 
-  it("cannot parse multi-dimensional arrays", () => {
-    const msgDef = `
-      typedef float matrix[3][3];
-    `;
-
-    expect(() => parseIdlToAST(msgDef)).toThrow();
-  });
-
   it("fails forward struct declarations", () => {
     const msgDef = `
       struct Foo;

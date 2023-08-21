@@ -553,7 +553,7 @@ module idl_parser {
                   },
                   {
                     declarator: "struct-member",
-                    arrayLength: 10,
+                    arrayLengths: [10],
                     isArray: true,
                     name: "points_with_length",
                     type: "geometry::msg::Point",
@@ -1153,7 +1153,7 @@ module idl_parser {
                     upperBound: 3,
                   },
                   {
-                    arrayLength: 23,
+                    arrayLengths: [23],
                     isArray: true,
                     isComplex: false,
                     declarator: "struct-member",
@@ -1397,6 +1397,49 @@ module idl_parser {
         declarator: "typedef",
         isArray: true,
         type: "shortSeq",
+      },
+    ]);
+  });
+
+  it("can parse basic multi-dimensional arrays in typedefs", () => {
+    const msgDef = `
+      typedef float matrix[3][2];
+    `;
+    const types = parseIdlToAST(msgDef);
+
+    expect(types).toEqual([
+      {
+        name: "matrix",
+        arrayLengths: [3, 2],
+        declarator: "typedef",
+        isArray: true,
+        isComplex: false,
+        type: "float",
+      },
+    ]);
+  });
+  it("can parse basic multi-dimensional arrays in struct members", () => {
+    const msgDef = `
+      struct Camera {
+        float matrix[3][2];
+      };
+    `;
+    const types = parseIdlToAST(msgDef);
+
+    expect(types).toEqual([
+      {
+        name: "Camera",
+        declarator: "struct",
+        definitions: [
+          {
+            name: "matrix",
+            arrayLengths: [3, 2],
+            declarator: "struct-member",
+            isArray: true,
+            isComplex: false,
+            type: "float",
+          },
+        ],
       },
     ]);
   });

@@ -102,7 +102,7 @@ describe("omgidl parser tests", () => {
             name: "loc",
             type: "float32",
             isArray: true,
-            arrayLength: 2,
+            arrayLengths: [2],
             isComplex: false,
           },
         ],
@@ -128,14 +128,14 @@ describe("omgidl parser tests", () => {
             name: "loc",
             type: "float32",
             isArray: true,
-            arrayLength: 2,
+            arrayLengths: [2],
             isComplex: false,
           },
           {
             name: "loc2",
             type: "float32",
             isArray: true,
-            arrayLength: 2,
+            arrayLengths: [2],
             isComplex: false,
           },
         ],
@@ -176,63 +176,63 @@ describe("omgidl parser tests", () => {
             name: "layer1L1",
             type: "float32",
             isArray: true,
-            arrayLength: 1,
+            arrayLengths: [1],
             isComplex: false,
           },
           {
             name: "lyr1",
             type: "float32",
             isArray: true,
-            arrayLength: 1,
+            arrayLengths: [1],
             isComplex: false,
           },
           {
             name: "layer1Layer2L2",
             type: "float32",
             isArray: true,
-            arrayLength: 2,
+            arrayLengths: [2],
             isComplex: false,
           },
           {
             name: "layer2L2",
             type: "float32",
             isArray: true,
-            arrayLength: 2,
+            arrayLengths: [2],
             isComplex: false,
           },
           {
             name: "lyr2",
             type: "float32",
             isArray: true,
-            arrayLength: 2,
+            arrayLengths: [2],
             isComplex: false,
           },
           {
             name: "layer1Layer2Layer3L3",
             type: "float32",
             isArray: true,
-            arrayLength: 3,
+            arrayLengths: [3],
             isComplex: false,
           },
           {
             name: "layer2Layer3L3",
             type: "float32",
             isArray: true,
-            arrayLength: 3,
+            arrayLengths: [3],
             isComplex: false,
           },
           {
             name: "layer3L3",
             type: "float32",
             isArray: true,
-            arrayLength: 3,
+            arrayLengths: [3],
             isComplex: false,
           },
           {
             name: "lyr3",
             type: "float32",
             isArray: true,
-            arrayLength: 3,
+            arrayLengths: [3],
             isComplex: false,
           },
         ],
@@ -711,7 +711,7 @@ module rosidl_parser {
             type: "int16",
             name: "array_short_values",
             isArray: true,
-            arrayLength: 23,
+            arrayLengths: [23],
             isComplex: false,
           },
         ],
@@ -895,7 +895,7 @@ module geometry {
             type: "geometry::msg::Point",
             name: "points_with_length",
             isArray: true,
-            arrayLength: 10,
+            arrayLengths: [10],
             isComplex: true,
           },
           {
@@ -1571,6 +1571,76 @@ module rosidl_parser {
           },
         ],
         name: "JustACoupleNumbers",
+      },
+    ]);
+  });
+
+  it("resolves arrayLengths of typedefs used in structs", () => {
+    const msgDef = `
+    typedef float grid45[4][5];
+    struct BigGrid {
+      grid45 gridLine[1][2][3];
+    };`;
+
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        definitions: [
+          {
+            name: "gridLine",
+            arrayLengths: [1, 2, 3, 4, 5],
+            isArray: true,
+            isComplex: false,
+            type: "float32",
+          },
+        ],
+        name: "BigGrid",
+      },
+    ]);
+  });
+
+  it("resolves multi-dimensional array constant usage", () => {
+    const msgDef = `
+    const uint16 rows = 4;
+    const uint16 cols = 5;
+    struct GridBoard {
+      float grid[rows][cols];
+    };`;
+
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        name: "GridBoard",
+        definitions: [
+          {
+            name: "grid",
+            arrayLengths: [4, 5],
+            isArray: true,
+            isComplex: false,
+            type: "float32",
+          },
+        ],
+      },
+      {
+        name: "",
+        definitions: [
+          {
+            name: "rows",
+            isComplex: false,
+            isConstant: true,
+            type: "uint16",
+            value: 4,
+            valueText: "4",
+          },
+          {
+            name: "cols",
+            isComplex: false,
+            isConstant: true,
+            type: "uint16",
+            value: 5,
+            valueText: "5",
+          },
+        ],
       },
     ]);
   });

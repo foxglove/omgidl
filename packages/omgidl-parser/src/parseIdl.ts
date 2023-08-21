@@ -2,23 +2,23 @@ import { MessageDefinition } from "@foxglove/message-definition";
 
 import { IDLNodeProcessor } from "./IDLNodeProcessor";
 import { parseIdlToAST } from "./parseIdlToAST";
-import { AnnotatedMessageDefinition } from "./types";
+import { IDLMessageDefinition } from "./types";
 
 /**
- * Parses IDL schema to flattened AnnotatedMessageDefinitions that can be used to serialize/deserialize messages
+ * Parses IDL schema to flattened IDLMessageDefinitions that can be used to serialize/deserialize messages
  * @param messageDefinition - idl decoded message definition string
  * @returns - parsed message definition with annotations
  */
-export function parseIdl(messageDefinition: string): AnnotatedMessageDefinition[] {
+export function parseIdl(messageDefinition: string): IDLMessageDefinition[] {
   const rawIdlDefinitions = parseIdlToAST(messageDefinition);
 
   const idlProcessor = new IDLNodeProcessor(rawIdlDefinitions);
   idlProcessor.resolveEnumTypes();
-  idlProcessor.resolveConstants();
-  idlProcessor.resolveTypeDefs();
-  idlProcessor.resolveStructMemberComplexity();
+  idlProcessor.resolveConstantUsage();
+  idlProcessor.resolveTypeDefComplexity();
+  idlProcessor.resolveStructMember();
 
-  return idlProcessor.toAnnotatedMessageDefinitions();
+  return idlProcessor.toIDLMessageDefinitions();
 }
 
 /**
@@ -31,9 +31,9 @@ export function parseIdlToMessageDefinition(messageDefinition: string): MessageD
 
   const idlProcessor = new IDLNodeProcessor(rawIdlDefinitions);
   idlProcessor.resolveEnumTypes();
-  idlProcessor.resolveConstants();
-  idlProcessor.resolveTypeDefs();
-  idlProcessor.resolveStructMemberComplexity();
+  idlProcessor.resolveConstantUsage();
+  idlProcessor.resolveTypeDefComplexity();
+  idlProcessor.resolveStructMember();
 
   return idlProcessor.toMessageDefinitions();
 }
