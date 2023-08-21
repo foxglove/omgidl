@@ -106,10 +106,6 @@ export type IDLMessageDefinition = Omit<MessageDefinition, "definitions"> & {
 
 export type IDLMessageDefinitionField = Omit<MessageDefinitionField, "arrayLength"> & {
   annotations?: Record<string, AnyAnnotation>;
-  // multidimensional arrays
+  /** Length of array(s). Outermost arrays are first */
   arrayLengths?: number[];
 };
-
-// Short-sighted type names that are now deprecated
-export type AnnotatedMessageDefinition = IDLMessageDefinition;
-export type AnnotatedMessageDefinitionField = IDLMessageDefinitionField;

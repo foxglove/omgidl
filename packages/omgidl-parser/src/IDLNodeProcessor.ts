@@ -120,6 +120,7 @@ export class IDLNodeProcessor {
     }
   }
 
+  /** Resolves constants to their final literal values when used in typedefs, struct-members, and other constants */
   resolveConstantUsage(): void {
     for (const [scopedIdentifier, node] of this.map.entries()) {
       if (
@@ -137,21 +138,17 @@ export class IDLNodeProcessor {
         if (Array.isArray(keyValue)) {
           const arrayLengths = keyValue;
 
-          let arrayLengthsResolved = false;
           const finalArrayLengths = arrayLengths.map((arrayLength) => {
             if (typeof arrayLength === "number") {
               return arrayLength;
             }
-            arrayLengthsResolved = true;
             const constantNode = this.resolveConstantReference({
               constantName: arrayLength.name,
               nodeScopedIdentifier: scopedIdentifier,
             });
             return constantNode.value;
           });
-          if (arrayLengthsResolved) {
-            finalKeyValue = finalArrayLengths;
-          }
+          finalKeyValue = finalArrayLengths;
         } else if (typeof keyValue === "object") {
           const constantNode = this.resolveConstantReference({
             constantName: keyValue.name,
@@ -432,11 +429,13 @@ function toMessageDefinition(idlMsgDef: IDLMessageDefinition): MessageDefinition
   const fieldDefinitions = definitions.map((def) => {
     const { annotations: _an, arrayLengths, ...partialFieldDef } = def;
     const fieldDef = { ...partialFieldDef };
-    if (arrayLengths != undefined && arrayLengths.length > 0) {
+    if (arrayLengths != undefined) {
       if (arrayLengths.length > 1) {
         throw new Error(`Multi-dimensional arrays are not supported in MessageDefinition type`);
       }
-      (fieldDef as MessageDefinitionField).arrayLength = arrayLengths[0]!;
+      const [arrayLength] = arrayLengths;
+
+      (fieldDef as MessageDefinitionField).arrayLength = arrayLength;
     }
     return fieldDef;
   });

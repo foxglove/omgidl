@@ -187,19 +187,19 @@ describe("MessageReader", () => {
       `struct a {uint8 first[4];};`,
       "a",
       [0x00, 0xff, 0x80, 0x7f],
-      { first: new Uint8Array([0, -1, -128, 127]) },
+      { first: new Uint8Array([0x00, 0xff, 0x80, 0x7f]) },
     ],
     [
       `struct a {uint8 first[2][2];};`,
       "a",
       [0x00, 0xff, 0x80, 0x7f],
-      { first: [new Uint8Array([0, -1]), new Uint8Array([-128, 127])] },
+      { first: [new Uint8Array([0x00, 0xff]), new Uint8Array([0x80, 0x7f])] },
     ],
     [
       `struct a {uint8 first[2][1];};`,
       "a",
       [0xff, 0x80],
-      { first: [new Uint8Array([-1]), new Uint8Array([-128])] },
+      { first: [new Uint8Array([0xff]), new Uint8Array([0x80])] },
     ],
     [
       `struct a {string first[2];};`,
@@ -540,7 +540,7 @@ module builtin_interfaces {
     });
   });
 
-  it("PL_CDR2: reads an empty double (8-byte) array", () => {
+  it("reads an empty double (8-byte) array", () => {
     const msgDef = `
         @mutable
         struct Array {

@@ -299,16 +299,14 @@ sequenceType -> "sequence" "<" allTypes ("," (INT|%NAME) ):? ">" {% d => {
 arrayLengths -> arrayLength:+ {%
 	(d) => {
 		const arrInfo = {isArray: true};
-		const arrLengthList = d.flat(2);
-		arrInfo.arrayLengths = arrLengthList.map(
-      ({arrayLength}) => arrayLength
-    );
-		return arrInfo;
+		const arrLengthList = d.flat(2).filter((num) => num != undefined);
+		arrInfo.arrayLengths = arrLengthList;
+    return arrInfo;
 	}
 %}
 
 arrayLength -> "[" (INT|%NAME) "]" {%
-  ([, intOrName]) => ({arrayLength: getIntOrConstantValue(intOrName ? intOrName[0] : undefined) })
+  ([, intOrName]) => (getIntOrConstantValue(intOrName ? intOrName[0] : undefined))
 %}
 
 assignment -> (
