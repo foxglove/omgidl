@@ -161,14 +161,14 @@ typeDcl -> (
 union -> "union" fieldName "switch" "(" switchTypedef ")" "{" switchBody "}" {%
   (d) => {
   const name = d[1].name
-  const switchTypeObject = d[4];
+  const switchType = d[4].type;
   const switchBody = d[7];
   const allCases = switchBody;
   const defaultCase = allCases.find(c => "default" in c);
   const cases = allCases.filter(c => ("predicates" in c));
   const unionNode = {
     name,
-    switchType: switchTypeObject.type,
+    switchType,
     cases,
   };
   if(defaultCase) {

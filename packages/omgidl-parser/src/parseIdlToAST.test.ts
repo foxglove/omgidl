@@ -1589,6 +1589,65 @@ module idl_parser {
       },
     ]);
   });
+  it("can parse union that uses boolean", () => {
+    const msgDef = `
+    typedef boolean usesColor;
+    union Color switch (usesColor) {
+        case TRUE:
+          uint8 rgba[4];
+        case FALSE:
+          uint8 gray;
+    };
+    struct ColorSettings {
+        Color chosenColor;
+    };
+      `;
+
+    const ast = parseIdlToAST(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "usesColor",
+        isComplex: false,
+        declarator: "typedef",
+        type: "bool",
+      },
+      {
+        name: "Color",
+        switchType: "usesColor",
+        cases: [
+          {
+            predicates: [true],
+            type: {
+              name: "rgba",
+              arrayLengths: [4],
+              isArray: true,
+              isComplex: false,
+              type: "uint8",
+            },
+          },
+          {
+            predicates: [false],
+            type: {
+              name: "gray",
+              isComplex: false,
+              type: "uint8",
+            },
+          },
+        ],
+      },
+      {
+        name: "ColorSettings",
+        declarator: "struct",
+        definitions: [
+          {
+            name: "chosenColor",
+            declarator: "struct-member",
+            type: "Color",
+          },
+        ],
+      },
+    ]);
+  });
 
   /****************  Not supported by IDL (as far as I can tell) */
   it("cannot parse constants that reference other constants", () => {
