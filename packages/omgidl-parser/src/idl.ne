@@ -9,6 +9,10 @@ const keywords = [
   , "const"
   , "include"
   , "typedef"
+  , "union"
+  , "switch"
+  , "case"
+
 
   //types
   , "boolean"
@@ -63,6 +67,7 @@ const lexer = moo.compile({
   GT: '>',
   LPAR: '(',
   RPAR: ')',
+  ':': ':',
   ';': ';',
   ',': ',',
   AT: '@',
@@ -139,10 +144,11 @@ definition -> multiAnnotations (
     typeDcl
   | constantDcl
   | moduleDcl
+  | union
 ) semi {% d => {
-	const annotations = d[0];
-	const declaration = d[1][0];
-	return extend([annotations, declaration]);
+  const annotations = d[0];
+  const declaration = d[1][0];
+  return extend([annotations, declaration]);
 }%}
 
 typeDcl -> (
@@ -151,6 +157,57 @@ typeDcl -> (
   | enum
 ) {% d => d[0][0] %}
 
+
+union -> "union" fieldName "switch" "(" switchTypedef ")" "{" switchBody "}" {%
+  (d) => {
+  const name = d[1].name
+  const switchTypeObject = d[4];
+  const switchBody = d[7];
+  const allCases = switchBody;
+  const defaultCase = allCases.find(c => "default" in c);
+  const cases = allCases.filter(c => ("predicates" in c));
+  const unionNode = {
+    name,
+    switchType: switchTypeObject.type,
+    cases,
+  };
+  if(defaultCase) {
+    unionNode.defaultCase = defaultCase.default;
+  }
+  return unionNode;
+  }
+%}
+
+switchTypedef -> (
+    customType
+  | numericType
+  | booleanType
+) {% d => d[0][0] %}
+
+switchBody -> case:+ {% d => d.flat(2) %}
+
+case -> caseLabel:+ elementSpec ";" {% d => {
+  const cases = d[0];
+  const type = d[1]
+  const nonDefaultCases = cases.filter(casePredicate => casePredicate !== "default");
+  const isDefault = cases.length !== nonDefaultCases.length;
+  const caseArray = []
+  if(isDefault) {
+    caseArray.push({default: type});
+  }
+  if(nonDefaultCases.length > 0) {
+    caseArray.push({
+      predicates: nonDefaultCases,
+      type,
+    });
+  }
+  return caseArray;
+}%}
+
+caseLabel -> ("case" constExpression ":") {% (d) => d[0][1] %}
+ | ("default" ":") {% () => "default" %}
+ 
+elementSpec -> typeDeclarator {% d => d[0] %}
 
 enum ->  "enum" fieldName "{" fieldName ("," fieldName):* "}" {% d => {
   const name = d[1].name;
@@ -177,19 +234,15 @@ struct -> "struct" fieldName "{" (member):+ "}" {% d => {
   };
 } %}
 
-typedef -> "typedef" (
+typedef -> "typedef" typeDeclarator {% ([_, definition]) => (
+  { declarator: "typedef", ...definition }
+)%}
+
+typeDeclarator -> (
    allTypes fieldName arrayLengths
  | allTypes fieldName
  | sequenceType fieldName
-) {% d => {
-  const definition = d[1];
-  const astNode = extend(definition);
-  
-  return {
-    declarator: "typedef",
-    ...astNode,
-  };
-} %}
+) {% d => extend(d[0]) %} 
 
 constantDcl -> constType {% d => d[0] %}
 
@@ -206,7 +259,7 @@ fieldWithAnnotation -> multiAnnotations fieldDcl {% d=> {
 } %}
 
 fieldDcl -> (
-     allTypes  multiFieldNames arrayLengths
+     allTypes multiFieldNames arrayLengths
    | allTypes multiFieldNames
    | sequenceType multiFieldNames
  ) {% (d) => {
@@ -254,13 +307,13 @@ annotation -> at %NAME ("(" annotationParams ")"):? {% d => {
   return { type: "const-param", value: params, name: annotationName };
 } %}
 
-annotationParams -> (multipleNamedAnnotationParams | constAnnotationParam) {% d => d[0][0] %}
+annotationParams -> (multipleNamedAnnotationParams | constExpression) {% d => d[0][0] %}
 
 multipleNamedAnnotationParams -> namedAnnotationParam ("," namedAnnotationParam):* {%
   d => ([d[0], ...d[1].flatMap(([, param]) => param)]) // returns array
 %}
 
-constAnnotationParam -> %NAME {% d => 
+constExpression -> %NAME {% d => 
   // should match `variableAssignment` constant usage structure for consistency
   // between named and const annotation types
   ({usesConstant: true, name: d[0].value})
@@ -297,12 +350,12 @@ sequenceType -> "sequence" "<" allTypes ("," (INT|%NAME) ):? ">" {% d => {
 }%}
 
 arrayLengths -> arrayLength:+ {%
-	(d) => {
-		const arrInfo = {isArray: true};
-		const arrLengthList = d.flat(2).filter((num) => num != undefined);
-		arrInfo.arrayLengths = arrLengthList;
+  (d) => {
+    const arrInfo = {isArray: true};
+    const arrLengthList = d.flat(2).filter((num) => num != undefined);
+    arrInfo.arrayLengths = arrLengthList;
     return arrInfo;
-	}
+  }
 %}
 
 arrayLength -> "[" (INT|%NAME) "]" {%
