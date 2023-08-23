@@ -33,7 +33,7 @@ export type AnyIDLNode =
   | EnumNode;
 
 export type BaseIDLNode = {
-  declarator: "const" | "typedef" | "struct" | "enum" | "module" | "struct-member";
+  declarator: "const" | "typedef" | "struct" | "enum" | "module" | "struct-member" | "union";
   name: string;
   /** Set to true if Node represents a constant value */
   isConstant?: boolean;
@@ -78,6 +78,17 @@ export interface EnumNode extends BaseIDLNode {
   declarator: "enum";
   /** Contained enumerator strings in order of declaration */
   enumerators: string[];
+}
+
+export type Case = {
+  predicates: (ResolveToConstantValue | number | boolean)[];
+  type: UnresolvedConstantField;
+};
+export interface UnionNode extends BaseIDLNode {
+  declarator: "union";
+  switchType: string;
+  cases: Case[];
+  defaultCase?: UnresolvedConstantField;
 }
 
 export type AnyAnnotation = AnnotationNamedParams | AnnotationNoParams | AnnotationConstParam;

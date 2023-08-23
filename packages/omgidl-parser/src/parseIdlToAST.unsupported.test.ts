@@ -12,24 +12,7 @@ describe("Unsupported IDL grammar features", () => {
         };
       };
       `;
-    expect(() => parseIdlToAST(msgDef)).toThrow(/unexpected input/i);
-  });
-
-  it("cannot parse union declarations", () => {
-    const msgDef = `
-    union MyUnion switch (long) {
-        case 1:
-          long long_branch;
-        case 3:
-          float float_branch;
-        case 4:
-          char  char_branch;
-    };
-    struct Foo {
-        MyUnion my_union;
-    };
-      `;
-    expect(() => parseIdlToAST(msgDef)).toThrow(/union/i);
+    expect(() => parseIdlToAST(msgDef)).toThrow(/unexpected : token/i);
   });
 
   it("fails forward struct declarations", () => {

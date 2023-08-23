@@ -1443,6 +1443,212 @@ module idl_parser {
       },
     ]);
   });
+
+  it("can parse simple union declaration", () => {
+    const msgDef = `
+    union MyUnion switch (long) {
+        case 1:
+          long long_branch;
+        case 3:
+          float float_branch;
+        case 4:
+          char  char_branch;
+        default:
+          uint8 default;
+    };
+    struct Foo {
+        MyUnion my_union;
+    };
+      `;
+    const ast = parseIdlToAST(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "MyUnion",
+        switchType: "long",
+        cases: [
+          {
+            predicates: [1],
+            type: {
+              name: "long_branch",
+              isComplex: false,
+              type: "long",
+            },
+          },
+          {
+            predicates: [3],
+            type: {
+              name: "float_branch",
+              isComplex: false,
+              type: "float",
+            },
+          },
+          {
+            predicates: [4],
+            type: {
+              name: "char_branch",
+              isComplex: false,
+              type: "char",
+            },
+          },
+        ],
+        defaultCase: {
+          name: "default",
+          isComplex: false,
+          type: "uint8",
+        },
+      },
+      {
+        name: "Foo",
+        declarator: "struct",
+        definitions: [
+          {
+            name: "my_union",
+            declarator: "struct-member",
+            type: "MyUnion",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("can parse union that uses enums", () => {
+    const msgDef = `
+    enum ColorMode {
+      GRAY, RGBA, RGB
+    };
+    union Color switch (ColorMode) {
+        case ColorMode::GRAY:
+          uint8 gray;
+        case ColorMode::RGBA:
+          uint8 rgba[4];
+        default:
+          uint8 rgb[3];
+    };
+    struct ColorSettings {
+        Color chosenColor;
+    };
+      `;
+    const ast = parseIdlToAST(msgDef);
+    expect(ast).toEqual([
+      {
+        declarator: "enum",
+        enumerators: ["GRAY", "RGBA", "RGB"],
+        name: "ColorMode",
+      },
+      {
+        name: "Color",
+        switchType: "ColorMode",
+        cases: [
+          {
+            predicates: [
+              {
+                name: "ColorMode::GRAY",
+                usesConstant: true,
+              },
+            ],
+            type: {
+              isComplex: false,
+              name: "gray",
+              type: "uint8",
+            },
+          },
+          {
+            predicates: [
+              {
+                name: "ColorMode::RGBA",
+                usesConstant: true,
+              },
+            ],
+            type: {
+              arrayLengths: [4],
+              isArray: true,
+              isComplex: false,
+              name: "rgba",
+              type: "uint8",
+            },
+          },
+        ],
+        defaultCase: {
+          arrayLengths: [3],
+          isArray: true,
+          isComplex: false,
+          name: "rgb",
+          type: "uint8",
+        },
+      },
+      {
+        name: "ColorSettings",
+        declarator: "struct",
+        definitions: [
+          {
+            declarator: "struct-member",
+            name: "chosenColor",
+            type: "Color",
+          },
+        ],
+      },
+    ]);
+  });
+  it("can parse union that uses boolean", () => {
+    const msgDef = `
+    typedef boolean usesColor;
+    union Color switch (usesColor) {
+        case TRUE:
+          uint8 rgba[4];
+        case FALSE:
+          uint8 gray;
+    };
+    struct ColorSettings {
+        Color chosenColor;
+    };
+      `;
+
+    const ast = parseIdlToAST(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "usesColor",
+        isComplex: false,
+        declarator: "typedef",
+        type: "bool",
+      },
+      {
+        name: "Color",
+        switchType: "usesColor",
+        cases: [
+          {
+            predicates: [true],
+            type: {
+              name: "rgba",
+              arrayLengths: [4],
+              isArray: true,
+              isComplex: false,
+              type: "uint8",
+            },
+          },
+          {
+            predicates: [false],
+            type: {
+              name: "gray",
+              isComplex: false,
+              type: "uint8",
+            },
+          },
+        ],
+      },
+      {
+        name: "ColorSettings",
+        declarator: "struct",
+        definitions: [
+          {
+            name: "chosenColor",
+            declarator: "struct-member",
+            type: "Color",
+          },
+        ],
+      },
+    ]);
+  });
+
   /****************  Not supported by IDL (as far as I can tell) */
   it("cannot parse constants that reference other constants", () => {
     const msgDef = `
