@@ -1,6 +1,5 @@
 import { MessageDefinition, MessageDefinitionField } from "@foxglove/message-definition";
-import { IDLMessageDefinitionField } from "@foxglove/omgidl-parser";
-import { IDLMessageDefinition, parseIdl } from "@foxglove/omgidl-parser";
+import { IDLMessageDefinitionField, IDLMessageDefinition, parseIdl } from "@foxglove/omgidl-parser";
 
 /**
  * Parses `ros2idl` schema into flattened message definitions for serialization/deserialization.
