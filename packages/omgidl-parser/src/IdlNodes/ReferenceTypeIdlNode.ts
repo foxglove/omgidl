@@ -1,20 +1,17 @@
-import { IDLDefinitionMap } from "./IDLDefinitionMap";
-import { IDLEnumNode, IDLNode } from "./IDLNode";
-import { IDLStructNode } from "./IDLStructNode";
-import { SIMPLE_TYPES, normalizeType } from "./primitiveTypes";
-import {
-  BaseASTNode,
-  IDLMessageDefinitionField,
-  StructMemberASTNode,
-  TypedefASTNode,
-} from "./types";
+import { EnumIdlNode, IdlNode } from "./IdlNode";
+import { StructIdlNode } from "./StructIdlNode";
+import { BaseASTNode, StructMemberASTNode, TypedefASTNode } from "../astTypes";
+import { SIMPLE_TYPES, normalizeType } from "../primitiveTypes";
+import { IDLMessageDefinitionField } from "../types";
 
-type PossibleParentNode = IDLStructNode | IDLTypedefNode | IDLEnumNode;
+type PossibleParentNode = StructIdlNode | TypedefIdlNode | EnumIdlNode;
 
-export class ReferenceTypeNode<T extends TypedefASTNode | StructMemberASTNode> extends IDLNode<T> {
+export class ReferenceTypeIdlNode<
+  T extends TypedefASTNode | StructMemberASTNode,
+> extends IdlNode<T> {
   private needsResolution = false;
   private parentNode?: PossibleParentNode;
-  constructor(scopePath: string[], astNode: T, idlMap: IDLDefinitionMap) {
+  constructor(scopePath: string[], astNode: T, idlMap: Map<string, IdlNode>) {
     super(scopePath, astNode, idlMap);
     // We do not protect against circular typedefs
     if (!SIMPLE_TYPES.has(astNode.type)) {
@@ -25,7 +22,7 @@ export class ReferenceTypeNode<T extends TypedefASTNode | StructMemberASTNode> e
   get type(): string {
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof IDLStructNode) {
+      if (parent instanceof StructIdlNode) {
         return parent.scopedIdentifier;
       }
       return this.parent().type;
@@ -42,7 +39,7 @@ export class ReferenceTypeNode<T extends TypedefASTNode | StructMemberASTNode> e
 
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof IDLStructNode) {
+      if (parent instanceof StructIdlNode) {
         return this.astNode.isArray;
       }
       if (parent.isArray != undefined) {
@@ -56,7 +53,7 @@ export class ReferenceTypeNode<T extends TypedefASTNode | StructMemberASTNode> e
     const arrayLengths = this.astNode.arrayLengths ? [...this.astNode.arrayLengths] : [];
     if (this.needsResolution) {
       const parent = this.parent();
-      if (!(parent instanceof IDLStructNode) && parent.arrayLengths) {
+      if (!(parent instanceof StructIdlNode) && parent.arrayLengths) {
         arrayLengths.push(...parent.arrayLengths);
       }
     }
@@ -75,7 +72,7 @@ export class ReferenceTypeNode<T extends TypedefASTNode | StructMemberASTNode> e
     let arrayUpperBound = undefined;
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof IDLStructNode) {
+      if (parent instanceof StructIdlNode) {
         return undefined;
       }
       arrayUpperBound = parent.arrayUpperBound;
@@ -94,7 +91,7 @@ export class ReferenceTypeNode<T extends TypedefASTNode | StructMemberASTNode> e
     let upperBound = undefined;
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof IDLStructNode) {
+      if (parent instanceof StructIdlNode) {
         return undefined;
       }
       return parent.upperBound;
@@ -112,7 +109,7 @@ export class ReferenceTypeNode<T extends TypedefASTNode | StructMemberASTNode> e
     let annotations = undefined;
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof IDLStructNode) {
+      if (parent instanceof StructIdlNode) {
         return undefined;
       }
       if (parent.annotations != undefined) {
@@ -128,9 +125,9 @@ export class ReferenceTypeNode<T extends TypedefASTNode | StructMemberASTNode> e
   getValidFieldReference(typeName: string): PossibleParentNode {
     const maybeValidParent = this.getNode(this.scopePath, typeName);
     if (
-      !(maybeValidParent instanceof IDLStructNode) &&
-      !(maybeValidParent instanceof IDLTypedefNode) &&
-      !(maybeValidParent instanceof IDLEnumNode)
+      !(maybeValidParent instanceof StructIdlNode) &&
+      !(maybeValidParent instanceof TypedefIdlNode) &&
+      !(maybeValidParent instanceof EnumIdlNode)
     ) {
       throw new Error(
         `Expected ${typeName} to be non-module, non-constant type in ${this.scopedIdentifier}`,
@@ -158,14 +155,14 @@ export class ReferenceTypeNode<T extends TypedefASTNode | StructMemberASTNode> e
   }
 }
 
-export class IDLTypedefNode extends ReferenceTypeNode<TypedefASTNode> {
-  constructor(scopePath: string[], astNode: TypedefASTNode, idlMap: IDLDefinitionMap) {
+export class TypedefIdlNode extends ReferenceTypeIdlNode<TypedefASTNode> {
+  constructor(scopePath: string[], astNode: TypedefASTNode, idlMap: Map<string, IdlNode>) {
     super(scopePath, astNode, idlMap);
   }
 }
 
-export class IDLStructMemberNode extends ReferenceTypeNode<StructMemberASTNode> {
-  constructor(scopePath: string[], node: StructMemberASTNode, idlMap: IDLDefinitionMap) {
+export class StructMemberIdlNode extends ReferenceTypeIdlNode<StructMemberASTNode> {
+  constructor(scopePath: string[], node: StructMemberASTNode, idlMap: Map<string, IdlNode>) {
     super(scopePath, node, idlMap);
   }
 

@@ -1,15 +1,15 @@
-import { IDLDefinitionMap, toScopedIdentifier } from "./IDLDefinitionMap";
-import { IDLConstantNode, IDLNode } from "./IDLNode";
-import { IDLMessageDefinition, IDLMessageDefinitionField, ModuleASTNode } from "./types";
+import { ConstantIdlNode, IdlNode } from "./IdlNode";
+import { ModuleASTNode } from "../astTypes";
+import { IDLMessageDefinition, IDLMessageDefinitionField } from "../types";
 
-export class IDLModuleNode extends IDLNode<ModuleASTNode> {
-  constructor(scopePath: string[], astNode: ModuleASTNode, idlMap: IDLDefinitionMap) {
+export class ModuleIdlNode extends IdlNode<ModuleASTNode> {
+  constructor(scopePath: string[], astNode: ModuleASTNode, idlMap: Map<string, IdlNode>) {
     super(scopePath, astNode, idlMap);
   }
 
   toIDLMessageDefinition(): IDLMessageDefinition | undefined {
     const definitions: IDLMessageDefinitionField[] = this.definitions.flatMap((def) => {
-      if (def instanceof IDLConstantNode) {
+      if (def instanceof ConstantIdlNode) {
         return [def.toIDLMessageDefinitionField()];
       }
       return [];
@@ -18,13 +18,13 @@ export class IDLModuleNode extends IDLNode<ModuleASTNode> {
       return undefined;
     }
     return {
-      name: toScopedIdentifier([...this.scopePath, this.name]),
+      name: this.scopedIdentifier,
       definitions,
       aggregatedKind: "module",
     };
   }
 
-  get definitions(): IDLNode[] {
+  get definitions(): IdlNode[] {
     return this.astNode.definitions.map((def) =>
       this.getNode([...this.scopePath, this.name], def.name),
     );

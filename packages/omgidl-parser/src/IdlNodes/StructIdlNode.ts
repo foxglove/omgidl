@@ -1,10 +1,10 @@
-import { IDLDefinitionMap, toScopedIdentifier } from "./IDLDefinitionMap";
-import { IDLNode } from "./IDLNode";
-import { IDLStructMemberNode } from "./ReferenceTypeNode";
-import { IDLMessageDefinition, StructASTNode } from "./types";
+import { IdlNode } from "./IdlNode";
+import { StructMemberIdlNode } from "./ReferenceTypeIdlNode";
+import { StructASTNode } from "../astTypes";
+import { IDLMessageDefinition } from "../types";
 
-export class IDLStructNode extends IDLNode<StructASTNode> {
-  constructor(scopePath: string[], astNode: StructASTNode, idlMap: IDLDefinitionMap) {
+export class StructIdlNode extends IdlNode<StructASTNode> {
+  constructor(scopePath: string[], astNode: StructASTNode, idlMap: Map<string, IdlNode>) {
     super(scopePath, astNode, idlMap);
   }
 
@@ -12,7 +12,7 @@ export class IDLStructNode extends IDLNode<StructASTNode> {
     return this.astNode.name;
   }
 
-  get definitions(): IDLStructMemberNode[] {
+  get definitions(): StructMemberIdlNode[] {
     return this.astNode.definitions.map((def) => this.getStructMemberNode(def.name));
   }
 
@@ -31,16 +31,16 @@ export class IDLStructNode extends IDLNode<StructASTNode> {
   toIDLMessageDefinition(): IDLMessageDefinition {
     const definitions = this.definitions.map((def) => def.toIDLMessageDefinitionField());
     return {
-      name: toScopedIdentifier([...this.scopePath, this.name]),
+      name: this.scopedIdentifier,
       definitions,
       aggregatedKind: "struct",
       ...(this.astNode.annotations ? { annotations: this.astNode.annotations } : undefined),
     };
   }
 
-  private getStructMemberNode(name: string): IDLStructMemberNode {
+  private getStructMemberNode(name: string): StructMemberIdlNode {
     const maybeStructMember = this.getNode([...this.scopePath, this.name], name);
-    if (!(maybeStructMember instanceof IDLStructMemberNode)) {
+    if (!(maybeStructMember instanceof StructMemberIdlNode)) {
       throw new Error(`Expected ${name} to be a struct member in ${this.scopedIdentifier}`);
     }
     return maybeStructMember;

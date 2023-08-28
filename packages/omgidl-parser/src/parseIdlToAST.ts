@@ -1,7 +1,7 @@
 import { Parser } from "nearley";
 
+import { RawIdlDefinition } from "./astTypes";
 import { IDL_GRAMMAR } from "./grammar";
-import { RawIdlDefinition } from "./types";
 
 /** Uses the IDL grammar to initialize and use a Nearley parser to read the string argument
  * @returns - array of parsed IDL definitions
