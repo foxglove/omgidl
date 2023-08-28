@@ -4,35 +4,44 @@ import {
   MessageDefinitionField,
 } from "@foxglove/message-definition";
 
-type UnresolvedConstantField = Omit<
+export type UnresolvedField = Omit<
   MessageDefinitionField,
   "arrayLength" | "upperBound" | "arrayUpperBound" | "value"
 > & {
-  upperBound?: number | ResolveToConstantValue;
-  arrayUpperBound?: number | ResolveToConstantValue;
-  value?: ConstantValue | ResolveToConstantValue;
+  upperBound?: number | UnresolvedConstantValue;
+  arrayUpperBound?: number | UnresolvedConstantValue;
+  value?: ConstantValue | UnresolvedConstantValue;
   /** Outermost arrays are first */
-  arrayLengths?: (number | ResolveToConstantValue)[];
+  arrayLengths?: (number | UnresolvedConstantValue)[];
 };
 
-export type RawIdlDefinition = DefinitionNode;
+type UnresolvedConstantValue = { usesConstant: true; name: string };
+
+export type RawIdlDefinition = DefinitionASTNode;
 
 /** All possible top-level definitions that can be present in IDL schema */
-export type DefinitionNode = ModuleNode | StructNode | EnumNode | ConstantNode | TypeDefNode;
+export type DefinitionASTNode =
+  | ModuleASTNode
+  | StructASTNode
+  | EnumASTNode
+  | ConstantASTNode
+  | UnionASTNode
+  | TypedefASTNode;
 
 /** Field nodes: these can be fields within a greater struct or module. They all extend MessageDefinitionField. */
-export type DefinitionFieldNode = StructMemberNode | ConstantNode | TypeDefNode;
+export type DefinitionFieldASTNode = StructMemberASTNode | ConstantASTNode | TypedefASTNode;
 
 /** All possible IDL declarator nodes */
-export type AnyIDLNode =
-  | ConstantNode
-  | StructMemberNode
-  | ModuleNode
-  | StructNode
-  | TypeDefNode
-  | EnumNode;
+export type AnyASTNode =
+  | ConstantASTNode
+  | StructMemberASTNode
+  | ModuleASTNode
+  | StructASTNode
+  | TypedefASTNode
+  | UnionASTNode
+  | EnumASTNode;
 
-export type BaseIDLNode = {
+export type BaseASTNode = {
   declarator: "const" | "typedef" | "struct" | "enum" | "module" | "struct-member" | "union";
   name: string;
   /** Set to true if Node represents a constant value */
@@ -41,54 +50,54 @@ export type BaseIDLNode = {
 };
 
 /** Node used to represent `module` declarations */
-export interface ModuleNode extends BaseIDLNode {
+export interface ModuleASTNode extends BaseASTNode {
   declarator: "module";
   /** Definitions contained within the module. Can be `struct`, `const`, `typedef` or `module` */
-  definitions: DefinitionNode[];
+  definitions: DefinitionASTNode[];
 }
 
 /** Node used to represent `struct` declarations */
-export interface StructNode extends BaseIDLNode {
+export interface StructASTNode extends BaseASTNode {
   declarator: "struct";
   /** Members contained in struct declaration in order */
-  definitions: StructMemberNode[];
+  definitions: StructMemberASTNode[];
 }
 
 /** Node used to represent `const` declarations */
-export interface ConstantNode extends BaseIDLNode, UnresolvedConstantField {
+export interface ConstantASTNode extends BaseASTNode, UnresolvedField {
   declarator: "const";
   isConstant: true;
-  value: ConstantValue | ResolveToConstantValue;
+  value: ConstantValue | UnresolvedConstantValue;
 }
 
 /** Node used to represent `struct-member` declarations */
-export interface StructMemberNode extends BaseIDLNode, UnresolvedConstantField {
+export interface StructMemberASTNode extends BaseASTNode, UnresolvedField {
   declarator: "struct-member";
 }
 
 /** Node used to represent `typedef` declarations */
-export interface TypeDefNode extends BaseIDLNode, UnresolvedConstantField {
+export interface TypedefASTNode extends BaseASTNode, UnresolvedField {
   declarator: "typedef";
   /** Type identifier used in typedef declaration */
   type: string;
 }
 
 /** Node used to represent `enum` declarations */
-export interface EnumNode extends BaseIDLNode {
+export interface EnumASTNode extends BaseASTNode {
   declarator: "enum";
   /** Contained enumerator strings in order of declaration */
   enumerators: string[];
 }
 
-export type Case = {
-  predicates: (ResolveToConstantValue | number | boolean)[];
-  type: UnresolvedConstantField;
+export type UnresolvedCase = {
+  predicates: (UnresolvedConstantValue | number | boolean)[];
+  type: UnresolvedField;
 };
-export interface UnionNode extends BaseIDLNode {
+export interface UnionASTNode extends BaseASTNode {
   declarator: "union";
   switchType: string;
-  cases: Case[];
-  defaultCase?: UnresolvedConstantField;
+  cases: UnresolvedCase[];
+  defaultCase?: UnresolvedField;
 }
 
 export type AnyAnnotation = AnnotationNamedParams | AnnotationNoParams | AnnotationConstParam;
@@ -101,18 +110,42 @@ export interface AnnotationNoParams extends BaseAnnotation {
 }
 export interface AnnotationNamedParams extends BaseAnnotation {
   type: "named-params";
-  namedParams: Record<string, ConstantValue | ResolveToConstantValue>;
+  namedParams: Record<string, ConstantValue | UnresolvedConstantValue>;
 }
 export interface AnnotationConstParam extends BaseAnnotation {
   type: "const-param";
-  value: ConstantValue | ResolveToConstantValue;
+  value: ConstantValue | UnresolvedConstantValue;
 }
 
-type ResolveToConstantValue = { usesConstant: true; name: string };
+export type IDLMessageDefinition = IDLStructDefinition | IDLUnionDefinition | IDLModuleDefinition;
 
-export type IDLMessageDefinition = Omit<MessageDefinition, "definitions"> & {
+export type IDLModuleDefinition = IDLAggregatedDefinition & {
+  aggregatedKind: "module";
+  definitions: IDLMessageDefinitionField[];
+};
+
+export type IDLAggregatedDefinition = Omit<MessageDefinition, "definitions"> & {
+  annotations?: Record<string, AnyAnnotation>;
+  aggregatedKind: "struct" | "union" | "module";
+};
+
+export type IDLStructDefinition = IDLAggregatedDefinition & {
+  aggregatedKind: "struct";
   annotations?: Record<string, AnyAnnotation>;
   definitions: IDLMessageDefinitionField[];
+};
+
+export type Case = {
+  predicates: (number | boolean)[];
+  type: IDLMessageDefinitionField;
+};
+
+export type IDLUnionDefinition = IDLAggregatedDefinition & {
+  aggregatedKind: "union";
+  annotations?: Record<string, AnyAnnotation>;
+  switchType: string;
+  cases: Case[];
+  default?: IDLMessageDefinitionField;
 };
 
 export type IDLMessageDefinitionField = Omit<MessageDefinitionField, "arrayLength"> & {

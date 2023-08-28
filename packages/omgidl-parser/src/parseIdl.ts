@@ -1,5 +1,6 @@
 import { MessageDefinition } from "@foxglove/message-definition";
 
+import { IDLDefinitionMap } from "./IDLDefinitionMap";
 import { IDLNodeProcessor } from "./IDLNodeProcessor";
 import { parseIdlToAST } from "./parseIdlToAST";
 import { IDLMessageDefinition } from "./types";
@@ -12,12 +13,7 @@ import { IDLMessageDefinition } from "./types";
 export function parseIdl(messageDefinition: string): IDLMessageDefinition[] {
   const rawIdlDefinitions = parseIdlToAST(messageDefinition);
 
-  const idlProcessor = new IDLNodeProcessor(rawIdlDefinitions);
-  idlProcessor.resolveEnumTypes();
-  idlProcessor.resolveConstantUsage();
-  idlProcessor.resolveTypeDefComplexity();
-  idlProcessor.resolveStructMember();
-
+  const idlProcessor = new IDLDefinitionMap(rawIdlDefinitions);
   return idlProcessor.toIDLMessageDefinitions();
 }
 

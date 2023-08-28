@@ -6,10 +6,11 @@ import {
 
 import {
   RawIdlDefinition,
-  AnyIDLNode,
-  ConstantNode,
+  AnyASTNode,
+  ConstantASTNode,
   IDLMessageDefinition,
   IDLMessageDefinitionField,
+  DefinitionFieldASTNode,
 } from "./types";
 
 const numericTypeMap: Record<string, string> = {
@@ -51,7 +52,7 @@ const POSSIBLE_UNRESOLVED_MEMBERS = [
 /** Class used for processing and resolving raw IDL node definitions */
 export class IDLNodeProcessor {
   definitions: RawIdlDefinition[];
-  map: Map<string, AnyIDLNode>;
+  map: Map<string, AnyASTNode>;
   firstStructName?: string;
 
   constructor(definitions: RawIdlDefinition[]) {
@@ -129,46 +130,59 @@ export class IDLNodeProcessor {
       ) {
         continue;
       }
+      const newNode = this.resolveField(scopedIdentifier, node);
+      this.map.set(scopedIdentifier, newNode);
+    }
+  }
 
-      // need to iterate through keys because this can occur on arrayLength, upperBound, arrayUpperBound, value, defaultValue
-      for (const key of POSSIBLE_UNRESOLVED_MEMBERS) {
-        const keyValue = node[key];
-        let finalKeyValue = undefined;
-        if (Array.isArray(keyValue)) {
-          const arrayLengths = keyValue;
-
-          const finalArrayLengths = arrayLengths.map((arrayLength) => {
-            if (typeof arrayLength === "number") {
-              return arrayLength;
-            }
-            const constantNode = this.resolveConstantReference({
-              constantName: arrayLength.name,
-              nodeScopedIdentifier: scopedIdentifier,
-            });
-            return constantNode.value;
-          });
-          finalKeyValue = finalArrayLengths;
-        } else if (typeof keyValue === "object") {
-          const constantNode = this.resolveConstantReference({
-            constantName: keyValue.name,
-            nodeScopedIdentifier: scopedIdentifier,
-          });
-          finalKeyValue = constantNode.value;
-        }
-
-        if (finalKeyValue == undefined) {
-          continue;
-        }
-
-        // need to make sure we are updating the most up to date node
-        // guaranteed to exist since it's the one we are iterating over
-        const possiblyUpdatedNode = this.map.get(scopedIdentifier)!;
-        this.map.set(scopedIdentifier, {
-          ...possiblyUpdatedNode,
-          [key]: finalKeyValue,
+  private resolveField(
+    scopedIdentifier: string,
+    unresolvedField: DefinitionFieldASTNode,
+  ): DefinitionFieldASTNode {
+    const node = { ...unresolvedField };
+    // need to iterate through keys because this can occur on arrayLength, upperBound, arrayUpperBound, value, defaultValue
+    for (const key of POSSIBLE_UNRESOLVED_MEMBERS) {
+      const keyValue = unresolvedField[key];
+      let finalKeyValue = undefined;
+      if (Array.isArray(keyValue)) {
+        const arrayLengths = keyValue;
+        const finalArrayLengths = arrayLengths.map((arrayLength) =>
+          typeof arrayLength === "number"
+            ? arrayLength
+            : this.resolveConstantValue({
+                constantName: arrayLength.name,
+                nodeScopedIdentifier: scopedIdentifier,
+              }),
+        );
+        finalKeyValue = finalArrayLengths;
+      } else if (typeof keyValue === "object") {
+        finalKeyValue = this.resolveConstantValue({
+          constantName: keyValue.name,
+          nodeScopedIdentifier: scopedIdentifier,
         });
       }
+
+      if (finalKeyValue == undefined) {
+        continue;
+      }
+      (node[key] as ConstantValue | ConstantValue[]) = finalKeyValue;
     }
+    return node;
+  }
+
+  private resolveConstantValue({
+    constantName,
+    nodeScopedIdentifier,
+  }: {
+    constantName: string;
+    nodeScopedIdentifier: string;
+  }): ConstantValue {
+    const constantNode = this.resolveConstantReference({
+      constantName,
+      nodeScopedIdentifier,
+    });
+
+    return constantNode.value as ConstantValue;
   }
 
   private resolveConstantReference({
@@ -177,7 +191,7 @@ export class IDLNodeProcessor {
   }: {
     constantName: string;
     nodeScopedIdentifier: string;
-  }): ConstantNode {
+  }): ConstantASTNode {
     const constantNode = resolveScopedOrLocalNodeReference({
       usedIdentifier: constantName,
       scopedIdentifierOfUsageNode: nodeScopedIdentifier,
@@ -219,7 +233,7 @@ export class IDLNodeProcessor {
           `We do not support typedefs that reference other typedefs ${node.name} -> ${type}`,
         );
       }
-      if (typeNode.declarator === "struct") {
+      if (typeNode.declarator === "struct" || typeNode.declarator === "union") {
         this.map.set(scopedIdentifier, { ...node, isComplex: true });
       }
     }
@@ -318,6 +332,7 @@ export class IDLNodeProcessor {
           .filter(Boolean) as IDLMessageDefinitionField[];
         if (definitionFields.length > 0) {
           const def: IDLMessageDefinition = {
+            aggregatedKind: "struct",
             name: namespacedName,
             definitions: definitionFields,
           };
@@ -337,7 +352,11 @@ export class IDLNodeProcessor {
     }
 
     if (topLevelConstantDefinitions.length > 0) {
-      messageDefinitions.push({ name: "", definitions: topLevelConstantDefinitions });
+      messageDefinitions.push({
+        name: "",
+        aggregatedKind: "struct",
+        definitions: topLevelConstantDefinitions,
+      });
     }
 
     return messageDefinitions;
@@ -424,6 +443,9 @@ export class IDLNodeProcessor {
 
 // Removes `annotation` field from the Definition and DefinitionField objects
 function toMessageDefinition(idlMsgDef: IDLMessageDefinition): MessageDefinition {
+  if (idlMsgDef.aggregatedKind === "union") {
+    throw new Error(`Unions are not supported in MessageDefinition type`);
+  }
   const { definitions, annotations: _a, ...partialDef } = idlMsgDef;
   const fieldDefinitions = definitions.map((def) => {
     const { annotations: _an, arrayLengths, ...partialFieldDef } = def;
@@ -449,8 +471,8 @@ export function resolveScopedOrLocalNodeReference({
 }: {
   usedIdentifier: string;
   scopedIdentifierOfUsageNode: string;
-  definitionMap: Map<string, AnyIDLNode>;
-}): AnyIDLNode | undefined {
+  definitionMap: Map<string, AnyASTNode>;
+}): AnyASTNode | undefined {
   // If using local un-scoped identifier, it will not be found in the definitions map
   // In this case we try by building up the namespace prefix until we find a match
   let referencedNode = undefined;
@@ -468,7 +490,7 @@ export function resolveScopedOrLocalNodeReference({
  * Iterates through IDL tree and calls `processNode` function on each node.
  * NOTE: Does not process enum members
  */
-function traverseIdl(path: AnyIDLNode[], processNode: (path: AnyIDLNode[]) => void) {
+function traverseIdl(path: AnyASTNode[], processNode: (path: AnyASTNode[]) => void) {
   const currNode = path[path.length - 1]!;
   if ("definitions" in currNode) {
     currNode.definitions.forEach((n) => traverseIdl([...path, n], processNode));
