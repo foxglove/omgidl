@@ -5,7 +5,7 @@ import { AnyAnnotation } from "./astTypes";
 /** Final resolved MessageDefinition types */
 
 /** Higher-level resolved definitions (struct, modules)*/
-export type IDLMessageDefinition = IDLStructDefinition | IDLModuleDefinition;
+export type IDLMessageDefinition = IDLStructDefinition | IDLModuleDefinition | IDLUnionDefinition;
 
 export type IDLModuleDefinition = IDLAggregatedDefinition & {
   aggregatedKind: "module";

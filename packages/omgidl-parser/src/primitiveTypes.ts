@@ -13,6 +13,26 @@ const numericTypeMap: Record<string, string> = {
   byte: "int8",
 };
 
+export const INTEGER_TYPES = new Set([
+  "int8",
+  "uint8",
+  "int16",
+  "uint16",
+  "int32",
+  "uint32",
+  "int64",
+  "uint64",
+  "char",
+  "byte",
+  "octet",
+  "unsigned short",
+  "unsigned long",
+  "unsigned long long",
+  "short",
+  "long",
+  "long long",
+]);
+
 export const SIMPLE_TYPES = new Set([
   "bool",
   "string",

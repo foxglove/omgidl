@@ -11,6 +11,7 @@ import {
 import { AnyIDLNode } from "./IDLNodes/interfaces";
 import { AnyASTNode } from "./astTypes";
 import { IDLMessageDefinition } from "./types";
+import { UnionIDLNode } from "./IDLNodes/UnionIDLNode";
 
 /** Initializes map of IDL nodes to their scoped namespaces */
 export function buildMap(definitions: AnyASTNode[]): Map<string, AnyIDLNode> {
@@ -65,6 +66,8 @@ export function toIDLMessageDefinitions(map: Map<string, AnyIDLNode>): IDLMessag
       }
     } else if (node.declarator === "enum") {
       messageDefinitions.push(node.toIDLMessageDefinition());
+    } else if (node.declarator === "union") {
+      messageDefinitions.push(node.toIDLMessageDefinition());
     }
   }
   if (topLevelConstantDefinitions.length > 0) {
@@ -95,8 +98,8 @@ const makeIDLNode = (
       return new StructMemberIDLNode(scopePath, node, idlMap);
     case "typedef":
       return new TypedefIDLNode(scopePath, node, idlMap);
-    default:
-      throw new Error(`Unexpected declarator ${node.declarator} in ${node.name}`);
+    case "union":
+      return new UnionIDLNode(scopePath, node, idlMap);
   }
 };
 

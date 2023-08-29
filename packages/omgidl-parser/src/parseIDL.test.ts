@@ -1837,6 +1837,205 @@ module rosidl_parser {
     ]);
   });
 
+  it("can parse union that uses enums", () => {
+    const msgDef = `
+    enum ColorMode {
+      GRAY, RGBA, RGB
+    };
+    module Limited {
+      union Color switch (ColorMode) {
+          case ColorMode::GRAY:
+            uint8 gray;
+          case ColorMode::RGBA:
+            uint8 rgba[4];
+          default:
+            uint8 rgb[3];
+      };
+    };
+    struct ColorSettings {
+        Limited::Color chosenColor;
+    };
+      `;
+    const ast = parse(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "ColorMode",
+        aggregatedKind: "module",
+        definitions: [
+          { name: "GRAY", value: 0, type: "uint32", isConstant: true, isComplex: false },
+          { name: "RGBA", value: 1, type: "uint32", isConstant: true, isComplex: false },
+          { name: "RGB", value: 2, type: "uint32", isConstant: true, isComplex: false },
+        ],
+      },
+      {
+        name: "Limited::Color",
+        aggregatedKind: "union",
+        switchType: "uint32",
+        cases: [
+          {
+            predicates: [0],
+            type: {
+              isComplex: false,
+              name: "gray",
+              type: "uint8",
+            },
+          },
+          {
+            predicates: [1],
+            type: {
+              arrayLengths: [4],
+              isArray: true,
+              isComplex: false,
+              name: "rgba",
+              type: "uint8",
+            },
+          },
+        ],
+        defaultCase: {
+          arrayLengths: [3],
+          isArray: true,
+          isComplex: false,
+          name: "rgb",
+          type: "uint8",
+        },
+      },
+      {
+        name: "ColorSettings",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            name: "chosenColor",
+            type: "Limited::Color",
+            isComplex: true,
+          },
+        ],
+      },
+    ]);
+  });
+  it("can parse union that uses boolean", () => {
+    const msgDef = `
+    typedef boolean usesColor;
+    union Color switch (usesColor) {
+        case TRUE:
+          uint8 rgba[4];
+        case FALSE:
+          uint8 gray;
+    };
+    struct ColorSettings {
+        Color chosenColor;
+    };
+      `;
+
+    const ast = parse(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "Color",
+        switchType: "bool",
+        aggregatedKind: "union",
+        cases: [
+          {
+            predicates: [true],
+            type: {
+              arrayLengths: [4],
+              isArray: true,
+              isComplex: false,
+              name: "rgba",
+              type: "uint8",
+            },
+          },
+          {
+            predicates: [false],
+            type: {
+              isComplex: false,
+              name: "gray",
+              type: "uint8",
+            },
+          },
+        ],
+      },
+      {
+        name: "ColorSettings",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            isComplex: true,
+            name: "chosenColor",
+            type: "Color",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("can parse simple union in module declaration", () => {
+    const msgDef = `
+    module MyTypes {
+    union MyUnion switch (long) {
+        case 1:
+          long long_branch;
+        case 3:
+          float float_branch;
+        case 4:
+          char  char_branch;
+        default:
+          uint8 default;
+    };
+    };
+    struct Foo {
+        MyTypes::MyUnion my_union;
+    };
+      `;
+    const ast = parse(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "MyTypes::MyUnion",
+        switchType: "long",
+        aggregatedKind: "union",
+        cases: [
+          {
+            predicates: [1],
+            type: {
+              isComplex: false,
+              name: "long_branch",
+              type: "int32",
+            },
+          },
+          {
+            predicates: [3],
+            type: {
+              isComplex: false,
+              name: "float_branch",
+              type: "float32",
+            },
+          },
+          {
+            predicates: [4],
+            type: {
+              isComplex: false,
+              name: "char_branch",
+              type: "uint8",
+            },
+          },
+        ],
+        defaultCase: {
+          isComplex: false,
+          name: "default",
+          type: "uint8",
+        },
+      },
+      {
+        name: "Foo",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            isComplex: true,
+            name: "my_union",
+            type: "MyTypes::MyUnion",
+          },
+        ],
+      },
+    ]);
+  });
   // **************** Not supported in our implementation yet
   it("cannot compose variable size arrays (no serialization support)", () => {
     const msgDef = `
