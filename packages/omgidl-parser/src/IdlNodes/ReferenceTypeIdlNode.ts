@@ -1,4 +1,5 @@
-import { EnumIdlNode, IdlNode } from "./IdlNode";
+import { EnumIdlNode } from "./EnumIdlNode";
+import { IdlNode } from "./IdlNode";
 import { StructIdlNode } from "./StructIdlNode";
 import {
   BaseAstNode,
@@ -6,10 +7,9 @@ import {
   TypedefAstNode,
   UnresolvedConstantValue,
 } from "../astTypes";
-import { SIMPLE_TYPES, normalizeType } from "../primitiveTypes";
-import { IdlMessageDefinitionField } from "../types";
+import { SIMPLE_TYPES } from "../primitiveTypes";
 
-type PossibleParentNode = StructIdlNode | TypedefIdlNode | EnumIdlNode;
+type PossibleParentNode = StructIdlNode | ReferenceTypeIdlNode<TypedefAstNode> | EnumIdlNode;
 
 /** Class used for struct members and typedefs because they can reference each other and other types (enum and struct)
  * This class resolves the fields of these types to their final values.
@@ -33,7 +33,7 @@ export class ReferenceTypeIdlNode<
   get type(): string {
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof TypedefIdlNode || parent instanceof EnumIdlNode) {
+      if (parent instanceof ReferenceTypeIdlNode || parent instanceof EnumIdlNode) {
         return parent.type;
       }
       return parent.scopedIdentifier;
@@ -46,7 +46,7 @@ export class ReferenceTypeIdlNode<
       return false;
     }
     const parent = this.parent();
-    if (parent instanceof TypedefIdlNode) {
+    if (parent instanceof ReferenceTypeIdlNode) {
       return parent.isComplex;
     }
     return parent instanceof StructIdlNode;
@@ -57,7 +57,7 @@ export class ReferenceTypeIdlNode<
 
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof TypedefIdlNode) {
+      if (parent instanceof ReferenceTypeIdlNode) {
         isArray ||= parent.isArray;
       }
     }
@@ -70,7 +70,7 @@ export class ReferenceTypeIdlNode<
     const arrayLengths = this.astNode.arrayLengths ? [...this.astNode.arrayLengths] : [];
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof TypedefIdlNode && parent.arrayLengths) {
+      if (parent instanceof ReferenceTypeIdlNode && parent.arrayLengths) {
         arrayLengths.push(...parent.arrayLengths);
       }
     }
@@ -90,7 +90,7 @@ export class ReferenceTypeIdlNode<
     let arrayUpperBound = undefined;
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof TypedefIdlNode) {
+      if (parent instanceof ReferenceTypeIdlNode) {
         arrayUpperBound = parent.arrayUpperBound;
       }
     }
@@ -106,7 +106,7 @@ export class ReferenceTypeIdlNode<
     let upperBound = undefined;
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof TypedefIdlNode) {
+      if (parent instanceof ReferenceTypeIdlNode) {
         upperBound = parent.upperBound;
       }
     }
@@ -123,7 +123,7 @@ export class ReferenceTypeIdlNode<
     if (this.needsResolution) {
       const parent = this.parent();
       // We do not want to inherit annotations from a struct or enum
-      if (parent instanceof TypedefIdlNode && parent.annotations != undefined) {
+      if (parent instanceof ReferenceTypeIdlNode && parent.annotations != undefined) {
         annotations = { ...parent.annotations };
       }
     }
@@ -157,7 +157,7 @@ export class ReferenceTypeIdlNode<
     const maybeValidParent = this.getNode(this.scopePath, typeName);
     if (
       !(maybeValidParent instanceof StructIdlNode) &&
-      !(maybeValidParent instanceof TypedefIdlNode) &&
+      !(maybeValidParent instanceof ReferenceTypeIdlNode) &&
       !(maybeValidParent instanceof EnumIdlNode)
     ) {
       throw new Error(
@@ -176,7 +176,7 @@ export class ReferenceTypeIdlNode<
       this.parentNode = this.getValidFieldReference(this.astNode.type);
     }
 
-    if (!(this.parentNode instanceof TypedefIdlNode)) {
+    if (!(this.parentNode instanceof ReferenceTypeIdlNode)) {
       return this.parentNode;
     }
 
@@ -192,54 +192,5 @@ export class ReferenceTypeIdlNode<
     }
 
     return this.parentNode;
-  }
-}
-
-export class TypedefIdlNode extends ReferenceTypeIdlNode<TypedefAstNode> {
-  constructor(scopePath: string[], astNode: TypedefAstNode, idlMap: Map<string, IdlNode>) {
-    super(scopePath, astNode, idlMap);
-  }
-}
-
-export class StructMemberIdlNode extends ReferenceTypeIdlNode<StructMemberAstNode> {
-  constructor(scopePath: string[], node: StructMemberAstNode, idlMap: Map<string, IdlNode>) {
-    super(scopePath, node, idlMap);
-  }
-
-  /** Writes out ASTNode as a fully resolved IDL message definition */
-  toIdlMessageDefinitionField(): IdlMessageDefinitionField {
-    const msgDefinitionField: IdlMessageDefinitionField = {
-      name: this.name,
-      type: normalizeType(this.type),
-      isComplex: this.isComplex,
-    };
-    if (this.arrayLengths != undefined) {
-      msgDefinitionField.arrayLengths = this.arrayLengths;
-    }
-    if (this.arrayUpperBound != undefined) {
-      msgDefinitionField.arrayUpperBound = this.arrayUpperBound;
-    }
-    if (this.upperBound != undefined) {
-      msgDefinitionField.upperBound = this.upperBound;
-    }
-    if (this.annotations != undefined) {
-      msgDefinitionField.annotations = this.annotations;
-    }
-    if (this.isArray != undefined) {
-      msgDefinitionField.isArray = this.isArray;
-    }
-
-    const maybeDefault = this.annotations?.default;
-    if (maybeDefault && maybeDefault.type !== "no-params") {
-      const defaultValue =
-        maybeDefault.type === "const-param" ? maybeDefault.value : maybeDefault.namedParams.value;
-      if (typeof defaultValue !== "object") {
-        msgDefinitionField.defaultValue = defaultValue;
-      } else {
-        msgDefinitionField.defaultValue = this.getConstantNode(defaultValue.name).value;
-      }
-    }
-
-    return msgDefinitionField;
   }
 }

@@ -1,5 +1,5 @@
 import { IdlNode } from "./IdlNode";
-import { StructMemberIdlNode } from "./ReferenceTypeIdlNode";
+import { StructMemberIdlNode } from "./StructMemberIdlNode";
 import { StructAstNode } from "../astTypes";
 import { IdlMessageDefinition } from "../types";
 
@@ -30,9 +30,9 @@ export class StructIdlNode extends IdlNode<StructAstNode> {
   /** Gets node within struct by its local name (unscoped) */
   private getStructMemberNode(name: string): StructMemberIdlNode {
     const maybeStructMember = this.getNode([...this.scopePath, this.name], name);
-    if (!(maybeStructMember instanceof StructMemberIdlNode)) {
+    if (maybeStructMember.declarator !== "struct-member") {
       throw new Error(`Expected ${name} to be a struct member in ${this.scopedIdentifier}`);
     }
-    return maybeStructMember;
+    return maybeStructMember as StructMemberIdlNode;
   }
 }

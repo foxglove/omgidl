@@ -1,4 +1,5 @@
-import { ConstantIdlNode, IdlNode } from "./IdlNode";
+import { ConstantIdlNode } from "./ConstantIdlNode";
+import { IdlNode } from "./IdlNode";
 import { ModuleAstNode } from "../astTypes";
 import { IdlMessageDefinition, IdlMessageDefinitionField } from "../types";
 
