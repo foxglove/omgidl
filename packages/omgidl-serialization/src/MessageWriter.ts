@@ -4,7 +4,7 @@ import {
   MessageDefinition,
   MessageDefinitionField,
 } from "@foxglove/message-definition";
-import { IDLMessageDefinitionField } from "@foxglove/omgidl-parser";
+import { IdlMessageDefinitionField } from "@foxglove/omgidl-parser";
 
 type PrimitiveWriter = (value: unknown, defaultValue: DefaultValue, writer: CdrWriter) => void;
 type PrimitiveArrayWriter = (value: unknown, defaultValue: DefaultValue, writer: CdrWriter) => void;
@@ -76,7 +76,7 @@ export class MessageWriter {
       );
     }
     this.rootDefinition = rootDefinition.definitions;
-    this.definitions = new Map<string, IDLMessageDefinitionField[]>(
+    this.definitions = new Map<string, IdlMessageDefinitionField[]>(
       definitions.map((def) => [def.name ?? "", def.definitions]),
     );
     this.cdrOptions = cdrOptions ?? {};
@@ -104,7 +104,7 @@ export class MessageWriter {
   }
 
   private byteSize(
-    definition: IDLMessageDefinitionField[],
+    definition: IdlMessageDefinitionField[],
     message: unknown,
     offset: number,
   ): number {
@@ -178,7 +178,7 @@ export class MessageWriter {
   }
 
   private write(
-    definition: IDLMessageDefinitionField[],
+    definition: IdlMessageDefinitionField[],
     message: unknown,
     writer: CdrWriter,
   ): void {

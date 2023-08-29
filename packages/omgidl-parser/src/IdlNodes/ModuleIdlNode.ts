@@ -1,6 +1,6 @@
 import { ConstantIdlNode, IdlNode } from "./IdlNode";
 import { ModuleAstNode } from "../astTypes";
-import { IDLMessageDefinition, IDLMessageDefinitionField } from "../types";
+import { IdlMessageDefinition, IdlMessageDefinitionField } from "../types";
 
 export class ModuleIdlNode extends IdlNode<ModuleAstNode> {
   constructor(scopePath: string[], astNode: ModuleAstNode, idlMap: Map<string, IdlNode>) {
@@ -8,8 +8,8 @@ export class ModuleIdlNode extends IdlNode<ModuleAstNode> {
   }
 
   /** Writes out module to message definition that contains only its directly descendent constant definitions */
-  toIDLMessageDefinition(): IDLMessageDefinition | undefined {
-    const definitions: IDLMessageDefinitionField[] = this.definitions.flatMap((def) => {
+  toIDLMessageDefinition(): IdlMessageDefinition | undefined {
+    const definitions: IdlMessageDefinitionField[] = this.definitions.flatMap((def) => {
       if (def instanceof ConstantIdlNode) {
         return [def.toIDLMessageDefinitionField()];
       }

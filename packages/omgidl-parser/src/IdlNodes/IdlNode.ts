@@ -2,7 +2,7 @@ import { ConstantValue } from "@foxglove/message-definition";
 
 import { BaseAstNode, ConstantAstNode, EnumAstNode } from "../astTypes";
 import { SIMPLE_TYPES, normalizeType } from "../primitiveTypes";
-import { IDLMessageDefinition as IdlMessageDefinition, IDLMessageDefinitionField } from "../types";
+import { IdlMessageDefinition, IdlMessageDefinitionField } from "../types";
 
 /** NOTE: All of the classes in this file are included such that we don't have circular import issues */
 
@@ -110,7 +110,7 @@ export class ConstantIdlNode extends IdlNode<ConstantAstNode> {
   }
 
   /** Writes resolved IdlMessageDefinition */
-  toIDLMessageDefinitionField(): IDLMessageDefinitionField {
+  toIDLMessageDefinitionField(): IdlMessageDefinitionField {
     return {
       name: this.name,
       type: normalizeType(this.type),

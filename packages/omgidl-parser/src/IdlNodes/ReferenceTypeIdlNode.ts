@@ -7,7 +7,7 @@ import {
   UnresolvedConstantValue,
 } from "../astTypes";
 import { SIMPLE_TYPES, normalizeType } from "../primitiveTypes";
-import { IDLMessageDefinitionField } from "../types";
+import { IdlMessageDefinitionField } from "../types";
 
 type PossibleParentNode = StructIdlNode | TypedefIdlNode | EnumIdlNode;
 
@@ -207,8 +207,8 @@ export class StructMemberIdlNode extends ReferenceTypeIdlNode<StructMemberAstNod
   }
 
   /** Writes out ASTNode as a fully resolved IDL message definition */
-  toIDLMessageDefinitionField(): IDLMessageDefinitionField {
-    const msgDefinitionField: IDLMessageDefinitionField = {
+  toIdlMessageDefinitionField(): IdlMessageDefinitionField {
+    const msgDefinitionField: IdlMessageDefinitionField = {
       name: this.name,
       type: normalizeType(this.type),
       isComplex: this.isComplex,

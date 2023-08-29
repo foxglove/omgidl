@@ -1,4 +1,4 @@
-import { parseIdlToAST } from "./parseIdlToAST";
+import { parseIdlToAst } from "./parseIdlToAST";
 
 describe("Unsupported IDL grammar features", () => {
   /**************** Not yet supported */
@@ -12,7 +12,7 @@ describe("Unsupported IDL grammar features", () => {
         };
       };
       `;
-    expect(() => parseIdlToAST(msgDef)).toThrow(/unexpected : token/i);
+    expect(() => parseIdlToAst(msgDef)).toThrow(/unexpected : token/i);
   });
 
   it("fails forward struct declarations", () => {
@@ -23,20 +23,20 @@ describe("Unsupported IDL grammar features", () => {
         uint32 a;
       };
       `;
-    expect(() => parseIdlToAST(msgDef)).toThrow();
+    expect(() => parseIdlToAst(msgDef)).toThrow();
   });
 
   it("cannot parse wide string literals", () => {
     const msgDef = `
     const wstring WSTRING_CONSTANT = L"wstring_value";
       `;
-    expect(() => parseIdlToAST(msgDef)).toThrow();
+    expect(() => parseIdlToAst(msgDef)).toThrow();
   });
   it("cannot properly parse octal literals", () => {
     const msgDef = `
     const short SHORT_CONSTANT = 014;
       `;
-    expect(parseIdlToAST(msgDef)).toEqual([
+    expect(parseIdlToAst(msgDef)).toEqual([
       {
         name: "SHORT_CONSTANT",
         declarator: "const",
@@ -54,14 +54,14 @@ describe("Unsupported IDL grammar features", () => {
     const msgDef = `
     const short SHORT_CONSTANT = 0x0C;
       `;
-    expect(() => parseIdlToAST(msgDef)).toThrow();
+    expect(() => parseIdlToAst(msgDef)).toThrow();
   });
 
   it("cannot parse escape sequence character literals", () => {
     const msgDef = `
     const short SHORT_CONSTANT = \n
       `;
-    expect(() => parseIdlToAST(msgDef)).toThrow();
+    expect(() => parseIdlToAst(msgDef)).toThrow();
   });
 
   it.each(["+", "-", "*", "/", "%", "<<", ">>", "|", "&", "^"])(
@@ -70,7 +70,7 @@ describe("Unsupported IDL grammar features", () => {
       const msgDef = `
     const short SHORT_CONSTANT = 1 ${operator} 2;
       `;
-      expect(() => parseIdlToAST(msgDef)).toThrow();
+      expect(() => parseIdlToAst(msgDef)).toThrow();
     },
   );
 });

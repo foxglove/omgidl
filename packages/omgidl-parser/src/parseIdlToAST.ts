@@ -6,7 +6,7 @@ import { IDL_GRAMMAR } from "./grammar";
 /** Uses the IDL grammar to initialize and use a Nearley parser to read the string argument
  * @returns - array of parsed IDL definitions
  */
-export function parseIdlToAST(definition: string): AnyAstNode[] {
+export function parseIdlToAst(definition: string): AnyAstNode[] {
   const parser = new Parser(IDL_GRAMMAR);
   parser.feed(definition);
   parser.finish();

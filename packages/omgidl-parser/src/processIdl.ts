@@ -10,7 +10,7 @@ import {
   TypedefIdlNode,
 } from "./IdlNodes";
 import { AnyAstNode } from "./astTypes";
-import { IDLMessageDefinition } from "./types";
+import { IdlMessageDefinition } from "./types";
 
 /** Initializes map of IDL nodes to their scoped namespaces */
 export function buildMap(definitions: AnyAstNode[]): Map<string, IdlNode> {
@@ -44,8 +44,8 @@ export function buildMap(definitions: AnyAstNode[]): Map<string, IdlNode> {
 }
 
 /** Convert to IDL Message Definitions for serialization and compatibility foxglove studio's Raw Message panel. Returned in order of original definitions*/
-export function toIDLMessageDefinitions(map: Map<string, IdlNode>): IDLMessageDefinition[] {
-  const messageDefinitions: IDLMessageDefinition[] = [];
+export function toIDLMessageDefinitions(map: Map<string, IdlNode>): IdlMessageDefinition[] {
+  const messageDefinitions: IdlMessageDefinition[] = [];
   const topLevelConstantDefinitions: MessageDefinitionField[] = [];
 
   // flatten for output to message definition

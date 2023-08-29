@@ -1,7 +1,7 @@
 import { IdlNode } from "./IdlNode";
 import { StructMemberIdlNode } from "./ReferenceTypeIdlNode";
 import { StructAstNode } from "../astTypes";
-import { IDLMessageDefinition } from "../types";
+import { IdlMessageDefinition } from "../types";
 
 export class StructIdlNode extends IdlNode<StructAstNode> {
   constructor(scopePath: string[], astNode: StructAstNode, idlMap: Map<string, IdlNode>) {
@@ -17,8 +17,8 @@ export class StructIdlNode extends IdlNode<StructAstNode> {
   }
 
   /** Writes out struct as IDL Message definition with resolved `definitions` members */
-  toIDLMessageDefinition(): IDLMessageDefinition {
-    const definitions = this.definitions.map((def) => def.toIDLMessageDefinitionField());
+  toIDLMessageDefinition(): IdlMessageDefinition {
+    const definitions = this.definitions.map((def) => def.toIdlMessageDefinitionField());
     return {
       name: this.scopedIdentifier,
       definitions,
