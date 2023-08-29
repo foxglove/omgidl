@@ -1,4 +1,4 @@
-export const numericTypeMap: Record<string, string> = {
+const numericTypeMap: Record<string, string> = {
   "unsigned short": "uint16",
   "unsigned long": "uint32",
   "unsigned long long": "uint64",
