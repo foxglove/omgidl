@@ -1,12 +1,18 @@
 import { ConstantValue } from "@foxglove/message-definition";
 
-import { BaseASTNode, ConstantASTNode, EnumASTNode } from "../astTypes";
+import { BaseAstNode, ConstantAstNode, EnumAstNode } from "../astTypes";
 import { SIMPLE_TYPES, normalizeType } from "../primitiveTypes";
-import { IDLMessageDefinition, IDLMessageDefinitionField } from "../types";
+import { IDLMessageDefinition as IdlMessageDefinition, IDLMessageDefinitionField } from "../types";
 
-export class IdlNode<T extends BaseASTNode = BaseASTNode> implements BaseASTNode {
+/** NOTE: All of the classes in this file are included such that we don't have circular import issues */
+
+/** Class used to resolve ASTNodes to IDLMessageDefinitions */
+export class IdlNode<T extends BaseAstNode = BaseAstNode> {
+  /** Map of all IdlNodes in a schema definition */
   private map: Map<string, IdlNode>;
+  /** Unresolved node parsed directly from schema */
   protected readonly astNode: T;
+  /** Array of strings that represent namespace scope that astNode is contained within. */
   readonly scopePath: string[];
 
   constructor(scopePath: string[], astNode: T, idlMap: Map<string, IdlNode>) {
@@ -19,22 +25,20 @@ export class IdlNode<T extends BaseASTNode = BaseASTNode> implements BaseASTNode
     return this.astNode.declarator;
   }
 
-  get name(): BaseASTNode["name"] {
+  get name(): BaseAstNode["name"] {
     return this.astNode.name;
   }
 
-  get isConstant(): T["isConstant"] {
-    return this.astNode.isConstant;
-  }
-
-  get annotations(): BaseASTNode["annotations"] {
+  get annotations(): BaseAstNode["annotations"] {
     return this.astNode.annotations;
   }
 
+  /** Returns scoped identifier of the astNode: (...scopePath::name) */
   get scopedIdentifier(): string {
     return toScopedIdentifier([...this.scopePath, this.name]);
   }
 
+  /** Gets any node in map. Fails if not found.*/
   protected getNode(scopePath: string[], name: string): IdlNode {
     const maybeNode = resolveScopedOrLocalNodeReference({
       usedIdentifier: name,
@@ -51,6 +55,7 @@ export class IdlNode<T extends BaseASTNode = BaseASTNode> implements BaseASTNode
     return maybeNode;
   }
 
+  /** Gets a constant node under a local-to-this-node or scoped identifier. Fails if not a ConstantNode */
   protected getConstantNode(identifier: string): ConstantIdlNode {
     const maybeConstantNode = this.getNode(this.scopePath, identifier);
     if (!(maybeConstantNode instanceof ConstantIdlNode)) {
@@ -60,23 +65,27 @@ export class IdlNode<T extends BaseASTNode = BaseASTNode> implements BaseASTNode
   }
 }
 
-export class ConstantIdlNode extends IdlNode<ConstantASTNode> {
-  private needsResolution = false;
-  constructor(scopePath: string[], astNode: ConstantASTNode, idlMap: Map<string, IdlNode>) {
+/** Wraps constant node so that its type and value can be resolved and written to a message definition */
+export class ConstantIdlNode extends IdlNode<ConstantAstNode> {
+  /** If the type needs resolution (not simple primitive) this will be set to true. Should only ever mean that it's referencing an enum */
+  private typeNeedsResolution = false;
+  constructor(scopePath: string[], astNode: ConstantAstNode, idlMap: Map<string, IdlNode>) {
     super(scopePath, astNode, idlMap);
     if (!SIMPLE_TYPES.has(astNode.type)) {
-      this.needsResolution = true;
+      this.typeNeedsResolution = true;
     }
   }
 
   get type(): string {
-    if (this.needsResolution) {
+    if (this.typeNeedsResolution) {
       return this.getReferencedEnumNode().type;
     }
     return this.astNode.type;
   }
 
+  /** Holds reference so that it doesn't need to be searched for again */
   private referencedEnumNode?: EnumIdlNode = undefined;
+  /** Gets enum node referenced by type. Fails otherwise. */
   private getReferencedEnumNode(): EnumIdlNode {
     if (this.referencedEnumNode == undefined) {
       const maybeEnumNode = this.getNode(this.scopePath, this.astNode.type);
@@ -92,6 +101,7 @@ export class ConstantIdlNode extends IdlNode<ConstantASTNode> {
     return true;
   }
 
+  /** Return Literal value on astNode or if the constant references another constant, then it gets the value that constant uses */
   get value(): ConstantValue {
     if (typeof this.astNode.value === "object") {
       return this.getConstantNode(this.astNode.value.name).value;
@@ -99,6 +109,7 @@ export class ConstantIdlNode extends IdlNode<ConstantASTNode> {
     return this.astNode.value;
   }
 
+  /** Writes resolved IdlMessageDefinition */
   toIDLMessageDefinitionField(): IDLMessageDefinitionField {
     return {
       name: this.name,
@@ -111,8 +122,9 @@ export class ConstantIdlNode extends IdlNode<ConstantASTNode> {
   }
 }
 
-export class EnumIdlNode extends IdlNode<EnumASTNode> {
-  constructor(scopePath: string[], astNode: EnumASTNode, idlMap: Map<string, IdlNode>) {
+/** Class used to resolve an Enum ASTNode to an IdlMessageDefinition */
+export class EnumIdlNode extends IdlNode<EnumAstNode> {
+  constructor(scopePath: string[], astNode: EnumAstNode, idlMap: Map<string, IdlNode>) {
     super(scopePath, astNode, idlMap);
   }
 
@@ -120,33 +132,14 @@ export class EnumIdlNode extends IdlNode<EnumASTNode> {
     return "uint32";
   }
 
-  get isComplex(): boolean {
-    return false;
-  }
-  get arrayLengths(): number[] | undefined {
-    return undefined;
-  }
-
-  get arrayUpperBound(): number | undefined {
-    return undefined;
-  }
-
-  get upperBound(): number | undefined {
-    return undefined;
-  }
-
-  get isArray(): boolean | undefined {
-    return undefined;
-  }
-
-  get enumerators(): ConstantIdlNode[] {
+  private enumeratorNodes(): ConstantIdlNode[] {
     return this.astNode.enumerators.map((enumerator) =>
       this.getConstantNode(toScopedIdentifier([...this.scopePath, this.name, enumerator])),
     );
   }
 
-  toIDLMessageDefinition(): IDLMessageDefinition {
-    const definitions = this.enumerators.map((enumerator) =>
+  public toIdlMessageDefinition(): IdlMessageDefinition {
+    const definitions = this.enumeratorNodes().map((enumerator) =>
       enumerator.toIDLMessageDefinitionField(),
     );
     return {
@@ -158,6 +151,20 @@ export class EnumIdlNode extends IdlNode<EnumASTNode> {
   }
 }
 
+/** Takes a potentially scope-less name used in a given scope and attempts to find the Node in the map
+ * that matches it's name in the local scope or any larger encapsulating scope.
+ * For example:
+ * ```Cpp
+ * module foo {
+ * typedef customType uint32;
+ * module bar {
+ *   customType FooBar;
+ *   foo::customType BarFoo;
+ * };
+ * };
+ * ```
+ * Both of these usages of customType should resolve given this function.
+ */
 function resolveScopedOrLocalNodeReference({
   usedIdentifier,
   scopeOfUsage,

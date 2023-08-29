@@ -1,19 +1,30 @@
 import { EnumIdlNode, IdlNode } from "./IdlNode";
 import { StructIdlNode } from "./StructIdlNode";
-import { BaseASTNode, StructMemberASTNode, TypedefASTNode } from "../astTypes";
+import {
+  BaseAstNode,
+  StructMemberAstNode,
+  TypedefAstNode,
+  UnresolvedConstantValue,
+} from "../astTypes";
 import { SIMPLE_TYPES, normalizeType } from "../primitiveTypes";
 import { IDLMessageDefinitionField } from "../types";
 
 type PossibleParentNode = StructIdlNode | TypedefIdlNode | EnumIdlNode;
 
+/** Class used for struct members and typedefs because they can reference each other and other types (enum and struct)
+ * This class resolves the fields of these types to their final values.
+ */
 export class ReferenceTypeIdlNode<
-  T extends TypedefASTNode | StructMemberASTNode,
+  T extends TypedefAstNode | StructMemberAstNode,
 > extends IdlNode<T> {
+  /** Indicates that it references another typedef, enum or struct. (ie: uses a non-builtin / simple type) */
   private needsResolution = false;
+  /** Used to hold an optional parent/referenced node if needsResolution==true. Resolved/Set with `parent()` function.
+   * Not meant to be used outside of `parent()` function.
+   */
   private parentNode?: PossibleParentNode;
   constructor(scopePath: string[], astNode: T, idlMap: Map<string, IdlNode>) {
     super(scopePath, astNode, idlMap);
-    // We do not protect against circular typedefs
     if (!SIMPLE_TYPES.has(astNode.type)) {
       this.needsResolution = true;
     }
@@ -22,16 +33,23 @@ export class ReferenceTypeIdlNode<
   get type(): string {
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof StructIdlNode) {
-        return parent.scopedIdentifier;
+      if (parent instanceof TypedefIdlNode || parent instanceof EnumIdlNode) {
+        return parent.type;
       }
-      return this.parent().type;
+      return parent.scopedIdentifier;
     }
     return this.astNode.type;
   }
 
   get isComplex(): boolean {
-    return this.needsResolution ? this.parent().isComplex : false;
+    if (!this.needsResolution) {
+      return false;
+    }
+    const parent = this.parent();
+    if (parent instanceof TypedefIdlNode) {
+      return parent.isComplex;
+    }
+    return parent instanceof StructIdlNode;
   }
 
   get isArray(): boolean | undefined {
@@ -39,31 +57,31 @@ export class ReferenceTypeIdlNode<
 
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof StructIdlNode) {
-        return this.astNode.isArray;
-      }
-      if (parent.isArray != undefined) {
-        isArray = parent.isArray;
+      if (parent instanceof TypedefIdlNode) {
+        isArray ||= parent.isArray;
       }
     }
     return isArray;
   }
 
   get arrayLengths(): number[] | undefined {
+    // Arraylengths are composed such that the prior arrayLengths describe the outermost arrays.
+    // This means that the arrayLengths on the typedef should be pushed to the end as innermost arrayLengths.
     const arrayLengths = this.astNode.arrayLengths ? [...this.astNode.arrayLengths] : [];
     if (this.needsResolution) {
       const parent = this.parent();
-      if (!(parent instanceof StructIdlNode) && parent.arrayLengths) {
+      if (parent instanceof TypedefIdlNode && parent.arrayLengths) {
         arrayLengths.push(...parent.arrayLengths);
       }
     }
     const finalArrayLengths: number[] = [];
+    // Resolve constant usage in arraylengths
     for (const arrayLength of arrayLengths) {
-      if (typeof arrayLength === "object") {
-        finalArrayLengths.push(this.getConstantNode(arrayLength.name).value as number);
-        continue;
+      const resolvedArrayLength = this.resolvePossibleNumericConstantUsage(arrayLength);
+      // Shouldn't return undefined since the arrayLengths array should never include undefined
+      if (resolvedArrayLength != undefined) {
+        finalArrayLengths.push(resolvedArrayLength);
       }
-      finalArrayLengths.push(arrayLength);
     }
     return finalArrayLengths.length > 0 ? finalArrayLengths : undefined;
   }
@@ -72,57 +90,70 @@ export class ReferenceTypeIdlNode<
     let arrayUpperBound = undefined;
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof StructIdlNode) {
-        return undefined;
+      if (parent instanceof TypedefIdlNode) {
+        arrayUpperBound = parent.arrayUpperBound;
       }
-      arrayUpperBound = parent.arrayUpperBound;
     }
-    // prioritize local arrayUpperBound
     if (this.astNode.arrayUpperBound != undefined) {
+      // Note: we forbid variable length array composition, so this won't be overriding the parent value
       arrayUpperBound = this.astNode.arrayUpperBound;
     }
-    if (typeof arrayUpperBound === "object") {
-      arrayUpperBound = this.getConstantNode(arrayUpperBound.name).value as number;
-    }
-    return arrayUpperBound;
+
+    return this.resolvePossibleNumericConstantUsage(arrayUpperBound);
   }
 
   get upperBound(): number | undefined {
     let upperBound = undefined;
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof StructIdlNode) {
-        return undefined;
+      if (parent instanceof TypedefIdlNode) {
+        upperBound = parent.upperBound;
       }
-      return parent.upperBound;
     }
     if (this.astNode.upperBound != undefined) {
+      // Note: we forbid variable length array composition, so this won't be overriding the parent value
       upperBound = this.astNode.upperBound;
     }
-    if (typeof upperBound === "object") {
-      upperBound = this.getConstantNode(upperBound.name).value as number;
-    }
-    return upperBound;
+    // Check for constant usage
+    return this.resolvePossibleNumericConstantUsage(upperBound);
   }
 
-  get annotations(): BaseASTNode["annotations"] {
+  get annotations(): BaseAstNode["annotations"] {
     let annotations = undefined;
     if (this.needsResolution) {
       const parent = this.parent();
-      if (parent instanceof StructIdlNode) {
-        return undefined;
-      }
-      if (parent.annotations != undefined) {
+      // We do not want to inherit annotations from a struct or enum
+      if (parent instanceof TypedefIdlNode && parent.annotations != undefined) {
         annotations = { ...parent.annotations };
       }
     }
     if (this.astNode.annotations != undefined) {
+      // prioritize the astNode annotations
       annotations = { ...annotations, ...this.astNode.annotations };
     }
     return annotations;
   }
 
-  getValidFieldReference(typeName: string): PossibleParentNode {
+  private resolvePossibleNumericConstantUsage(
+    astValue: UnresolvedConstantValue | number | undefined,
+  ): number | undefined {
+    if (typeof astValue === "number" || astValue == undefined) {
+      return astValue;
+    }
+    const constantNodeIdentifier = astValue.name;
+    const constantNodeValue = this.getConstantNode(constantNodeIdentifier).value!; // should never be undefined
+    if (typeof constantNodeValue !== "number") {
+      throw Error(
+        `Expected constant value ${constantNodeIdentifier} in ${
+          this.scopedIdentifier
+        } to be a number, but got ${constantNodeValue.toString()}`,
+      );
+    }
+    return constantNodeValue;
+  }
+
+  /** Gets Node with the given name in the current instance's scope and checks that it is a valid parent/reference node */
+  private getValidFieldReference(typeName: string): PossibleParentNode {
     const maybeValidParent = this.getNode(this.scopePath, typeName);
     if (
       !(maybeValidParent instanceof StructIdlNode) &&
@@ -136,17 +167,26 @@ export class ReferenceTypeIdlNode<
     return maybeValidParent;
   }
 
+  /** Resolves to a parent value or fails if one is not found.
+   * Only to be used when needsResolution==true and the `type` on the astNode is not "simple".
+   * Also checks the parent against current serialization limitations. (ie: we do not support composing variable length arrays with typedefs)
+   */
   private parent(): PossibleParentNode {
     if (this.parentNode == undefined) {
       this.parentNode = this.getValidFieldReference(this.astNode.type);
     }
+
+    if (!(this.parentNode instanceof TypedefIdlNode)) {
+      return this.parentNode;
+    }
+
     // check potential errors
     if (this.astNode.isArray === true && this.parentNode.isArray === true) {
       const thisNodeIsFixedSize = this.astNode.arrayLengths != undefined;
       const parentNodeIsFixedSize = this.parentNode.arrayLengths != undefined;
-      if (thisNodeIsFixedSize !== parentNodeIsFixedSize) {
+      if (!thisNodeIsFixedSize || !parentNodeIsFixedSize) {
         throw new Error(
-          `Cannot mix fixed and variable length arrays in ${this.scopedIdentifier} referencing ${this.parentNode.scopedIdentifier}`,
+          `We do not support composing variable length arrays with typedefs: ${this.scopedIdentifier} referencing ${this.parentNode.scopedIdentifier}`,
         );
       }
     }
@@ -155,17 +195,18 @@ export class ReferenceTypeIdlNode<
   }
 }
 
-export class TypedefIdlNode extends ReferenceTypeIdlNode<TypedefASTNode> {
-  constructor(scopePath: string[], astNode: TypedefASTNode, idlMap: Map<string, IdlNode>) {
+export class TypedefIdlNode extends ReferenceTypeIdlNode<TypedefAstNode> {
+  constructor(scopePath: string[], astNode: TypedefAstNode, idlMap: Map<string, IdlNode>) {
     super(scopePath, astNode, idlMap);
   }
 }
 
-export class StructMemberIdlNode extends ReferenceTypeIdlNode<StructMemberASTNode> {
-  constructor(scopePath: string[], node: StructMemberASTNode, idlMap: Map<string, IdlNode>) {
+export class StructMemberIdlNode extends ReferenceTypeIdlNode<StructMemberAstNode> {
+  constructor(scopePath: string[], node: StructMemberAstNode, idlMap: Map<string, IdlNode>) {
     super(scopePath, node, idlMap);
   }
 
+  /** Writes out ASTNode as a fully resolved IDL message definition */
   toIDLMessageDefinitionField(): IDLMessageDefinitionField {
     const msgDefinitionField: IDLMessageDefinitionField = {
       name: this.name,

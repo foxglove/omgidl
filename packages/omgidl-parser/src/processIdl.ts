@@ -9,11 +9,11 @@ import {
   StructMemberIdlNode,
   TypedefIdlNode,
 } from "./IdlNodes";
-import { AnyASTNode, RawIdlDefinition } from "./astTypes";
+import { AnyAstNode } from "./astTypes";
 import { IDLMessageDefinition } from "./types";
 
 /** Initializes map of IDL nodes to their scoped namespaces */
-export function buildMap(definitions: RawIdlDefinition[]): Map<string, IdlNode> {
+export function buildMap(definitions: AnyAstNode[]): Map<string, IdlNode> {
   const idlMap = new Map<string, IdlNode>();
   for (const definition of definitions) {
     // build flattened definition map
@@ -64,7 +64,7 @@ export function toIDLMessageDefinitions(map: Map<string, IdlNode>): IDLMessageDe
         topLevelConstantDefinitions.push(node.toIDLMessageDefinitionField());
       }
     } else if (node instanceof EnumIdlNode) {
-      messageDefinitions.push(node.toIDLMessageDefinition());
+      messageDefinitions.push(node.toIdlMessageDefinition());
     }
   }
   if (topLevelConstantDefinitions.length > 0) {
@@ -77,7 +77,7 @@ export function toIDLMessageDefinitions(map: Map<string, IdlNode>): IDLMessageDe
   return messageDefinitions;
 }
 
-const makeIdlNode = (scopePath: string[], node: AnyASTNode, idlMap: Map<string, IdlNode>) => {
+const makeIdlNode = (scopePath: string[], node: AnyAstNode, idlMap: Map<string, IdlNode>) => {
   switch (node.declarator) {
     case "module":
       return new ModuleIdlNode(scopePath, node, idlMap);
@@ -100,7 +100,7 @@ const makeIdlNode = (scopePath: string[], node: AnyASTNode, idlMap: Map<string, 
  * Iterates through IDL tree and calls `processNode` function on each node.
  * NOTE: Does not process enum members
  */
-function traverseIdl(path: AnyASTNode[], processNode: (path: AnyASTNode[]) => void) {
+function traverseIdl(path: AnyAstNode[], processNode: (path: AnyAstNode[]) => void) {
   const currNode = path[path.length - 1]!;
   if ("definitions" in currNode) {
     currNode.definitions.forEach((n) => traverseIdl([...path, n], processNode));

@@ -1838,7 +1838,7 @@ module rosidl_parser {
   });
 
   // **************** Not supported in our implementation yet
-  it("cannot compose variable and fixed size arrays (no serialization support)", () => {
+  it("cannot compose variable size arrays (no serialization support)", () => {
     const msgDef = `
         typedef sequence<int32, 10> int32arr;
         typedef int32arr int32arr2[2];
@@ -1847,7 +1847,9 @@ module rosidl_parser {
         };
     `;
 
-    expect(() => parse(msgDef)).toThrow(/cannot mix fixed and variable length arrays/i);
+    expect(() => parse(msgDef)).toThrow(
+      /we do not support composing variable length arrays with typedefs/i,
+    );
   });
   //****************  Not supported by IDL (as far as I can tell) *::
   it("cannot parse multiple const declarations in a single line", () => {

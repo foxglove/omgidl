@@ -1,6 +1,9 @@
 import { ConstantValue, MessageDefinitionField } from "@foxglove/message-definition";
 
-/** Internal Types */
+/** Internal Types returned by parseIdlToAst
+ * These types contain unresolved type and constant values.
+ */
+
 export type UnresolvedField = Omit<
   MessageDefinitionField,
   "arrayLength" | "upperBound" | "arrayUpperBound" | "value"
@@ -12,75 +15,73 @@ export type UnresolvedField = Omit<
   arrayLengths?: (number | UnresolvedConstantValue)[];
 };
 
-type UnresolvedConstantValue = { usesConstant: true; name: string };
-
-export type RawIdlDefinition = DefinitionASTNode;
+export type UnresolvedConstantValue = { usesConstant: true; name: string };
 
 /** All possible top-level definitions that can be present in IDL schema */
-export type DefinitionASTNode =
-  | ModuleASTNode
-  | StructASTNode
-  | EnumASTNode
-  | ConstantASTNode
-  | UnionASTNode
-  | TypedefASTNode;
+export type DefinitionAstNode =
+  | ModuleAstNode
+  | StructAstNode
+  | EnumAstNode
+  | ConstantAstNode
+  | UnionAstNode
+  | TypedefAstNode;
 
 /** Field nodes: these can be fields within a greater struct or module. They all extend MessageDefinitionField. */
-export type DefinitionFieldASTNode = StructMemberASTNode | ConstantASTNode | TypedefASTNode;
+export type DefinitionFieldAstNode = StructMemberAstNode | ConstantAstNode | TypedefAstNode;
 
 /** All possible IDL declarator nodes */
-export type AnyASTNode =
-  | ConstantASTNode
-  | StructMemberASTNode
-  | ModuleASTNode
-  | StructASTNode
-  | TypedefASTNode
-  | UnionASTNode
-  | EnumASTNode;
+export type AnyAstNode =
+  | ConstantAstNode
+  | StructMemberAstNode
+  | ModuleAstNode
+  | StructAstNode
+  | TypedefAstNode
+  | UnionAstNode
+  | EnumAstNode;
 
-export type BaseASTNode = {
+export interface BaseAstNode {
   declarator: "const" | "typedef" | "struct" | "enum" | "module" | "struct-member" | "union";
   name: string;
   /** Set to true if Node represents a constant value */
   isConstant?: boolean;
   annotations?: Record<string, AnyAnnotation>;
-};
+}
 
 /** Node used to represent `module` declarations */
-export interface ModuleASTNode extends BaseASTNode {
+export interface ModuleAstNode extends BaseAstNode {
   declarator: "module";
   /** Definitions contained within the module. Can be `struct`, `const`, `typedef` or `module` */
-  definitions: DefinitionASTNode[];
+  definitions: DefinitionAstNode[];
 }
 
 /** Node used to represent `struct` declarations */
-export interface StructASTNode extends BaseASTNode {
+export interface StructAstNode extends BaseAstNode {
   declarator: "struct";
   /** Members contained in struct declaration in order */
-  definitions: StructMemberASTNode[];
+  definitions: StructMemberAstNode[];
 }
 
 /** Node used to represent `const` declarations */
-export interface ConstantASTNode extends BaseASTNode, UnresolvedField {
+export interface ConstantAstNode extends BaseAstNode, UnresolvedField {
   declarator: "const";
   isConstant: true;
   value: ConstantValue | UnresolvedConstantValue;
 }
 
 /** Node used to represent `struct-member` declarations */
-export interface StructMemberASTNode extends BaseASTNode, UnresolvedField {
+export interface StructMemberAstNode extends BaseAstNode, UnresolvedField {
   declarator: "struct-member";
 }
 
 /** Node used to represent `typedef` declarations */
-export interface TypedefASTNode extends BaseASTNode, UnresolvedField {
+export interface TypedefAstNode extends BaseAstNode, UnresolvedField {
   declarator: "typedef";
   /** Type identifier used in typedef declaration */
   type: string;
 }
 
 /** Node used to represent `enum` declarations */
-export interface EnumASTNode extends BaseASTNode {
+export interface EnumAstNode extends BaseAstNode {
   declarator: "enum";
   /** Contained enumerator strings in order of declaration */
   enumerators: string[];
@@ -90,7 +91,7 @@ export type UnresolvedCase = {
   predicates: (UnresolvedConstantValue | number | boolean)[];
   type: UnresolvedField;
 };
-export interface UnionASTNode extends BaseASTNode {
+export interface UnionAstNode extends BaseAstNode {
   declarator: "union";
   switchType: string;
   cases: UnresolvedCase[];

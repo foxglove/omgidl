@@ -1,10 +1,10 @@
 import { IdlNode } from "./IdlNode";
 import { StructMemberIdlNode } from "./ReferenceTypeIdlNode";
-import { StructASTNode } from "../astTypes";
+import { StructAstNode } from "../astTypes";
 import { IDLMessageDefinition } from "../types";
 
-export class StructIdlNode extends IdlNode<StructASTNode> {
-  constructor(scopePath: string[], astNode: StructASTNode, idlMap: Map<string, IdlNode>) {
+export class StructIdlNode extends IdlNode<StructAstNode> {
+  constructor(scopePath: string[], astNode: StructAstNode, idlMap: Map<string, IdlNode>) {
     super(scopePath, astNode, idlMap);
   }
 
@@ -16,18 +16,7 @@ export class StructIdlNode extends IdlNode<StructASTNode> {
     return this.astNode.definitions.map((def) => this.getStructMemberNode(def.name));
   }
 
-  get isComplex(): boolean {
-    return true;
-  }
-
-  get isArray(): undefined {
-    return undefined;
-  }
-
-  get arrayLengths(): undefined {
-    return undefined;
-  }
-
+  /** Writes out struct as IDL Message definition with resolved `definitions` members */
   toIDLMessageDefinition(): IDLMessageDefinition {
     const definitions = this.definitions.map((def) => def.toIDLMessageDefinitionField());
     return {
@@ -38,6 +27,7 @@ export class StructIdlNode extends IdlNode<StructASTNode> {
     };
   }
 
+  /** Gets node within struct by its local name (unscoped) */
   private getStructMemberNode(name: string): StructMemberIdlNode {
     const maybeStructMember = this.getNode([...this.scopePath, this.name], name);
     if (!(maybeStructMember instanceof StructMemberIdlNode)) {
