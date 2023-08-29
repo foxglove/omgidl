@@ -1,11 +1,14 @@
-import { IdlNode } from "./IdlNode";
 import { ReferenceTypeIdlNode } from "./ReferenceTypeIdlNode";
+import { AnyIdlNode, IStructMemberIdlNode } from "./interfaces";
 import { StructMemberAstNode } from "../astTypes";
 import { normalizeType } from "../primitiveTypes";
 import { IdlMessageDefinitionField } from "../types";
 
-export class StructMemberIdlNode extends ReferenceTypeIdlNode<StructMemberAstNode> {
-  constructor(scopePath: string[], node: StructMemberAstNode, idlMap: Map<string, IdlNode>) {
+export class StructMemberIdlNode
+  extends ReferenceTypeIdlNode<StructMemberAstNode>
+  implements IStructMemberIdlNode
+{
+  constructor(scopePath: string[], node: StructMemberAstNode, idlMap: Map<string, AnyIdlNode>) {
     super(scopePath, node, idlMap);
   }
 

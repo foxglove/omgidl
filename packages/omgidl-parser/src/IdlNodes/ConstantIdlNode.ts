@@ -2,16 +2,17 @@ import { ConstantValue } from "@foxglove/message-definition";
 
 import { EnumIdlNode } from "./EnumIdlNode";
 import { IdlNode } from "./IdlNode";
+import { AnyIdlNode, IConstantIdlNode } from "./interfaces";
 import { ConstantAstNode } from "../astTypes";
 import { SIMPLE_TYPES, normalizeType } from "../primitiveTypes";
 import { IdlMessageDefinitionField } from "../types";
 
 /** Wraps constant node so that its type and value can be resolved and written to a message definition */
 
-export class ConstantIdlNode extends IdlNode<ConstantAstNode> {
+export class ConstantIdlNode extends IdlNode<ConstantAstNode> implements IConstantIdlNode {
   /** If the type needs resolution (not simple primitive) this will be set to true. Should only ever mean that it's referencing an enum */
   private typeNeedsResolution = false;
-  constructor(scopePath: string[], astNode: ConstantAstNode, idlMap: Map<string, IdlNode>) {
+  constructor(scopePath: string[], astNode: ConstantAstNode, idlMap: Map<string, AnyIdlNode>) {
     super(scopePath, astNode, idlMap);
     if (!SIMPLE_TYPES.has(astNode.type)) {
       this.typeNeedsResolution = true;

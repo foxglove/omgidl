@@ -1,19 +1,19 @@
-import { ConstantIdlNode } from "./ConstantIdlNode";
+import { AnyIdlNode, IConstantIdlNode, IIdlNode } from "./interfaces";
 import { BaseAstNode } from "../astTypes";
 
 /** Class used to resolve ASTNodes to IDLMessageDefinitions
  * There is a subclass of this class for each `declarator` type on the AstNode.
  * This class is meant to provide functions and variables that exist across all of the nodes to help them resolve to complete message definitions.
  */
-export class IdlNode<T extends BaseAstNode = BaseAstNode> {
+export abstract class IdlNode<T extends BaseAstNode = BaseAstNode> implements IIdlNode<T> {
   /** Map of all IdlNodes in a schema definition */
-  private map: Map<string, IdlNode>;
+  private map: Map<string, AnyIdlNode>;
   /** Unresolved node parsed directly from schema */
   protected readonly astNode: T;
   /** Array of strings that represent namespace scope that astNode is contained within. */
   readonly scopePath: string[];
 
-  constructor(scopePath: string[], astNode: T, idlMap: Map<string, IdlNode>) {
+  constructor(scopePath: string[], astNode: T, idlMap: Map<string, AnyIdlNode>) {
     this.scopePath = scopePath;
     this.astNode = astNode;
     this.map = idlMap;
@@ -37,7 +37,7 @@ export class IdlNode<T extends BaseAstNode = BaseAstNode> {
   }
 
   /** Gets any node in map. Fails if not found.*/
-  protected getNode(scopePath: string[], name: string): IdlNode {
+  protected getNode(scopePath: string[], name: string): AnyIdlNode {
     const maybeNode = resolveScopedOrLocalNodeReference({
       usedIdentifier: name,
       scopeOfUsage: scopePath,
@@ -54,9 +54,9 @@ export class IdlNode<T extends BaseAstNode = BaseAstNode> {
   }
 
   /** Gets a constant node under a local-to-this-node or scoped identifier. Fails if not a ConstantNode */
-  protected getConstantNode(identifier: string): ConstantIdlNode {
+  protected getConstantNode(identifier: string): IConstantIdlNode {
     const maybeConstantNode = this.getNode(this.scopePath, identifier);
-    if (!(maybeConstantNode instanceof ConstantIdlNode)) {
+    if (maybeConstantNode.declarator !== "const") {
       throw new Error(`Expected ${this.name} to be a constant in ${this.scopedIdentifier}`);
     }
     return maybeConstantNode;
@@ -84,8 +84,8 @@ function resolveScopedOrLocalNodeReference({
 }: {
   usedIdentifier: string;
   scopeOfUsage: string[];
-  definitionMap: Map<string, IdlNode>;
-}): IdlNode | undefined {
+  definitionMap: Map<string, AnyIdlNode>;
+}): AnyIdlNode | undefined {
   // If using local un-scoped identifier, it will not be found in the definitions map
   // In this case we try by building up the namespace prefix until we find a match
   let referencedNode = undefined;

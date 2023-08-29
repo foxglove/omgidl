@@ -3,18 +3,18 @@ import { ConstantValue, MessageDefinitionField } from "@foxglove/message-definit
 import {
   ConstantIdlNode,
   EnumIdlNode,
-  IdlNode,
   ModuleIdlNode,
   StructIdlNode,
   StructMemberIdlNode,
   TypedefIdlNode,
 } from "./IdlNodes";
+import { AnyIdlNode } from "./IdlNodes/interfaces";
 import { AnyAstNode } from "./astTypes";
 import { IdlMessageDefinition } from "./types";
 
 /** Initializes map of IDL nodes to their scoped namespaces */
-export function buildMap(definitions: AnyAstNode[]): Map<string, IdlNode> {
-  const idlMap = new Map<string, IdlNode>();
+export function buildMap(definitions: AnyAstNode[]): Map<string, AnyIdlNode> {
+  const idlMap = new Map<string, AnyIdlNode>();
   for (const definition of definitions) {
     // build flattened definition map
     traverseIdl([definition], (path) => {
@@ -44,7 +44,7 @@ export function buildMap(definitions: AnyAstNode[]): Map<string, IdlNode> {
 }
 
 /** Convert to IDL Message Definitions for serialization and compatibility foxglove studio's Raw Message panel. Returned in order of original definitions*/
-export function toIDLMessageDefinitions(map: Map<string, IdlNode>): IdlMessageDefinition[] {
+export function toIDLMessageDefinitions(map: Map<string, AnyIdlNode>): IdlMessageDefinition[] {
   const messageDefinitions: IdlMessageDefinition[] = [];
   const topLevelConstantDefinitions: MessageDefinitionField[] = [];
 
@@ -52,18 +52,18 @@ export function toIDLMessageDefinitions(map: Map<string, IdlNode>): IdlMessageDe
   // Because the map entries are in original insertion order, they should reflect the original order of the definitions
   // This is important for ros2idl compatibility
   for (const node of map.values()) {
-    if (node instanceof StructIdlNode) {
+    if (node.declarator === "struct") {
       messageDefinitions.push(node.toIDLMessageDefinition());
-    } else if (node instanceof ModuleIdlNode) {
+    } else if (node.declarator === "module") {
       const def = node.toIDLMessageDefinition();
       if (def != undefined) {
         messageDefinitions.push(def);
       }
-    } else if (node instanceof ConstantIdlNode) {
+    } else if (node.declarator === "const") {
       if (node.scopePath.length === 0) {
         topLevelConstantDefinitions.push(node.toIDLMessageDefinitionField());
       }
-    } else if (node instanceof EnumIdlNode) {
+    } else if (node.declarator === "enum") {
       messageDefinitions.push(node.toIdlMessageDefinition());
     }
   }
@@ -77,7 +77,11 @@ export function toIDLMessageDefinitions(map: Map<string, IdlNode>): IdlMessageDe
   return messageDefinitions;
 }
 
-const makeIdlNode = (scopePath: string[], node: AnyAstNode, idlMap: Map<string, IdlNode>) => {
+const makeIdlNode = (
+  scopePath: string[],
+  node: AnyAstNode,
+  idlMap: Map<string, AnyIdlNode>,
+): AnyIdlNode => {
   switch (node.declarator) {
     case "module":
       return new ModuleIdlNode(scopePath, node, idlMap);

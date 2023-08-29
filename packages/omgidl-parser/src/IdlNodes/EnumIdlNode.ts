@@ -1,12 +1,12 @@
-import { ConstantIdlNode } from "./ConstantIdlNode";
 import { IdlNode, toScopedIdentifier } from "./IdlNode";
+import { AnyIdlNode, IConstantIdlNode, IEnumIdlNode } from "./interfaces";
 import { EnumAstNode } from "../astTypes";
 import { IdlMessageDefinition } from "../types";
 
 /** Class used to resolve an Enum ASTNode to an IdlMessageDefinition */
 
-export class EnumIdlNode extends IdlNode<EnumAstNode> {
-  constructor(scopePath: string[], astNode: EnumAstNode, idlMap: Map<string, IdlNode>) {
+export class EnumIdlNode extends IdlNode<EnumAstNode> implements IEnumIdlNode {
+  constructor(scopePath: string[], astNode: EnumAstNode, idlMap: Map<string, AnyIdlNode>) {
     super(scopePath, astNode, idlMap);
   }
 
@@ -14,7 +14,7 @@ export class EnumIdlNode extends IdlNode<EnumAstNode> {
     return "uint32";
   }
 
-  private enumeratorNodes(): ConstantIdlNode[] {
+  private enumeratorNodes(): IConstantIdlNode[] {
     return this.astNode.enumerators.map((enumerator) =>
       this.getConstantNode(toScopedIdentifier([...this.scopePath, this.name, enumerator])),
     );

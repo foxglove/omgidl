@@ -1,10 +1,11 @@
 import { ConstantIdlNode } from "./ConstantIdlNode";
 import { IdlNode } from "./IdlNode";
+import { AnyIdlNode, IModuleIdlNode } from "./interfaces";
 import { ModuleAstNode } from "../astTypes";
 import { IdlMessageDefinition, IdlMessageDefinitionField } from "../types";
 
-export class ModuleIdlNode extends IdlNode<ModuleAstNode> {
-  constructor(scopePath: string[], astNode: ModuleAstNode, idlMap: Map<string, IdlNode>) {
+export class ModuleIdlNode extends IdlNode<ModuleAstNode> implements IModuleIdlNode {
+  constructor(scopePath: string[], astNode: ModuleAstNode, idlMap: Map<string, AnyIdlNode>) {
     super(scopePath, astNode, idlMap);
   }
 
@@ -26,7 +27,7 @@ export class ModuleIdlNode extends IdlNode<ModuleAstNode> {
     };
   }
 
-  get definitions(): IdlNode[] {
+  get definitions(): AnyIdlNode[] {
     return this.astNode.definitions.map((def) =>
       this.getNode([...this.scopePath, this.name], def.name),
     );

@@ -1,9 +1,12 @@
-import { IdlNode } from "./IdlNode";
 import { ReferenceTypeIdlNode } from "./ReferenceTypeIdlNode";
+import { AnyIdlNode, ITypedefIdlNode } from "./interfaces";
 import { TypedefAstNode } from "../astTypes";
 
-export class TypedefIdlNode extends ReferenceTypeIdlNode<TypedefAstNode> {
-  constructor(scopePath: string[], astNode: TypedefAstNode, idlMap: Map<string, IdlNode>) {
+export class TypedefIdlNode
+  extends ReferenceTypeIdlNode<TypedefAstNode>
+  implements ITypedefIdlNode
+{
+  constructor(scopePath: string[], astNode: TypedefAstNode, idlMap: Map<string, AnyIdlNode>) {
     super(scopePath, astNode, idlMap);
   }
 }
