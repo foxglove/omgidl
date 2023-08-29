@@ -1,2 +1,2 @@
-export * from "./parseIdl";
+export * from "./parseIDL";
 export * from "./types";

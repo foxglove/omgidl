@@ -1,18 +1,18 @@
 import { ConstantValue } from "@foxglove/message-definition";
 
-import { EnumIdlNode } from "./EnumIdlNode";
-import { IdlNode } from "./IdlNode";
-import { AnyIdlNode, IConstantIdlNode } from "./interfaces";
-import { ConstantAstNode } from "../astTypes";
+import { EnumIDLNode } from "./EnumIDLNode";
+import { IDLNode } from "./IDLNode";
+import { AnyIDLNode, IConstantIDLNode } from "./interfaces";
+import { ConstantASTNode } from "../astTypes";
 import { SIMPLE_TYPES, normalizeType } from "../primitiveTypes";
-import { IdlMessageDefinitionField } from "../types";
+import { IDLMessageDefinitionField } from "../types";
 
 /** Wraps constant node so that its type and value can be resolved and written to a message definition */
 
-export class ConstantIdlNode extends IdlNode<ConstantAstNode> implements IConstantIdlNode {
+export class ConstantIDLNode extends IDLNode<ConstantASTNode> implements IConstantIDLNode {
   /** If the type needs resolution (not simple primitive) this will be set to true. Should only ever mean that it's referencing an enum */
   private typeNeedsResolution = false;
-  constructor(scopePath: string[], astNode: ConstantAstNode, idlMap: Map<string, AnyIdlNode>) {
+  constructor(scopePath: string[], astNode: ConstantASTNode, idlMap: Map<string, AnyIDLNode>) {
     super(scopePath, astNode, idlMap);
     if (!SIMPLE_TYPES.has(astNode.type)) {
       this.typeNeedsResolution = true;
@@ -27,12 +27,12 @@ export class ConstantIdlNode extends IdlNode<ConstantAstNode> implements IConsta
   }
 
   /** Holds reference so that it doesn't need to be searched for again */
-  private referencedEnumNode?: EnumIdlNode = undefined;
+  private referencedEnumNode?: EnumIDLNode = undefined;
   /** Gets enum node referenced by type. Fails otherwise. */
-  private getReferencedEnumNode(): EnumIdlNode {
+  private getReferencedEnumNode(): EnumIDLNode {
     if (this.referencedEnumNode == undefined) {
       const maybeEnumNode = this.getNode(this.scopePath, this.astNode.type);
-      if (!(maybeEnumNode instanceof EnumIdlNode)) {
+      if (!(maybeEnumNode instanceof EnumIDLNode)) {
         throw new Error(`Expected ${this.astNode.type} to be an enum in ${this.scopedIdentifier}`);
       }
       this.referencedEnumNode = maybeEnumNode;
@@ -52,8 +52,8 @@ export class ConstantIdlNode extends IdlNode<ConstantAstNode> implements IConsta
     return this.astNode.value;
   }
 
-  /** Writes resolved IdlMessageDefinition */
-  toIdlMessageDefinitionField(): IdlMessageDefinitionField {
+  /** Writes resolved IDLMessageDefinition */
+  toIDLMessageDefinitionField(): IDLMessageDefinitionField {
     return {
       name: this.name,
       type: normalizeType(this.type),

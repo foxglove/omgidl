@@ -9,7 +9,7 @@
 Message reader deserializes CDR, and CDR2 messages into plain objects. The messages are fully deserialized.
 
 ```typescript
-import { parseIdl } from "@foxglove/omgidl-parser";
+import { parseIDL } from "@foxglove/omgidl-parser";
 import { MessageReader } from "@foxglove/omgidl-serialization";
 
 const msgDef = `
@@ -35,7 +35,7 @@ const msgDef = `
   };
 `;
 
-const messageDefinition = parseIdl(msgDef);
+const messageDefinition = parseIDL(msgDef);
 const reader = new MessageReader("geometry_msgs::PointStamped", messageDefinition);
 
 // deserialize a buffer into an object
@@ -75,7 +75,7 @@ const msgDef = `
   };
 `;
 
-const messageDefinition = parseIdl(msgDef);
+const messageDefinition = parseIDL(msgDef);
 
 const writer = new MessageWriter("geometry_msgs::PointStamped", messageDefinition, cdrOptions);
 

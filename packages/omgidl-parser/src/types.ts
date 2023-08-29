@@ -5,18 +5,18 @@ import { AnyAnnotation } from "./astTypes";
 /** Final resolved MessageDefinition types */
 
 /** Higher-level resolved definitions (struct, modules)*/
-export type IdlMessageDefinition = IdlStructDefinition | IdlModuleDefinition;
+export type IDLMessageDefinition = IDLStructDefinition | IDLModuleDefinition;
 
-export type IdlModuleDefinition = IdlAggregatedDefinition & {
+export type IDLModuleDefinition = IDLAggregatedDefinition & {
   aggregatedKind: "module";
   /** Should only contain constants directly contained within module.
    * Does not include constants contained within submodules any other definitions contained within the module.
    */
-  definitions: IdlMessageDefinitionField[];
+  definitions: IDLMessageDefinitionField[];
 };
 
 /**  */
-export type IdlAggregatedDefinition = Omit<MessageDefinition, "definitions"> & {
+export type IDLAggregatedDefinition = Omit<MessageDefinition, "definitions"> & {
   /** Annotations from schema. Only default annotations are resolved currently */
   annotations?: Record<string, AnyAnnotation>;
   /** Denotes whether the MessageDefinition is a `struct`, `union` or `module`
@@ -26,18 +26,18 @@ export type IdlAggregatedDefinition = Omit<MessageDefinition, "definitions"> & {
   aggregatedKind: "struct" | "union" | "module";
 };
 
-export type IdlStructDefinition = IdlAggregatedDefinition & {
+export type IDLStructDefinition = IDLAggregatedDefinition & {
   aggregatedKind: "struct";
-  definitions: IdlMessageDefinitionField[];
+  definitions: IDLMessageDefinitionField[];
 };
 
-export type IdlUnionDefinition = IdlAggregatedDefinition & {
+export type IDLUnionDefinition = IDLAggregatedDefinition & {
   aggregatedKind: "union";
   /** Type to read that determines what case to use. Must be numeric or boolean */
   switchType: string;
   cases: Case[];
   /** Resolved default type specification */
-  default?: IdlMessageDefinitionField;
+  default?: IDLMessageDefinitionField;
 };
 
 /** Case with resolved predicates and type definition */
@@ -45,14 +45,14 @@ export type Case = {
   /** Array of values that, if read, would cause the type to be used */
   predicates: (number | boolean)[];
   /** Type to be used if value from predicate array is read */
-  type: IdlMessageDefinitionField;
+  type: IDLMessageDefinitionField;
 };
 
 /**
  * All primitive struct-members are resolved such that they do not contain references to typedefs or constant values.
  * The only references they hold are to complex values (structs, unions ).
  */
-export type IdlMessageDefinitionField = Omit<MessageDefinitionField, "arrayLength"> & {
+export type IDLMessageDefinitionField = Omit<MessageDefinitionField, "arrayLength"> & {
   /** Annotations from schema. Only default annotations are resolved currently */
   annotations?: Record<string, AnyAnnotation>;
   /** Length of array(s). Outermost arrays are first */

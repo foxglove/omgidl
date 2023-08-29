@@ -1,22 +1,22 @@
-import { IdlNode } from "./IdlNode";
-import { StructIdlNode } from "./StructIdlNode";
-import { AnyIdlNode, IEnumIdlNode, IReferenceTypeIdlNode, IStructIdlNode } from "./interfaces";
+import { IDLNode } from "./IDLNode";
+import { StructIDLNode } from "./StructIDLNode";
+import { AnyIDLNode, IEnumIDLNode, IReferenceTypeIDLNode, IStructIDLNode } from "./interfaces";
 import {
-  BaseAstNode,
-  StructMemberAstNode,
-  TypedefAstNode,
+  BaseASTNode,
+  StructMemberASTNode,
+  TypedefASTNode,
   UnresolvedConstantValue,
 } from "../astTypes";
 import { SIMPLE_TYPES } from "../primitiveTypes";
 
-type PossibleParentNode = IStructIdlNode | IReferenceTypeIdlNode<TypedefAstNode> | IEnumIdlNode;
+type PossibleParentNode = IStructIDLNode | IReferenceTypeIDLNode<TypedefASTNode> | IEnumIDLNode;
 
 /** Class used for struct members and typedefs because they can reference each other and other types (enum and struct)
  * This class resolves the fields of these types to their final values.
  */
-export abstract class ReferenceTypeIdlNode<T extends TypedefAstNode | StructMemberAstNode>
-  extends IdlNode<T>
-  implements IReferenceTypeIdlNode<T>
+export abstract class ReferenceTypeIDLNode<T extends TypedefASTNode | StructMemberASTNode>
+  extends IDLNode<T>
+  implements IReferenceTypeIDLNode<T>
 {
   /** Indicates that it references another typedef, enum or struct. (ie: uses a non-builtin / simple type) */
   private needsResolution = false;
@@ -24,7 +24,7 @@ export abstract class ReferenceTypeIdlNode<T extends TypedefAstNode | StructMemb
    * Not meant to be used outside of `parent()` function.
    */
   private parentNode?: PossibleParentNode;
-  constructor(scopePath: string[], astNode: T, idlMap: Map<string, AnyIdlNode>) {
+  constructor(scopePath: string[], astNode: T, idlMap: Map<string, AnyIDLNode>) {
     super(scopePath, astNode, idlMap);
     if (!SIMPLE_TYPES.has(astNode.type)) {
       this.needsResolution = true;
@@ -50,7 +50,7 @@ export abstract class ReferenceTypeIdlNode<T extends TypedefAstNode | StructMemb
     if (parent.declarator === "typedef") {
       return parent.isComplex;
     }
-    return parent instanceof StructIdlNode;
+    return parent instanceof StructIDLNode;
   }
 
   get isArray(): boolean | undefined {
@@ -119,7 +119,7 @@ export abstract class ReferenceTypeIdlNode<T extends TypedefAstNode | StructMemb
     return this.resolvePossibleNumericConstantUsage(upperBound);
   }
 
-  get annotations(): BaseAstNode["annotations"] {
+  get annotations(): BaseASTNode["annotations"] {
     let annotations = undefined;
     if (this.needsResolution) {
       const parent = this.parent();
@@ -177,7 +177,7 @@ export abstract class ReferenceTypeIdlNode<T extends TypedefAstNode | StructMemb
       this.parentNode = this.getValidFieldReference(this.astNode.type);
     }
 
-    if (!(this.parentNode instanceof ReferenceTypeIdlNode)) {
+    if (!(this.parentNode instanceof ReferenceTypeIDLNode)) {
       return this.parentNode;
     }
 

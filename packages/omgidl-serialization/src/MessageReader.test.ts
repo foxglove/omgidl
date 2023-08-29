@@ -1,5 +1,5 @@
 import { CdrWriter, EncapsulationKind } from "@foxglove/cdr";
-import { parseIdl } from "@foxglove/omgidl-parser";
+import { parseIDL } from "@foxglove/omgidl-parser";
 
 import { MessageReader } from "./MessageReader";
 
@@ -23,7 +23,7 @@ describe("MessageReader", () => {
           const int8 STATUS_TWO = 2;
         };
       };`;
-    const ast = parseIdl(msgDef);
+    const ast = parseIDL(msgDef);
     expect(ast).not.toBeUndefined();
   });
   it.each([
@@ -305,7 +305,7 @@ describe("MessageReader", () => {
     "should deserialize %s",
     (msgDef: string, rootDef: string, arr: Iterable<number>, expected: Record<string, unknown>) => {
       const buffer = Uint8Array.from([0, 1, 0, 0, ...arr]);
-      const reader = new MessageReader(rootDef, parseIdl(msgDef));
+      const reader = new MessageReader(rootDef, parseIDL(msgDef));
       const read = reader.readMessage(buffer);
 
       // check that our message matches the object
@@ -389,7 +389,7 @@ module builtin_interfaces {
   };
 };
     `;
-    const reader = new MessageReader("geometry_msgs::msg::Transforms", parseIdl(msgDef));
+    const reader = new MessageReader("geometry_msgs::msg::Transforms", parseIDL(msgDef));
     const read = reader.readMessage(buffer);
 
     expect(read).toEqual({
@@ -423,7 +423,7 @@ module builtin_interfaces {
     writer.uint8(0x0f); // then writes the octet
 
     const rootDef = "Address";
-    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
     expect(reader.readMessage(writer.data)).toEqual({ pointer: 15 });
   });
@@ -462,7 +462,7 @@ module builtin_interfaces {
     writer.uint8(data.age);
 
     const rootDef = "Person";
-    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
     expect(reader.readMessage(writer.data)).toEqual({
       heightMeters: 1.8,
@@ -486,7 +486,7 @@ module builtin_interfaces {
     writer.sentinelHeader();
 
     const rootDef = "Address";
-    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
     expect(reader.readMessage(writer.data)).toEqual({ pointer: 15 });
   });
@@ -527,7 +527,7 @@ module builtin_interfaces {
     writer.sentinelHeader();
 
     const rootDef = "Person";
-    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
     expect(reader.readMessage(writer.data)).toEqual({
       heightMeters: 1.8,
@@ -568,7 +568,7 @@ module builtin_interfaces {
     writer.uint32(data.count);
 
     const rootDef = "Plot";
-    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
     expect(reader.readMessage(writer.data)).toEqual({
       name: "MPG",
@@ -599,7 +599,7 @@ module builtin_interfaces {
     }
 
     const rootDef = "Grid";
-    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
     expect(reader.readMessage(writer.data)).toEqual({
       table: [new Float32Array([1, 2, 3]), new Float32Array([4, 5, 6])],
     });
@@ -622,7 +622,7 @@ module builtin_interfaces {
     writer.sequenceLength(0);
 
     const rootDef = "Array";
-    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
     expect(reader.readMessage(writer.data)).toEqual({
       numbers: new Float64Array([]),
@@ -633,7 +633,7 @@ module builtin_interfaces {
     const msgDef = `
     struct a { int8 sample; };
     `;
-    expect(() => new MessageReader("b", parseIdl(msgDef))).toThrow(/"b" not found/i);
+    expect(() => new MessageReader("b", parseIDL(msgDef))).toThrow(/"b" not found/i);
   });
 
   it("throws when id annotation does not match emHeader", () => {
@@ -654,7 +654,7 @@ module builtin_interfaces {
     writer.uint8(0x0f); // then writes the octet
 
     const rootDef = "Address";
-    const reader = new MessageReader(rootDef, parseIdl(msgDef));
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
     expect(() => reader.readMessage(writer.data)).toThrow(
       /expected 2 but emheader contained 3 for field "pointer2"/i,

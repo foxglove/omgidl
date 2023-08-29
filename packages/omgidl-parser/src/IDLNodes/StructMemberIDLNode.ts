@@ -1,20 +1,20 @@
-import { ReferenceTypeIdlNode } from "./ReferenceTypeIdlNode";
-import { AnyIdlNode, IStructMemberIdlNode } from "./interfaces";
-import { StructMemberAstNode } from "../astTypes";
+import { ReferenceTypeIDLNode } from "./ReferenceTypeIDLNode";
+import { AnyIDLNode, IStructMemberIDLNode } from "./interfaces";
+import { StructMemberASTNode } from "../astTypes";
 import { normalizeType } from "../primitiveTypes";
-import { IdlMessageDefinitionField } from "../types";
+import { IDLMessageDefinitionField } from "../types";
 
-export class StructMemberIdlNode
-  extends ReferenceTypeIdlNode<StructMemberAstNode>
-  implements IStructMemberIdlNode
+export class StructMemberIDLNode
+  extends ReferenceTypeIDLNode<StructMemberASTNode>
+  implements IStructMemberIDLNode
 {
-  constructor(scopePath: string[], node: StructMemberAstNode, idlMap: Map<string, AnyIdlNode>) {
+  constructor(scopePath: string[], node: StructMemberASTNode, idlMap: Map<string, AnyIDLNode>) {
     super(scopePath, node, idlMap);
   }
 
   /** Writes out ASTNode as a fully resolved IDL message definition */
-  toIdlMessageDefinitionField(): IdlMessageDefinitionField {
-    const msgDefinitionField: IdlMessageDefinitionField = {
+  toIDLMessageDefinitionField(): IDLMessageDefinitionField {
+    const msgDefinitionField: IDLMessageDefinitionField = {
       name: this.name,
       type: normalizeType(this.type),
       isComplex: this.isComplex,

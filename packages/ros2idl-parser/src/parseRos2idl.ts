@@ -1,5 +1,5 @@
 import { MessageDefinition, MessageDefinitionField } from "@foxglove/message-definition";
-import { IdlMessageDefinitionField, IdlMessageDefinition, parseIdl } from "@foxglove/omgidl-parser";
+import { IDLMessageDefinitionField, IDLMessageDefinition, parseIDL } from "@foxglove/omgidl-parser";
 
 /**
  * Parses `ros2idl` schema into flattened message definitions for serialization/deserialization.
@@ -11,7 +11,7 @@ export function parseRos2idl(messageDefinition: string): MessageDefinition[] {
   // conform to conforming idl and just read it all in a single parse so that we don't have to call parse multiple times
   const idlConformedDef = messageDefinition.replaceAll(ROS2IDL_HEADER, "");
 
-  const idlMessageDefinitions = parseIdl(idlConformedDef);
+  const idlMessageDefinitions = parseIDL(idlConformedDef);
 
   const messageDefinitions = idlMessageDefinitions.map(toMessageDefinition);
 
@@ -39,9 +39,9 @@ export function parseRos2idl(messageDefinition: string): MessageDefinition[] {
 }
 
 // Removes `annotation` field from the Definition and DefinitionField objects
-function toMessageDefinition(idlMsgDef: IdlMessageDefinition): MessageDefinition {
+function toMessageDefinition(idlMsgDef: IDLMessageDefinition): MessageDefinition {
   const { definitions, annotations: _a, aggregatedKind: _ak, ...partialDef } = idlMsgDef;
-  const fieldDefinitions = definitions.map((def: IdlMessageDefinitionField) => {
+  const fieldDefinitions = definitions.map((def: IDLMessageDefinitionField) => {
     const { annotations: _an, arrayLengths, ...partialFieldDef } = def;
     const fieldDef = { ...partialFieldDef };
     if (arrayLengths != undefined) {

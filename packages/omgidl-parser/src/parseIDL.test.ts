@@ -1,4 +1,4 @@
-import { parseIdl as parse } from "./parseIdl";
+import { parseIDL as parse } from "./parseIDL";
 
 describe("omgidl parser tests", () => {
   it("parses a struct", () => {

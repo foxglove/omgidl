@@ -1,5 +1,5 @@
 import { CdrReader } from "@foxglove/cdr";
-import { IdlMessageDefinition, IdlMessageDefinitionField } from "@foxglove/omgidl-parser";
+import { IDLMessageDefinition, IDLMessageDefinitionField } from "@foxglove/omgidl-parser";
 
 export type Deserializer = (
   reader: CdrReader,
@@ -28,10 +28,10 @@ export type ArrayDeserializer = (
   | string[];
 
 export class MessageReader<T = unknown> {
-  rootDefinition: IdlMessageDefinition;
-  definitions: Map<string, IdlMessageDefinition>;
+  rootDefinition: IDLMessageDefinition;
+  definitions: Map<string, IDLMessageDefinition>;
 
-  constructor(rootDefinitionName: string, definitions: IdlMessageDefinition[]) {
+  constructor(rootDefinitionName: string, definitions: IDLMessageDefinition[]) {
     const rootDefinition = definitions.find((def) => def.name === rootDefinitionName);
     if (rootDefinition == undefined) {
       throw new Error(
@@ -39,7 +39,7 @@ export class MessageReader<T = unknown> {
       );
     }
     this.rootDefinition = rootDefinition;
-    this.definitions = new Map<string, IdlMessageDefinition>(
+    this.definitions = new Map<string, IDLMessageDefinition>(
       definitions.map((def) => [def.name ?? "", def]),
     );
   }
@@ -59,7 +59,7 @@ export class MessageReader<T = unknown> {
   }
 
   private readComplexType(
-    complexDef: IdlMessageDefinition,
+    complexDef: IDLMessageDefinition,
     reader: CdrReader,
     options: {
       isTopLevel: boolean;
@@ -272,7 +272,7 @@ function readStringArray(reader: CdrReader, count: number): string[] {
   return array;
 }
 
-function getHeaderNeeds(definition: IdlMessageDefinition): {
+function getHeaderNeeds(definition: IDLMessageDefinition): {
   typeUsesDelimiterHeader: boolean;
   typeUsesMemberHeader: boolean;
 } {
@@ -291,7 +291,7 @@ function getHeaderNeeds(definition: IdlMessageDefinition): {
   return { typeUsesDelimiterHeader: false, typeUsesMemberHeader: false };
 }
 
-function getDefinitionId(definition: IdlMessageDefinitionField): number | undefined {
+function getDefinitionId(definition: IDLMessageDefinitionField): number | undefined {
   const { annotations } = definition;
 
   if (!annotations) {

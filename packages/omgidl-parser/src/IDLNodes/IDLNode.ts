@@ -1,19 +1,19 @@
-import { AnyIdlNode, IConstantIdlNode, IIdlNode } from "./interfaces";
-import { BaseAstNode } from "../astTypes";
+import { AnyIDLNode, IConstantIDLNode, IIDLNode } from "./interfaces";
+import { BaseASTNode } from "../astTypes";
 
 /** Class used to resolve ASTNodes to IDLMessageDefinitions
- * There is a subclass of this class for each `declarator` type on the AstNode.
+ * There is a subclass of this class for each `declarator` type on the ASTNode.
  * This class is meant to provide functions and variables that exist across all of the nodes to help them resolve to complete message definitions.
  */
-export abstract class IdlNode<T extends BaseAstNode = BaseAstNode> implements IIdlNode<T> {
-  /** Map of all IdlNodes in a schema definition */
-  private map: Map<string, AnyIdlNode>;
+export abstract class IDLNode<T extends BaseASTNode = BaseASTNode> implements IIDLNode<T> {
+  /** Map of all IDLNodes in a schema definition */
+  private map: Map<string, AnyIDLNode>;
   /** Unresolved node parsed directly from schema */
   protected readonly astNode: T;
   /** Array of strings that represent namespace scope that astNode is contained within. */
   readonly scopePath: string[];
 
-  constructor(scopePath: string[], astNode: T, idlMap: Map<string, AnyIdlNode>) {
+  constructor(scopePath: string[], astNode: T, idlMap: Map<string, AnyIDLNode>) {
     this.scopePath = scopePath;
     this.astNode = astNode;
     this.map = idlMap;
@@ -23,11 +23,11 @@ export abstract class IdlNode<T extends BaseAstNode = BaseAstNode> implements II
     return this.astNode.declarator;
   }
 
-  get name(): BaseAstNode["name"] {
+  get name(): BaseASTNode["name"] {
     return this.astNode.name;
   }
 
-  get annotations(): BaseAstNode["annotations"] {
+  get annotations(): BaseASTNode["annotations"] {
     return this.astNode.annotations;
   }
 
@@ -37,7 +37,7 @@ export abstract class IdlNode<T extends BaseAstNode = BaseAstNode> implements II
   }
 
   /** Gets any node in map. Fails if not found.*/
-  protected getNode(scopePath: string[], name: string): AnyIdlNode {
+  protected getNode(scopePath: string[], name: string): AnyIDLNode {
     const maybeNode = resolveScopedOrLocalNodeReference({
       usedIdentifier: name,
       scopeOfUsage: scopePath,
@@ -54,7 +54,7 @@ export abstract class IdlNode<T extends BaseAstNode = BaseAstNode> implements II
   }
 
   /** Gets a constant node under a local-to-this-node or scoped identifier. Fails if not a ConstantNode */
-  protected getConstantNode(identifier: string): IConstantIdlNode {
+  protected getConstantNode(identifier: string): IConstantIDLNode {
     const maybeConstantNode = this.getNode(this.scopePath, identifier);
     if (maybeConstantNode.declarator !== "const") {
       throw new Error(`Expected ${this.name} to be a constant in ${this.scopedIdentifier}`);
@@ -84,8 +84,8 @@ function resolveScopedOrLocalNodeReference({
 }: {
   usedIdentifier: string;
   scopeOfUsage: string[];
-  definitionMap: Map<string, AnyIdlNode>;
-}): AnyIdlNode | undefined {
+  definitionMap: Map<string, AnyIDLNode>;
+}): AnyIDLNode | undefined {
   // If using local un-scoped identifier, it will not be found in the definitions map
   // In this case we try by building up the namespace prefix until we find a match
   let referencedNode = undefined;

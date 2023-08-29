@@ -10,7 +10,7 @@ Output definitions can be passed to serializers along with a specified root sche
 
 ## API
 
-`parseIdl` - parses raw `.idl` schema string to resolved, flattened definitions.
+`parseIDL` - parses raw `.idl` schema string to resolved, flattened definitions.
 
 ## OMG IDL Subset Support
 
