@@ -22,7 +22,7 @@ export class EnumIdlNode extends IdlNode<EnumAstNode> implements IEnumIdlNode {
 
   public toIdlMessageDefinition(): IdlMessageDefinition {
     const definitions = this.enumeratorNodes().map((enumerator) =>
-      enumerator.toIDLMessageDefinitionField(),
+      enumerator.toIdlMessageDefinitionField(),
     );
     return {
       name: toScopedIdentifier([...this.scopePath, this.name]),

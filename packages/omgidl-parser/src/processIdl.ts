@@ -53,15 +53,15 @@ export function toIDLMessageDefinitions(map: Map<string, AnyIdlNode>): IdlMessag
   // This is important for ros2idl compatibility
   for (const node of map.values()) {
     if (node.declarator === "struct") {
-      messageDefinitions.push(node.toIDLMessageDefinition());
+      messageDefinitions.push(node.toIdlMessageDefinition());
     } else if (node.declarator === "module") {
-      const def = node.toIDLMessageDefinition();
+      const def = node.toIdlMessageDefinition();
       if (def != undefined) {
         messageDefinitions.push(def);
       }
     } else if (node.declarator === "const") {
       if (node.scopePath.length === 0) {
-        topLevelConstantDefinitions.push(node.toIDLMessageDefinitionField());
+        topLevelConstantDefinitions.push(node.toIdlMessageDefinitionField());
       }
     } else if (node.declarator === "enum") {
       messageDefinitions.push(node.toIdlMessageDefinition());

@@ -53,7 +53,7 @@ export class ConstantIdlNode extends IdlNode<ConstantAstNode> implements IConsta
   }
 
   /** Writes resolved IdlMessageDefinition */
-  toIDLMessageDefinitionField(): IdlMessageDefinitionField {
+  toIdlMessageDefinitionField(): IdlMessageDefinitionField {
     return {
       name: this.name,
       type: normalizeType(this.type),

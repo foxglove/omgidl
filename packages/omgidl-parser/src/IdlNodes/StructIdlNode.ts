@@ -18,7 +18,7 @@ export class StructIdlNode extends IdlNode<StructAstNode> implements IStructIdlN
   }
 
   /** Writes out struct as IDL Message definition with resolved `definitions` members */
-  toIDLMessageDefinition(): IdlMessageDefinition {
+  toIdlMessageDefinition(): IdlMessageDefinition {
     const definitions = this.definitions.map((def) => def.toIdlMessageDefinitionField());
     return {
       name: this.scopedIdentifier,

@@ -10,10 +10,10 @@ export class ModuleIdlNode extends IdlNode<ModuleAstNode> implements IModuleIdlN
   }
 
   /** Writes out module to message definition that contains only its directly descendent constant definitions */
-  toIDLMessageDefinition(): IdlMessageDefinition | undefined {
+  toIdlMessageDefinition(): IdlMessageDefinition | undefined {
     const definitions: IdlMessageDefinitionField[] = this.definitions.flatMap((def) => {
       if (def instanceof ConstantIdlNode) {
-        return [def.toIDLMessageDefinitionField()];
+        return [def.toIdlMessageDefinitionField()];
       }
       return [];
     });

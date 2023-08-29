@@ -23,7 +23,7 @@ export interface IConstantIdlNode extends IIdlNode<ConstantAstNode> {
   type: string;
   isConstant: true;
   value: ConstantValue;
-  toIDLMessageDefinitionField(): IdlMessageDefinitionField;
+  toIdlMessageDefinitionField(): IdlMessageDefinitionField;
 }
 
 export interface IEnumIdlNode extends IIdlNode<EnumAstNode> {
@@ -33,13 +33,13 @@ export interface IEnumIdlNode extends IIdlNode<EnumAstNode> {
 
 export interface IModuleIdlNode extends IIdlNode<ModuleAstNode> {
   definitions: AnyIdlNode[];
-  toIDLMessageDefinition(): IdlMessageDefinition | undefined;
+  toIdlMessageDefinition(): IdlMessageDefinition | undefined;
 }
 
 export interface IStructIdlNode extends IIdlNode<StructAstNode> {
   type: string;
   definitions: IStructMemberIdlNode[];
-  toIDLMessageDefinition(): IdlMessageDefinition;
+  toIdlMessageDefinition(): IdlMessageDefinition;
 }
 export interface IReferenceTypeIdlNode<T extends TypedefAstNode | StructMemberAstNode>
   extends IIdlNode<T> {
