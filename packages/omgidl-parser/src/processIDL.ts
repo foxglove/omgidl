@@ -8,10 +8,10 @@ import {
   StructMemberIDLNode,
   TypedefIDLNode,
 } from "./IDLNodes";
+import { UnionIDLNode } from "./IDLNodes/UnionIDLNode";
 import { AnyIDLNode } from "./IDLNodes/interfaces";
 import { AnyASTNode } from "./astTypes";
 import { IDLMessageDefinition } from "./types";
-import { UnionIDLNode } from "./IDLNodes/UnionIDLNode";
 
 /** Initializes map of IDL nodes to their scoped namespaces */
 export function buildMap(definitions: AnyASTNode[]): Map<string, AnyIDLNode> {
