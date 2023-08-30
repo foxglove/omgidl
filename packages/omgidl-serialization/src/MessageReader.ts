@@ -67,6 +67,9 @@ export class MessageReader<T = unknown> {
       usesMemberHeader: boolean;
     },
   ): Record<string, unknown> {
+    if (complexDef.aggregatedKind === "union") {
+      throw new Error(`Unions are not supported yet`);
+    }
     const msg: Record<string, unknown> = {};
 
     const { usesDelimiterHeader, usesMemberHeader, isTopLevel } = options;
