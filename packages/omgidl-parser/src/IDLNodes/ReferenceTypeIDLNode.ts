@@ -1,6 +1,11 @@
 import { IDLNode } from "./IDLNode";
-import { StructIDLNode } from "./StructIDLNode";
-import { AnyIDLNode, IEnumIDLNode, IReferenceTypeIDLNode, IStructIDLNode } from "./interfaces";
+import {
+  AnyIDLNode,
+  IEnumIDLNode,
+  IReferenceTypeIDLNode,
+  IStructIDLNode,
+  IUnionIDLNode,
+} from "./interfaces";
 import {
   BaseASTNode,
   StructMemberASTNode,
@@ -9,7 +14,11 @@ import {
 } from "../astTypes";
 import { SIMPLE_TYPES } from "../primitiveTypes";
 
-type PossibleTypeRefNode = IStructIDLNode | IReferenceTypeIDLNode<TypedefASTNode> | IEnumIDLNode;
+type PossibleTypeRefNode =
+  | IStructIDLNode
+  | IReferenceTypeIDLNode<TypedefASTNode>
+  | IEnumIDLNode
+  | IUnionIDLNode;
 
 /** Class used for struct members and typedefs because they can reference each other and other types (enum and struct)
  * This class resolves the fields of these types to their final values.
@@ -50,7 +59,7 @@ export abstract class ReferenceTypeIDLNode<T extends TypedefASTNode | StructMemb
     if (parent.declarator === "typedef") {
       return parent.isComplex;
     }
-    return parent instanceof StructIDLNode;
+    return parent.declarator === "struct" || parent.declarator === "union";
   }
 
   get isArray(): boolean | undefined {
@@ -159,6 +168,7 @@ export abstract class ReferenceTypeIDLNode<T extends TypedefASTNode | StructMemb
     if (
       !(maybeValidParent.declarator === "struct") &&
       !(maybeValidParent.declarator === "typedef") &&
+      !(maybeValidParent.declarator === "union") &&
       !(maybeValidParent.declarator === "enum")
     ) {
       throw new Error(

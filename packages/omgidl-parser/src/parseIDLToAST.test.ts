@@ -1464,6 +1464,7 @@ module idl_parser {
     expect(ast).toEqual([
       {
         name: "MyUnion",
+        declarator: "union",
         switchType: "long",
         cases: [
           {
@@ -1537,6 +1538,7 @@ module idl_parser {
       },
       {
         name: "Color",
+        declarator: "union",
         switchType: "ColorMode",
         cases: [
           {
@@ -1613,6 +1615,7 @@ module idl_parser {
       },
       {
         name: "Color",
+        declarator: "union",
         switchType: "usesColor",
         cases: [
           {

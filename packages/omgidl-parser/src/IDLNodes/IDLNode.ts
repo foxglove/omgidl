@@ -7,7 +7,7 @@ import { BaseASTNode } from "../astTypes";
  */
 export abstract class IDLNode<T extends BaseASTNode = BaseASTNode> implements IIDLNode<T> {
   /** Map of all IDLNodes in a schema definition */
-  private map: Map<string, AnyIDLNode>;
+  protected map: Map<string, AnyIDLNode>;
   /** Unresolved node parsed directly from schema */
   protected readonly astNode: T;
   /** Array of strings that represent namespace scope that astNode is contained within. */

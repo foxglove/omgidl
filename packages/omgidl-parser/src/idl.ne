@@ -167,6 +167,7 @@ union -> "union" fieldName "switch" "(" switchTypedef ")" "{" switchBody "}" {%
   const defaultCase = allCases.find(c => "default" in c);
   const cases = allCases.filter(c => ("predicates" in c));
   const unionNode = {
+    declarator: "union",
     name,
     switchType,
     cases,

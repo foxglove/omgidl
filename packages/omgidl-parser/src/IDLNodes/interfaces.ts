@@ -8,8 +8,9 @@ import {
   StructASTNode,
   StructMemberASTNode,
   TypedefASTNode,
+  UnionASTNode,
 } from "../astTypes";
-import { IDLMessageDefinition, IDLMessageDefinitionField } from "../types";
+import { Case, IDLMessageDefinition, IDLMessageDefinitionField } from "../types";
 
 export interface IIDLNode<T extends BaseASTNode = BaseASTNode> {
   readonly scopePath: string[];
@@ -57,10 +58,19 @@ export interface IStructMemberIDLNode extends IReferenceTypeIDLNode<StructMember
 
 export type ITypedefIDLNode = IReferenceTypeIDLNode<TypedefASTNode>;
 
+export interface IUnionIDLNode extends IIDLNode<UnionASTNode> {
+  isComplex: boolean;
+  switchType: string;
+  cases: Case[];
+  defaultCase: IDLMessageDefinitionField | undefined;
+  toIDLMessageDefinition(): IDLMessageDefinition;
+}
+
 export type AnyIDLNode =
   | IConstantIDLNode
   | IEnumIDLNode
   | IModuleIDLNode
   | IStructIDLNode
   | IStructMemberIDLNode
+  | IUnionIDLNode
   | ITypedefIDLNode;

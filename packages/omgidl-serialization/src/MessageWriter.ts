@@ -1,10 +1,6 @@
 import { CdrWriter, CdrWriterOpts } from "@foxglove/cdr";
-import {
-  DefaultValue,
-  MessageDefinition,
-  MessageDefinitionField,
-} from "@foxglove/message-definition";
-import { IDLMessageDefinitionField } from "@foxglove/omgidl-parser";
+import { DefaultValue, MessageDefinitionField } from "@foxglove/message-definition";
+import { IDLMessageDefinition, IDLMessageDefinitionField } from "@foxglove/omgidl-parser";
 
 type PrimitiveWriter = (value: unknown, defaultValue: DefaultValue, writer: CdrWriter) => void;
 type PrimitiveArrayWriter = (value: unknown, defaultValue: DefaultValue, writer: CdrWriter) => void;
@@ -65,7 +61,7 @@ export class MessageWriter {
 
   constructor(
     rootDefinitionName: string,
-    definitions: MessageDefinition[],
+    definitions: IDLMessageDefinition[],
     cdrOptions?: Partial<CdrWriterOpts>,
   ) {
     // use first not entirely constant module as root
@@ -75,9 +71,14 @@ export class MessageWriter {
         `Root definition name "${rootDefinitionName}" not found in schema definitions.`,
       );
     }
+    if (rootDefinition.aggregatedKind === "union") {
+      throw new Error(`Unions are not yet supported by MessageWriter`);
+    }
     this.rootDefinition = rootDefinition.definitions;
     this.definitions = new Map<string, IDLMessageDefinitionField[]>(
-      definitions.map((def) => [def.name ?? "", def.definitions]),
+      definitions.flatMap((def) =>
+        def.aggregatedKind !== "union" ? [[def.name ?? "", def.definitions]] : [],
+      ),
     );
     this.cdrOptions = cdrOptions ?? {};
   }
