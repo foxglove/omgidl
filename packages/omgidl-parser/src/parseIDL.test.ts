@@ -1,6 +1,133 @@
-import { parseIdl as parse } from "./parseIdl";
+import { parseIDL as parse } from "./parseIDL";
 
 describe("omgidl parser tests", () => {
+  it("parses a struct", () => {
+    const schema = `
+    struct A {
+      int32 num;
+    };
+    `;
+    const types = parse(schema);
+    expect(types).toEqual([
+      {
+        name: "A",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            isComplex: false,
+            name: "num",
+            type: "int32",
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses a struct with a member that references another struct", () => {
+    const schema = `
+    struct B {
+      A complexRef;
+    };
+    struct A {
+      int32 num;
+    };
+    
+    `;
+    const types = parse(schema);
+    expect(types).toEqual([
+      {
+        name: "B",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            isComplex: true,
+            name: "complexRef",
+            type: "A",
+          },
+        ],
+      },
+      {
+        name: "A",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            isComplex: false,
+            name: "num",
+            type: "int32",
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses a struct with multiple primitive definitions", () => {
+    const schema = `
+    struct A {
+      int32 num;
+      float vec3[3];
+      sequence<uint8, 10> seq;
+      string str;
+    };
+    
+    `;
+    const types = parse(schema);
+    expect(types).toEqual([
+      {
+        name: "A",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            isComplex: false,
+            name: "num",
+            type: "int32",
+          },
+          {
+            isComplex: false,
+            name: "vec3",
+            type: "float32",
+            isArray: true,
+            arrayLengths: [3],
+          },
+          {
+            isComplex: false,
+            name: "seq",
+            type: "uint8",
+            isArray: true,
+            arrayUpperBound: 10,
+          },
+          {
+            isComplex: false,
+            name: "str",
+            type: "string",
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses a module with an enclosed struct", () => {
+    const types = parse(
+      `
+    module rosidl_parser {
+      module action {
+        struct MyAction_Goal {
+          int32 input_value;
+        };
+      };
+    };
+    `,
+    );
+    expect(types).toEqual([
+      {
+        name: "rosidl_parser::action::MyAction_Goal",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            isComplex: false,
+            name: "input_value",
+            type: "int32",
+          },
+        ],
+      },
+    ]);
+  });
   it("parses a module with an enclosed struct and module", () => {
     const types = parse(
       `
@@ -18,6 +145,7 @@ describe("omgidl parser tests", () => {
     );
     expect(types).toEqual([
       {
+        aggregatedKind: "module",
         definitions: [
           {
             isConstant: true,
@@ -31,6 +159,7 @@ describe("omgidl parser tests", () => {
         name: "rosidl_parser::action::MyAction_Goal_Constants",
       },
       {
+        aggregatedKind: "struct",
         definitions: [
           {
             isComplex: false,
@@ -58,6 +187,7 @@ describe("omgidl parser tests", () => {
     expect(types).toEqual([
       {
         name: "msg::PointCollection",
+        aggregatedKind: "struct",
         definitions: [
           {
             name: "points",
@@ -70,6 +200,7 @@ describe("omgidl parser tests", () => {
       },
       {
         name: "Point",
+        aggregatedKind: "struct",
         definitions: [
           {
             name: "x",
@@ -97,6 +228,7 @@ describe("omgidl parser tests", () => {
     expect(types).toEqual([
       {
         name: "Point",
+        aggregatedKind: "struct",
         definitions: [
           {
             name: "loc",
@@ -123,6 +255,7 @@ describe("omgidl parser tests", () => {
     expect(types).toEqual([
       {
         name: "msg::Point",
+        aggregatedKind: "struct",
         definitions: [
           {
             name: "loc",
@@ -171,6 +304,7 @@ describe("omgidl parser tests", () => {
     expect(types).toEqual([
       {
         name: "layer1::layer2::layer3::Point",
+        aggregatedKind: "struct",
         definitions: [
           {
             name: "layer1L1",
@@ -257,6 +391,7 @@ describe("omgidl parser tests", () => {
     );
     expect(types).toEqual([
       {
+        aggregatedKind: "struct",
         definitions: [
           {
             isComplex: false,
@@ -315,6 +450,7 @@ describe("omgidl parser tests", () => {
     expect(types).toEqual([
       {
         name: "rosidl_parser::action::MyAction_Goal_Constants",
+        aggregatedKind: "module",
         definitions: [
           {
             isConstant: true,
@@ -328,6 +464,7 @@ describe("omgidl parser tests", () => {
       },
       {
         name: "rosidl_parser::action::MyAction_Goal",
+        aggregatedKind: "struct",
         definitions: [
           {
             type: "int32",
@@ -338,6 +475,7 @@ describe("omgidl parser tests", () => {
       },
       {
         name: "rosidl_parser::action::MyAction_Result_Constants",
+        aggregatedKind: "module",
         definitions: [
           {
             isConstant: true,
@@ -351,6 +489,7 @@ describe("omgidl parser tests", () => {
       },
       {
         name: "rosidl_parser::action::MyAction_Result",
+        aggregatedKind: "struct",
         definitions: [
           {
             type: "uint32",
@@ -361,6 +500,7 @@ describe("omgidl parser tests", () => {
       },
       {
         name: "rosidl_parser::action::MyAction_Feedback_Constants",
+        aggregatedKind: "module",
         definitions: [
           {
             isConstant: true,
@@ -374,6 +514,7 @@ describe("omgidl parser tests", () => {
       },
       {
         name: "rosidl_parser::action::MyAction_Feedback",
+        aggregatedKind: "struct",
         definitions: [
           {
             type: "float32",
@@ -406,6 +547,7 @@ describe("omgidl parser tests", () => {
     // same as above
     expect(types).toEqual([
       {
+        aggregatedKind: "module",
         definitions: [
           {
             isConstant: true,
@@ -419,6 +561,7 @@ describe("omgidl parser tests", () => {
         name: "rosidl_parser::action::MyAction_Goal_Constants",
       },
       {
+        aggregatedKind: "struct",
         definitions: [
           {
             isComplex: false,
@@ -447,6 +590,7 @@ module rosidl_parser {
     );
     expect(types).toEqual([
       {
+        aggregatedKind: "module",
         definitions: [
           {
             isConstant: true,
@@ -519,6 +663,7 @@ module rosidl_parser {
     expect(types).toEqual([
       {
         name: "rosidl_parser::msg::MyMessage",
+        aggregatedKind: "struct",
         definitions: [
           {
             type: "uint16",
@@ -649,6 +794,7 @@ module rosidl_parser {
     expect(types).toEqual([
       {
         name: "rosidl_parser::msg::MyMessage",
+        aggregatedKind: "struct",
         definitions: [
           {
             type: "string",
@@ -718,6 +864,7 @@ module rosidl_parser {
       },
       {
         name: "",
+        aggregatedKind: "module",
         definitions: [
           {
             name: "UNSIGNED_LONG_CONSTANT",
@@ -775,6 +922,7 @@ module rosidl_parser {
             },
           },
         },
+        aggregatedKind: "struct",
         definitions: [
           {
             defaultValue: 123,
@@ -885,6 +1033,7 @@ module geometry {
     expect(types).toEqual([
       {
         name: "rosidl_parser::msg::MyMessage",
+        aggregatedKind: "struct",
         definitions: [
           {
             type: "geometry::msg::Point",
@@ -909,6 +1058,7 @@ module geometry {
       },
       {
         name: "geometry::msg::Point",
+        aggregatedKind: "struct",
         definitions: [
           {
             name: "x",
@@ -958,6 +1108,7 @@ module geometry {
     );
     expect(types).toEqual([
       {
+        aggregatedKind: "struct",
         definitions: [
           {
             annotations: {
@@ -1176,6 +1327,7 @@ module rosidl_parser {
     );
     expect(types).toEqual([
       {
+        aggregatedKind: "module",
         definitions: [
           {
             isConstant: true,
@@ -1239,6 +1391,7 @@ module rosidl_parser {
     const types = parse(msgDef);
     expect(types).toEqual([
       {
+        aggregatedKind: "module",
         definitions: [
           {
             isConstant: true,
@@ -1253,6 +1406,7 @@ module rosidl_parser {
         name: "action::MyAction_Goal_Constants",
       },
       {
+        aggregatedKind: "struct",
         definitions: [
           {
             isComplex: false,
@@ -1276,6 +1430,7 @@ module rosidl_parser {
     const types = parse(msgDef);
     expect(types).toEqual([
       {
+        aggregatedKind: "struct",
         definitions: [
           {
             defaultValue: 5,
@@ -1324,6 +1479,7 @@ module rosidl_parser {
     expect(types).toEqual([
       {
         name: "COLORS",
+        aggregatedKind: "module",
         definitions: [
           {
             name: "RED",
@@ -1364,6 +1520,7 @@ module rosidl_parser {
     expect(types).toEqual([
       {
         name: "Scene::COLORS",
+        aggregatedKind: "module",
         definitions: [
           {
             name: "RED",
@@ -1406,6 +1563,7 @@ module rosidl_parser {
     expect(types).toEqual([
       {
         name: "COLORS",
+        aggregatedKind: "module",
         definitions: [
           {
             name: "RED",
@@ -1432,6 +1590,7 @@ module rosidl_parser {
       },
       {
         name: "Line",
+        aggregatedKind: "struct",
         definitions: [
           {
             name: "color",
@@ -1465,6 +1624,7 @@ module rosidl_parser {
     expect(types).toEqual([
       {
         name: "COLORS",
+        aggregatedKind: "module",
         definitions: [
           {
             name: "RED",
@@ -1491,6 +1651,7 @@ module rosidl_parser {
       },
       {
         name: "Scene::DefaultColors",
+        aggregatedKind: "module",
         definitions: [
           {
             isConstant: true,
@@ -1504,6 +1665,7 @@ module rosidl_parser {
       },
       {
         name: "Scene::Line",
+        aggregatedKind: "struct",
         definitions: [
           {
             name: "color",
@@ -1538,6 +1700,7 @@ module rosidl_parser {
     const types = parse(msgDef);
     expect(types).toEqual([
       {
+        aggregatedKind: "struct",
         definitions: [
           {
             name: "byteWithSameDefault",
@@ -1585,6 +1748,7 @@ module rosidl_parser {
     const types = parse(msgDef);
     expect(types).toEqual([
       {
+        aggregatedKind: "struct",
         definitions: [
           {
             name: "gridLine",
@@ -1611,6 +1775,7 @@ module rosidl_parser {
     expect(types).toEqual([
       {
         name: "GridBoard",
+        aggregatedKind: "struct",
         definitions: [
           {
             name: "grid",
@@ -1623,6 +1788,7 @@ module rosidl_parser {
       },
       {
         name: "",
+        aggregatedKind: "module",
         definitions: [
           {
             name: "rows",
@@ -1645,8 +1811,7 @@ module rosidl_parser {
     ]);
   });
 
-  // **************** Not supported in our implementation yet
-  it("cannot parse typedefs that reference other typedefs", () => {
+  it("can parse typedefs that reference other typedefs", () => {
     const msgDef = `
         typedef sequence<int32, 10> int32arr;
         typedef int32arr int32arr2;
@@ -1654,7 +1819,37 @@ module rosidl_parser {
           int32arr2 intArray;
         };
     `;
-    expect(() => parse(msgDef)).toThrow(/do not support typedefs that reference other typedefs/i);
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        name: "ArrStruct",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            arrayUpperBound: 10,
+            isArray: true,
+            isComplex: false,
+            name: "intArray",
+            type: "int32",
+          },
+        ],
+      },
+    ]);
+  });
+
+  // **************** Not supported in our implementation yet
+  it("cannot compose variable size arrays (no serialization support)", () => {
+    const msgDef = `
+        typedef sequence<int32, 10> int32arr;
+        typedef int32arr int32arr2[2];
+        struct ArrStruct {
+          int32arr2 intArray;
+        };
+    `;
+
+    expect(() => parse(msgDef)).toThrow(
+      /we do not support composing variable length arrays with typedefs/i,
+    );
   });
   //****************  Not supported by IDL (as far as I can tell) *::
   it("cannot parse multiple const declarations in a single line", () => {

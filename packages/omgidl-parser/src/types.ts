@@ -1,121 +1,59 @@
-import {
-  ConstantValue,
-  MessageDefinition,
-  MessageDefinitionField,
-} from "@foxglove/message-definition";
+import { MessageDefinition, MessageDefinitionField } from "@foxglove/message-definition";
 
-type UnresolvedConstantField = Omit<
-  MessageDefinitionField,
-  "arrayLength" | "upperBound" | "arrayUpperBound" | "value"
-> & {
-  upperBound?: number | ResolveToConstantValue;
-  arrayUpperBound?: number | ResolveToConstantValue;
-  value?: ConstantValue | ResolveToConstantValue;
-  /** Outermost arrays are first */
-  arrayLengths?: (number | ResolveToConstantValue)[];
-};
+import { AnyAnnotation } from "./astTypes";
 
-export type RawIdlDefinition = DefinitionNode;
+/** Final resolved MessageDefinition types */
 
-/** All possible top-level definitions that can be present in IDL schema */
-export type DefinitionNode = ModuleNode | StructNode | EnumNode | ConstantNode | TypeDefNode;
+/** Higher-level resolved definitions (struct, modules)*/
+export type IDLMessageDefinition = IDLStructDefinition | IDLModuleDefinition;
 
-/** Field nodes: these can be fields within a greater struct or module. They all extend MessageDefinitionField. */
-export type DefinitionFieldNode = StructMemberNode | ConstantNode | TypeDefNode;
-
-/** All possible IDL declarator nodes */
-export type AnyIDLNode =
-  | ConstantNode
-  | StructMemberNode
-  | ModuleNode
-  | StructNode
-  | TypeDefNode
-  | EnumNode;
-
-export type BaseIDLNode = {
-  declarator: "const" | "typedef" | "struct" | "enum" | "module" | "struct-member" | "union";
-  name: string;
-  /** Set to true if Node represents a constant value */
-  isConstant?: boolean;
-  annotations?: Record<string, AnyAnnotation>;
-};
-
-/** Node used to represent `module` declarations */
-export interface ModuleNode extends BaseIDLNode {
-  declarator: "module";
-  /** Definitions contained within the module. Can be `struct`, `const`, `typedef` or `module` */
-  definitions: DefinitionNode[];
-}
-
-/** Node used to represent `struct` declarations */
-export interface StructNode extends BaseIDLNode {
-  declarator: "struct";
-  /** Members contained in struct declaration in order */
-  definitions: StructMemberNode[];
-}
-
-/** Node used to represent `const` declarations */
-export interface ConstantNode extends BaseIDLNode, UnresolvedConstantField {
-  declarator: "const";
-  isConstant: true;
-  value: ConstantValue | ResolveToConstantValue;
-}
-
-/** Node used to represent `struct-member` declarations */
-export interface StructMemberNode extends BaseIDLNode, UnresolvedConstantField {
-  declarator: "struct-member";
-}
-
-/** Node used to represent `typedef` declarations */
-export interface TypeDefNode extends BaseIDLNode, UnresolvedConstantField {
-  declarator: "typedef";
-  /** Type identifier used in typedef declaration */
-  type: string;
-}
-
-/** Node used to represent `enum` declarations */
-export interface EnumNode extends BaseIDLNode {
-  declarator: "enum";
-  /** Contained enumerator strings in order of declaration */
-  enumerators: string[];
-}
-
-export type Case = {
-  predicates: (ResolveToConstantValue | number | boolean)[];
-  type: UnresolvedConstantField;
-};
-export interface UnionNode extends BaseIDLNode {
-  declarator: "union";
-  switchType: string;
-  cases: Case[];
-  defaultCase?: UnresolvedConstantField;
-}
-
-export type AnyAnnotation = AnnotationNamedParams | AnnotationNoParams | AnnotationConstParam;
-export interface BaseAnnotation {
-  type: "no-params" | "named-params" | "const-param";
-  name: string;
-}
-export interface AnnotationNoParams extends BaseAnnotation {
-  type: "no-params";
-}
-export interface AnnotationNamedParams extends BaseAnnotation {
-  type: "named-params";
-  namedParams: Record<string, ConstantValue | ResolveToConstantValue>;
-}
-export interface AnnotationConstParam extends BaseAnnotation {
-  type: "const-param";
-  value: ConstantValue | ResolveToConstantValue;
-}
-
-type ResolveToConstantValue = { usesConstant: true; name: string };
-
-export type IDLMessageDefinition = Omit<MessageDefinition, "definitions"> & {
-  annotations?: Record<string, AnyAnnotation>;
+export type IDLModuleDefinition = IDLAggregatedDefinition & {
+  aggregatedKind: "module";
+  /** Should only contain constants directly contained within module.
+   * Does not include constants contained within submodules any other definitions contained within the module.
+   */
   definitions: IDLMessageDefinitionField[];
 };
 
+/**  */
+export type IDLAggregatedDefinition = Omit<MessageDefinition, "definitions"> & {
+  /** Annotations from schema. Only default annotations are resolved currently */
+  annotations?: Record<string, AnyAnnotation>;
+  /** Denotes whether the MessageDefinition is a `struct`, `union` or `module`
+   * These are important to denote for serialization. Specifically for when a struct-member
+   * references a complex type (struct or union).
+   */
+  aggregatedKind: "struct" | "union" | "module";
+};
+
+export type IDLStructDefinition = IDLAggregatedDefinition & {
+  aggregatedKind: "struct";
+  definitions: IDLMessageDefinitionField[];
+};
+
+export type IDLUnionDefinition = IDLAggregatedDefinition & {
+  aggregatedKind: "union";
+  /** Type to read that determines what case to use. Must be numeric or boolean */
+  switchType: string;
+  cases: Case[];
+  /** Resolved default type specification */
+  default?: IDLMessageDefinitionField;
+};
+
+/** Case with resolved predicates and type definition */
+export type Case = {
+  /** Array of values that, if read, would cause the type to be used */
+  predicates: (number | boolean)[];
+  /** Type to be used if value from predicate array is read */
+  type: IDLMessageDefinitionField;
+};
+
+/**
+ * All primitive struct-members are resolved such that they do not contain references to typedefs or constant values.
+ * The only references they hold are to complex values (structs, unions ).
+ */
 export type IDLMessageDefinitionField = Omit<MessageDefinitionField, "arrayLength"> & {
+  /** Annotations from schema. Only default annotations are resolved currently */
   annotations?: Record<string, AnyAnnotation>;
   /** Length of array(s). Outermost arrays are first */
   arrayLengths?: number[];

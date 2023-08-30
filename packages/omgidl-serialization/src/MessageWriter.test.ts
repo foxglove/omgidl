@@ -1,4 +1,4 @@
-import { parseIdl } from "@foxglove/omgidl-parser";
+import { parseIDL } from "@foxglove/omgidl-parser";
 
 import { MessageWriter } from "./MessageWriter";
 
@@ -281,7 +281,7 @@ describe("MessageWriter", () => {
     "should serialize %s",
     (msgDef: string, rootDef: string, arr: Iterable<number>, message: Record<string, unknown>) => {
       const expected = Uint8Array.from([0, 1, 0, 0, ...arr]);
-      const writer = new MessageWriter(rootDef, parseIdl(msgDef));
+      const writer = new MessageWriter(rootDef, parseIDL(msgDef));
       const written = writer.writeMessage(message);
 
       expect(written).toBytesEqual(expected);
@@ -366,7 +366,7 @@ module builtin_interfaces {
 };
     `;
 
-    const writer = new MessageWriter("geometry_msgs::msg::Transforms", parseIdl(msgDef));
+    const writer = new MessageWriter("geometry_msgs::msg::Transforms", parseIDL(msgDef));
     const message = {
       transforms: [
         {
@@ -390,6 +390,6 @@ module builtin_interfaces {
     const msgDef = `
     struct a { int8 sample; };
     `;
-    expect(() => new MessageWriter("b", parseIdl(msgDef))).toThrow(/"b" not found/i);
+    expect(() => new MessageWriter("b", parseIDL(msgDef))).toThrow(/"b" not found/i);
   });
 });

@@ -1,5 +1,5 @@
-import { MessageDefinition } from "@foxglove/message-definition";
-import { parseIdlToMessageDefinition } from "@foxglove/omgidl-parser";
+import { MessageDefinition, MessageDefinitionField } from "@foxglove/message-definition";
+import { IDLMessageDefinitionField, IDLMessageDefinition, parseIDL } from "@foxglove/omgidl-parser";
 
 /**
  * Parses `ros2idl` schema into flattened message definitions for serialization/deserialization.
@@ -11,8 +11,11 @@ export function parseRos2idl(messageDefinition: string): MessageDefinition[] {
   // conform to conforming idl and just read it all in a single parse so that we don't have to call parse multiple times
   const idlConformedDef = messageDefinition.replaceAll(ROS2IDL_HEADER, "");
 
-  const results = parseIdlToMessageDefinition(idlConformedDef);
-  for (const def of results) {
+  const idlMessageDefinitions = parseIDL(idlConformedDef);
+
+  const messageDefinitions = idlMessageDefinitions.map(toMessageDefinition);
+
+  for (const def of messageDefinitions) {
     def.name = normalizeName(def.name!);
     for (const field of def.definitions) {
       field.type = normalizeName(field.type);
@@ -32,7 +35,27 @@ export function parseRos2idl(messageDefinition: string): MessageDefinition[] {
     }
   }
 
-  return results;
+  return messageDefinitions;
+}
+
+// Removes `annotation` field from the Definition and DefinitionField objects
+function toMessageDefinition(idlMsgDef: IDLMessageDefinition): MessageDefinition {
+  const { definitions, annotations: _a, aggregatedKind: _ak, ...partialDef } = idlMsgDef;
+  const fieldDefinitions = definitions.map((def: IDLMessageDefinitionField) => {
+    const { annotations: _an, arrayLengths, ...partialFieldDef } = def;
+    const fieldDef = { ...partialFieldDef };
+    if (arrayLengths != undefined) {
+      if (arrayLengths.length > 1) {
+        throw new Error(`Multi-dimensional arrays are not supported in MessageDefinition type`);
+      }
+      const [arrayLength] = arrayLengths;
+
+      (fieldDef as MessageDefinitionField).arrayLength = arrayLength;
+    }
+    return fieldDef;
+  });
+
+  return { ...partialDef, definitions: fieldDefinitions };
 }
 
 const ROS2IDL_HEADER = /={80}\nIDL: [a-zA-Z][\w]+(?:\/[a-zA-Z][\w]+)*/g;
