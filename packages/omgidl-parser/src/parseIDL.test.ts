@@ -1966,7 +1966,73 @@ module rosidl_parser {
       },
     ]);
   });
-
+  it("can parse union  with multiple predicates declaration", () => {
+    const msgDef = `
+    union MyUnion switch (long) {
+        case 1:
+          long long_branch;
+        case 3:
+        case 4:
+          float  float_branch;
+        case 5:
+        default:
+          uint8 default;
+    };
+    struct Foo {
+      MyUnion my_union;
+    };
+      `;
+    const ast = parse(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "MyUnion",
+        switchType: "long",
+        aggregatedKind: "union",
+        cases: [
+          {
+            predicates: [1],
+            type: {
+              isComplex: false,
+              name: "long_branch",
+              type: "int32",
+            },
+          },
+          {
+            predicates: [3, 4],
+            type: {
+              isComplex: false,
+              name: "float_branch",
+              type: "float32",
+            },
+          },
+          {
+            predicates: [5],
+            type: {
+              isComplex: false,
+              name: "default",
+              type: "uint8",
+            },
+          },
+        ],
+        defaultCase: {
+          isComplex: false,
+          name: "default",
+          type: "uint8",
+        },
+      },
+      {
+        name: "Foo",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            isComplex: true,
+            name: "my_union",
+            type: "MyUnion",
+          },
+        ],
+      },
+    ]);
+  });
   it("can parse simple union in module declaration", () => {
     const msgDef = `
     module MyTypes {
@@ -2031,6 +2097,83 @@ module rosidl_parser {
             isComplex: true,
             name: "my_union",
             type: "MyTypes::MyUnion",
+          },
+        ],
+      },
+    ]);
+  });
+  it("can parse union with resolved simple typedefs and constants", () => {
+    const msgDef = `
+    const uint32 FOUR = 4;
+    typedef float vec3[3];
+    union MyUnion switch (long) {
+        case 3:
+          vec3 mat9[3];
+        case 4:
+          vec3 fourVec3[FOUR];
+        default:
+          uint8 default;
+    };
+    struct Foo {
+        MyUnion my_union;
+    };
+      `;
+    const ast = parse(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "MyUnion",
+        switchType: "long",
+        aggregatedKind: "union",
+        cases: [
+          {
+            predicates: [3],
+            type: {
+              isComplex: false,
+              name: "mat9",
+              type: "float32",
+              isArray: true,
+              arrayLengths: [3, 3],
+            },
+          },
+          {
+            predicates: [4],
+            type: {
+              isComplex: false,
+              name: "fourVec3",
+              type: "float32",
+              isArray: true,
+              arrayLengths: [4, 3],
+            },
+          },
+        ],
+        defaultCase: {
+          isComplex: false,
+          name: "default",
+          type: "uint8",
+        },
+      },
+      {
+        name: "Foo",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            isComplex: true,
+            name: "my_union",
+            type: "MyUnion",
+          },
+        ],
+      },
+      {
+        name: "",
+        aggregatedKind: "module",
+        definitions: [
+          {
+            name: "FOUR",
+            isComplex: false,
+            isConstant: true,
+            type: "uint32",
+            value: 4,
+            valueText: "4",
           },
         ],
       },
