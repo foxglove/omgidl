@@ -42,9 +42,6 @@
   "devDependencies": {
     "@foxglove/omgidl-parser": "workspace:*",
     "@sounisi5011/jest-binary-data-matchers": "1.2.1",
-    "@types/jest": "^28.0.0",
-    "jest": "28.1.3",
-    "ts-jest": "29.0.5",
     "typescript": "4.9.5"
   },
   "dependencies": {
