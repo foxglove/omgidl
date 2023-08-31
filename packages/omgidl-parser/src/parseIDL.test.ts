@@ -1912,6 +1912,79 @@ module rosidl_parser {
       },
     ]);
   });
+  it("can parse union that uses unscoped-local enum values from the switch enum", () => {
+    const msgDef = `
+      enum ColorMode {
+        GRAY, RGBA, RGB
+      };
+      union Color switch (ColorMode) {
+          case GRAY:
+            uint8 gray;
+          case RGBA:
+            uint8 rgba[4];
+          default:
+            uint8 rgb[3];
+      };
+    struct ColorSettings {
+        Color chosenColor;
+    };
+      `;
+    const ast = parse(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "ColorMode",
+        aggregatedKind: "module",
+        definitions: [
+          { name: "GRAY", value: 0, type: "uint32", isConstant: true, isComplex: false },
+          { name: "RGBA", value: 1, type: "uint32", isConstant: true, isComplex: false },
+          { name: "RGB", value: 2, type: "uint32", isConstant: true, isComplex: false },
+        ],
+      },
+      {
+        name: "Color",
+        aggregatedKind: "union",
+        switchType: "uint32",
+        cases: [
+          {
+            predicates: [0],
+            type: {
+              isComplex: false,
+              name: "gray",
+              type: "uint8",
+            },
+          },
+          {
+            predicates: [1],
+            type: {
+              arrayLengths: [4],
+              isArray: true,
+              isComplex: false,
+              name: "rgba",
+              type: "uint8",
+            },
+          },
+        ],
+        defaultCase: {
+          arrayLengths: [3],
+          isArray: true,
+          isComplex: false,
+          name: "rgb",
+          type: "uint8",
+        },
+      },
+      {
+        name: "ColorSettings",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            name: "chosenColor",
+            type: "Color",
+            isComplex: true,
+          },
+        ],
+      },
+    ]);
+  });
   it("can parse union that uses boolean", () => {
     const msgDef = `
     typedef boolean usesColor;

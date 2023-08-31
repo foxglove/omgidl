@@ -1,5 +1,10 @@
 import { CdrReader } from "@foxglove/cdr";
-import { IDLMessageDefinition, IDLMessageDefinitionField } from "@foxglove/omgidl-parser";
+import {
+  IDLMessageDefinition,
+  IDLMessageDefinitionField,
+  IDLStructDefinition,
+  IDLUnionDefinition,
+} from "@foxglove/omgidl-parser";
 
 export type Deserializer = (
   reader: CdrReader,
@@ -51,15 +56,15 @@ export class MessageReader<T = unknown> {
     const usesDelimiterHeader = reader.usesDelimiterHeader;
     const usesMemberHeader = reader.usesMemberHeader;
 
-    return this.readComplexType(this.rootDefinition, reader, {
+    return this.readAggregatedType(this.rootDefinition, reader, {
       isTopLevel: true,
       usesDelimiterHeader,
       usesMemberHeader,
     }) as R;
   }
 
-  private readComplexType(
-    complexDef: IDLMessageDefinition,
+  private readAggregatedType(
+    aggregatedDef: IDLMessageDefinition,
     reader: CdrReader,
     options: {
       isTopLevel: boolean;
@@ -67,13 +72,8 @@ export class MessageReader<T = unknown> {
       usesMemberHeader: boolean;
     },
   ): Record<string, unknown> {
-    if (complexDef.aggregatedKind === "union") {
-      throw new Error(`Unions are not supported yet`);
-    }
-    const msg: Record<string, unknown> = {};
-
     const { usesDelimiterHeader, usesMemberHeader, isTopLevel } = options;
-    const { typeUsesDelimiterHeader, typeUsesMemberHeader } = getHeaderNeeds(complexDef);
+    const { typeUsesDelimiterHeader, typeUsesMemberHeader } = getHeaderNeeds(aggregatedDef);
 
     const readDelimiterHeader = usesDelimiterHeader && typeUsesDelimiterHeader;
     const readMemberHeader = usesMemberHeader && typeUsesMemberHeader;
@@ -82,109 +82,214 @@ export class MessageReader<T = unknown> {
     if (isTopLevel && readDelimiterHeader) {
       reader.dHeader();
     }
+    let msg;
+    switch (aggregatedDef.aggregatedKind) {
+      case "struct":
+        msg = this.readStructType(aggregatedDef, reader, options);
+        break;
+      case "union":
+        msg = this.readUnionType(aggregatedDef, reader, options);
+        break;
+      case "module":
+      default:
+        throw Error(`Modules are not used in serialization`);
+    }
+    if (readMemberHeader) {
+      reader.sentinelHeader();
+    }
+    return msg;
+  }
+
+  private readStructType(
+    complexDef: IDLStructDefinition,
+    reader: CdrReader,
+    options: {
+      isTopLevel: boolean;
+      usesDelimiterHeader: boolean;
+      usesMemberHeader: boolean;
+    },
+  ): Record<string, unknown> {
+    const msg: Record<string, unknown> = {};
+
+    const { usesMemberHeader } = options;
+    const { typeUsesMemberHeader } = getHeaderNeeds(complexDef);
+
+    const readMemberHeader = usesMemberHeader && typeUsesMemberHeader;
 
     const childOptions = {
+      ...options,
       isTopLevel: false,
-      usesDelimiterHeader,
-      usesMemberHeader,
     };
 
     for (const field of complexDef.definitions) {
       if (field.isConstant === true) {
         continue;
       }
-      const definitionId = getDefinitionId(field);
 
-      let emHeaderSizeBytes = undefined;
-      if (readMemberHeader) {
-        const { id, objectSize: objectSizeBytes } = reader.emHeader();
-        emHeaderSizeBytes = objectSizeBytes;
-        // this can help spot misalignments in reading the data
-        if (definitionId != undefined && id !== definitionId) {
-          throw Error(
-            `CDR message deserializer error. Expected ${definitionId} but EMHEADER contained ${id} for field "${
-              field.name
-            }" in ${complexDef.name ?? "unknown"}`,
-          );
-        }
+      msg[field.name] = this.readMemberFieldValue(
+        field,
+        reader,
+        { readMemberHeader, parentName: complexDef.name },
+        childOptions,
+      );
+    }
+
+    return msg;
+  }
+
+  private readUnionType(
+    unionDef: IDLUnionDefinition,
+    reader: CdrReader,
+    options: {
+      isTopLevel: boolean;
+      usesDelimiterHeader: boolean;
+      usesMemberHeader: boolean;
+    },
+  ): Record<string, unknown> {
+    const { usesMemberHeader } = options;
+    const { typeUsesMemberHeader } = getHeaderNeeds(unionDef);
+
+    const readMemberHeader = usesMemberHeader && typeUsesMemberHeader;
+
+    const childOptions = {
+      ...options,
+      isTopLevel: false,
+    };
+
+    // read switchtype value
+    const switchTypeDeser = deserializers.get(unionDef.switchType);
+    if (switchTypeDeser == undefined) {
+      throw new Error(`Unrecognized switch discriminator type ${unionDef.switchType}`);
+    }
+
+    // looks like unions print an emHeader for the switchType
+    if (readMemberHeader) {
+      const { objectSize: objectSizeBytes } = reader.emHeader();
+      const switchTypeLength = typeToByteLength(unionDef.switchType);
+      if (switchTypeLength != undefined && objectSizeBytes !== switchTypeLength) {
+        throw new Error(
+          `Expected switchType length of ${switchTypeLength} but got ${objectSizeBytes} for ${
+            unionDef.name ?? ""
+          }`,
+        );
+      }
+    }
+    const discriminatorValue = switchTypeDeser(reader) as number | boolean;
+
+    // get case for switchtype value based on matching predicate
+
+    const caseDefType = getCaseForDiscriminator(unionDef, discriminatorValue);
+    if (!caseDefType) {
+      throw new Error(
+        `No matching case found in ${
+          unionDef.name ?? ""
+        } for discriminator value ${discriminatorValue.toString()}`,
+      );
+    }
+
+    // read case value
+    const msg: Record<string, unknown> = {};
+    msg[caseDefType.name] = this.readMemberFieldValue(
+      caseDefType,
+      reader,
+      { readMemberHeader, parentName: unionDef.name },
+      childOptions,
+    );
+    return msg;
+  }
+
+  private readMemberFieldValue(
+    field: IDLMessageDefinitionField,
+    reader: CdrReader,
+    emHeaderOptions: { readMemberHeader: boolean; parentName?: string },
+    childOptions: { isTopLevel: boolean; usesDelimiterHeader: boolean; usesMemberHeader: boolean },
+  ): unknown {
+    const { readMemberHeader, parentName } = emHeaderOptions;
+    const definitionId = getDefinitionId(field);
+    let emHeaderSizeBytes = undefined;
+    if (readMemberHeader) {
+      const { id, objectSize: objectSizeBytes } = reader.emHeader();
+      emHeaderSizeBytes = objectSizeBytes;
+      // this can help spot misalignments in reading the data
+      if (definitionId != undefined && id !== definitionId) {
+        throw Error(
+          `CDR message deserializer error. Expected ${definitionId} but EMHEADER contained ${id} for field "${
+            field.name
+          }" in ${parentName ?? "unknown"}`,
+        );
+      }
+    }
+    if (field.isComplex === true) {
+      // Complex type
+      const nestedComplexDef = this.definitions.get(field.type);
+      if (nestedComplexDef == undefined) {
+        throw new Error(`Unrecognized complex type ${field.type}`);
       }
 
-      if (field.isComplex === true) {
-        // Complex type
-        const nestedComplexDef = this.definitions.get(field.type);
-        if (nestedComplexDef == undefined) {
-          throw new Error(`Unrecognized complex type ${field.type}`);
+      if (field.isArray === true) {
+        // For dynamic length arrays we need to read a uint32 prefix
+        const arrayLengths = field.arrayLengths ?? [reader.sequenceLength()];
+
+        const complexDeserializer = () => {
+          return this.readAggregatedType(nestedComplexDef, reader, childOptions);
+        };
+        const array = readNestedArray(complexDeserializer, arrayLengths, 0);
+        return array;
+      } else {
+        return this.readAggregatedType(nestedComplexDef, reader, childOptions);
+      }
+    } else {
+      const typeLength = typeToByteLength(field.type);
+      if (typeLength == undefined) {
+        throw new Error(`Unrecognized primitive type ${field.type}`);
+      }
+      const headerSpecifiedLength =
+        emHeaderSizeBytes != undefined ? Math.floor(emHeaderSizeBytes / typeLength) : undefined;
+      const remainderBytes =
+        emHeaderSizeBytes != undefined ? emHeaderSizeBytes % typeLength : undefined;
+
+      if (field.isArray === true) {
+        const deser = typedArrayDeserializers.get(field.type);
+        if (deser == undefined) {
+          throw new Error(`Unrecognized primitive array type ${field.type}[]`);
         }
 
-        if (field.isArray === true) {
-          // For dynamic length arrays we need to read a uint32 prefix
-          const arrayLengths = field.arrayLengths ?? [reader.sequenceLength()];
+        const arrayLengths =
+          field.arrayLengths ??
+          // the byteLength written in the header doesn't help us determine count of strings in the array
+          // This will be the next field in the message
+          (field.type === "string"
+            ? [reader.sequenceLength()]
+            : [headerSpecifiedLength ?? reader.sequenceLength()]);
 
-          const complexDeserializer = () => {
-            return this.readComplexType(nestedComplexDef, reader, childOptions);
+        if (arrayLengths.length > 1) {
+          const typedArrayDeserializer = () => {
+            return deser(reader, arrayLengths[arrayLengths.length - 1]!);
           };
-          const array = readNestedArray(complexDeserializer, arrayLengths, 0);
-          msg[field.name] = array;
+
+          // last arrayLengths length is handled in deserializer. It returns an array
+          return readNestedArray(typedArrayDeserializer, arrayLengths.slice(0, -1), 0);
         } else {
-          msg[field.name] = this.readComplexType(nestedComplexDef, reader, childOptions);
+          // Special case can happen where the emHeader is not divisible by the typeLength and there is a remainder of 4 bytes.
+          // 4 bytes of 0's are printed after the header length
+          // This can happen for 8 byte typeLength types.
+          if (arrayLengths[0] === 0 && remainderBytes === 4) {
+            reader.sequenceLength();
+            return deser(reader, 0);
+          } else {
+            return deser(reader, arrayLengths[0]!);
+          }
         }
       } else {
-        const typeLength = typeToByteLength(field.type);
-        if (typeLength == undefined) {
+        const deser = deserializers.get(field.type);
+        if (deser == undefined) {
           throw new Error(`Unrecognized primitive type ${field.type}`);
         }
-        const headerSpecifiedLength =
-          emHeaderSizeBytes != undefined ? Math.floor(emHeaderSizeBytes / typeLength) : undefined;
-        const remainderBytes =
-          emHeaderSizeBytes != undefined ? emHeaderSizeBytes % typeLength : undefined;
 
-        if (field.isArray === true) {
-          const deser = typedArrayDeserializers.get(field.type);
-          if (deser == undefined) {
-            throw new Error(`Unrecognized primitive array type ${field.type}[]`);
-          }
-
-          const arrayLengths =
-            field.arrayLengths ??
-            // the byteLength written in the header doesn't help us determine count of strings in the array
-            // This will be the next field in the message
-            (field.type === "string"
-              ? [reader.sequenceLength()]
-              : [headerSpecifiedLength ?? reader.sequenceLength()]);
-
-          if (arrayLengths.length > 1) {
-            const typedArrayDeserializer = () => {
-              return deser(reader, arrayLengths[arrayLengths.length - 1]!);
-            };
-
-            // last arrayLengths length is handled in deserializer. It returns an array
-            msg[field.name] = readNestedArray(typedArrayDeserializer, arrayLengths.slice(0, -1), 0);
-          } else {
-            // Special case can happen where the emHeader is not divisible by the typeLength and there is a remainder of 4 bytes.
-            // 4 bytes of 0's are printed after the header length
-            // This can happen for 8 byte typeLength types.
-            if (arrayLengths[0] === 0 && remainderBytes === 4) {
-              reader.sequenceLength();
-              msg[field.name] = deser(reader, 0);
-            } else {
-              msg[field.name] = deser(reader, arrayLengths[0]!);
-            }
-          }
-        } else {
-          const deser = deserializers.get(field.type);
-          if (deser == undefined) {
-            throw new Error(`Unrecognized primitive type ${field.type}`);
-          }
-
-          // fieldLength only used for `string` type primitives
-          msg[field.name] = deser(reader, headerSpecifiedLength);
-        }
+        // fieldLength only used for `string` type primitives
+        return deser(reader, headerSpecifiedLength);
       }
     }
-    if (readMemberHeader) {
-      reader.sentinelHeader();
-    }
-    return msg;
   }
 }
 
@@ -311,4 +416,18 @@ function getDefinitionId(definition: IDLMessageDefinitionField): number | undefi
   }
 
   return undefined;
+}
+
+function getCaseForDiscriminator(
+  unionDef: IDLUnionDefinition,
+  discriminatorValue: number | boolean,
+): IDLMessageDefinitionField | undefined {
+  for (const caseDef of unionDef.cases) {
+    for (const predicate of caseDef.predicates) {
+      if (predicate === discriminatorValue) {
+        return caseDef.type;
+      }
+    }
+  }
+  return unionDef.defaultCase;
 }

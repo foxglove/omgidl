@@ -37,7 +37,7 @@ export type IDLUnionDefinition = IDLAggregatedDefinition & {
   switchType: string;
   cases: Case[];
   /** Resolved default type specification */
-  default?: IDLMessageDefinitionField;
+  defaultCase?: IDLMessageDefinitionField;
 };
 
 /** Case with resolved predicates and type definition */

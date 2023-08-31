@@ -54,8 +54,11 @@ export abstract class IDLNode<T extends BaseASTNode = BaseASTNode> implements II
   }
 
   /** Gets a constant node under a local-to-this-node or scoped identifier. Fails if not a ConstantNode */
-  protected getConstantNode(identifier: string): IConstantIDLNode {
-    const maybeConstantNode = this.getNode(this.scopePath, identifier);
+  protected getConstantNode(
+    identifier: string,
+    scopePath: string[] = this.scopePath,
+  ): IConstantIDLNode {
+    const maybeConstantNode = this.getNode(scopePath, identifier);
     if (maybeConstantNode.declarator !== "const") {
       throw new Error(`Expected ${this.name} to be a constant in ${this.scopedIdentifier}`);
     }
