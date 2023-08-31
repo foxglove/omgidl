@@ -647,7 +647,7 @@ module builtin_interfaces {
 
     const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
     writer.dHeader(1); // first writes dHeader for struct object - not taken into consideration for objects
-    writer.emHeader(true, 1, 1); // then writes emHeader for struct object
+    writer.emHeader(true, 1, 1); // then writes emHeader for pointer1
     writer.uint8(0x0f); // then writes the octet
 
     writer.emHeader(true, 3, 1); // write wrong annotation
@@ -659,5 +659,44 @@ module builtin_interfaces {
     expect(() => reader.readMessage(writer.data)).toThrow(
       /expected 2 but emheader contained 3 for field "pointer2"/i,
     );
+  });
+
+  it("Reads mutable union field", () => {
+    const msgDef = `
+        @mutable
+        union ColorOrGray switch (uint8) {
+          case 0:
+            uint8 rgb[3];
+          case 3:
+            uint8 gray;
+        };
+        @mutable
+        struct Fence {
+            @id(5) ColorOrGray color;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(true, 5, 6); // writes emHeader for color field
+
+    writer.emHeader(true, 1, 1); // emHeader for discriminator (switch type)
+    writer.uint8(0x03); // then writes uint8 case for gray
+
+    writer.emHeader(true, 2, 1); // emHeader for field (gray)
+    writer.uint8(55); // then writes uint8
+
+    writer.sentinelHeader(); // end union
+    writer.sentinelHeader(); // end struct
+
+    const rootDef = "Fence";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual({
+      color: {
+        gray: 55,
+      },
+    });
   });
 });
