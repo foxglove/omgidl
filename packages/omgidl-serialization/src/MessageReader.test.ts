@@ -699,4 +699,44 @@ module builtin_interfaces {
       },
     });
   });
+  it("Reads array from mutable union field", () => {
+    const msgDef = `
+        @mutable
+        union ColorOrGray switch (uint8) {
+          case 0:
+            uint8 rgb[3];
+          case 3:
+            uint8 gray;
+        };
+        @mutable
+        struct Fence {
+            @id(5) ColorOrGray color;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(true, 5, 6); // writes emHeader for color field
+
+    writer.emHeader(true, 1, 1); // emHeader for discriminator (switch type)
+    writer.uint8(0x00); // then writes uint8 case for rgb
+
+    writer.emHeader(true, 2, 3); // emHeader for field (rgb)
+    writer.uint8(255); // then writes my favorite color
+    writer.uint8(0);
+    writer.uint8(0);
+
+    writer.sentinelHeader(); // end union
+    writer.sentinelHeader(); // end struct
+
+    const rootDef = "Fence";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual({
+      color: {
+        rgb: Uint8Array.from([255, 0, 0]),
+      },
+    });
+  });
 });
