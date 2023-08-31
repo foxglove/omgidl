@@ -1,13 +1,17 @@
 import { IDLNode } from "./IDLNode";
 import { StructMemberIDLNode } from "./StructMemberIDLNode";
-import { AnyIDLNode, IUnionIDLNode } from "./interfaces";
+import { AnyIDLNode, IEnumIDLNode, ITypedefIDLNode, IUnionIDLNode } from "./interfaces";
 import { UnionASTNode } from "../astTypes";
 import { INTEGER_TYPES, SIMPLE_TYPES } from "../primitiveTypes";
 import { Case, IDLMessageDefinition, IDLMessageDefinitionField } from "../types";
 
 export class UnionIDLNode extends IDLNode<UnionASTNode> implements IUnionIDLNode {
+  private switchTypeNeedsResolution = false;
   constructor(scopePath: string[], astNode: UnionASTNode, idlMap: Map<string, AnyIDLNode>) {
     super(scopePath, astNode, idlMap);
+    if (!SIMPLE_TYPES.has(this.astNode.switchType)) {
+      this.switchTypeNeedsResolution = true;
+    }
   }
 
   get type(): string {
@@ -18,13 +22,25 @@ export class UnionIDLNode extends IDLNode<UnionASTNode> implements IUnionIDLNode
     return true;
   }
 
+  private _switchTypeNode?: IEnumIDLNode | ITypedefIDLNode;
+  switchTypeNode(): IEnumIDLNode | ITypedefIDLNode {
+    if (this._switchTypeNode) {
+      return this._switchTypeNode;
+    }
+    const typeNode = this.getNode(this.scopePath, this.astNode.switchType);
+    if (typeNode.declarator !== "enum" && typeNode.declarator !== "typedef") {
+      throw new Error(
+        `Invalid switch type "${typeNode.scopedIdentifier}" ${this.astNode.switchType} in ${this.scopedIdentifier}`,
+      );
+    }
+    this._switchTypeNode = typeNode;
+    return typeNode;
+  }
+
   get switchType(): string {
     let switchType = this.astNode.switchType;
-    if (!SIMPLE_TYPES.has(this.astNode.switchType)) {
-      const typeNode = this.getNode(this.scopePath, this.astNode.switchType);
-      if (typeNode.declarator === "enum" || typeNode.declarator === "typedef") {
-        switchType = typeNode.type;
-      }
+    if (this.switchTypeNeedsResolution) {
+      switchType = this.switchTypeNode().type;
     }
     if (!isValidSwitchType(switchType)) {
       throw new Error(`Invalid resolved switch type ${switchType} in ${this.scopedIdentifier}`);
@@ -33,6 +49,14 @@ export class UnionIDLNode extends IDLNode<UnionASTNode> implements IUnionIDLNode
   }
 
   get cases(): Case[] {
+    // If the switch type is an enum that means the case predicate values can be just the enumerator name
+    // So we need to search the scope of the enum for the enumerator and get its value
+    const isEnumSwitchType =
+      this.switchTypeNeedsResolution && this.switchTypeNode().declarator === "enum";
+    const predicateScopePath = isEnumSwitchType
+      ? this.switchTypeNode().scopedIdentifier.split("::")
+      : this.scopePath;
+
     return this.astNode.cases.map((def) => {
       // These are not referenced anywhere so not necessary having in the map
       const typeNode = new StructMemberIDLNode(
@@ -43,7 +67,7 @@ export class UnionIDLNode extends IDLNode<UnionASTNode> implements IUnionIDLNode
 
       const resolvedPredicates = def.predicates.map((predicate) => {
         if (typeof predicate === "object") {
-          return this.getConstantNode(predicate.name).value as number | boolean;
+          return this.getConstantNode(predicate.name, predicateScopePath).value as number | boolean;
         }
         return predicate;
       });
@@ -70,13 +94,14 @@ export class UnionIDLNode extends IDLNode<UnionASTNode> implements IUnionIDLNode
   }
 
   toIDLMessageDefinition(): IDLMessageDefinition {
+    const annotations = this.annotations;
     return {
       name: this.scopedIdentifier,
       switchType: this.switchType,
       cases: this.cases,
       aggregatedKind: "union",
       ...(this.astNode.defaultCase ? { defaultCase: this.defaultCase } : undefined),
-      ...(this.astNode.annotations ? { annotations: this.astNode.annotations } : undefined),
+      ...(annotations ? { annotations } : undefined),
     };
   }
 }
