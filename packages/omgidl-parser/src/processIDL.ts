@@ -10,7 +10,7 @@ import {
 } from "./IDLNodes";
 import { UnionIDLNode } from "./IDLNodes/UnionIDLNode";
 import { AnyIDLNode } from "./IDLNodes/interfaces";
-import { AnyASTNode } from "./astTypes";
+import { AnyASTNode, AnyAnnotation, UnresolvedConstantValue } from "./astTypes";
 import { IDLMessageDefinition } from "./types";
 
 /** Initializes map of IDL nodes to their scoped namespaces */
@@ -26,12 +26,13 @@ export function buildMap(definitions: AnyASTNode[]): Map<string, AnyIDLNode> {
       const newNode = makeIDLNode(scopePath, node, idlMap);
       idlMap.set(newNode.scopedIdentifier, newNode);
       if (node.declarator === "enum") {
-        const enumConstants = node.enumerators.map((m: string, i: number) => ({
+        let nextImplicitIEnumValue = 0;
+        const enumConstants = node.enumerators.map((m) => ({
           declarator: "const" as const,
           isConstant: true as const,
-          name: m,
+          name: m.name,
           type: "unsigned long",
-          value: i as ConstantValue,
+          value: getValueAnnotation(m.annotations) ?? (nextImplicitIEnumValue++ as ConstantValue),
           isComplex: false,
         }));
         for (const constant of enumConstants) {
@@ -42,6 +43,19 @@ export function buildMap(definitions: AnyASTNode[]): Map<string, AnyIDLNode> {
     });
   }
   return idlMap;
+}
+
+function getValueAnnotation(
+  annotations: Record<string, AnyAnnotation> | undefined,
+): UnresolvedConstantValue | ConstantValue | undefined {
+  if (!annotations) {
+    return undefined;
+  }
+  const valueAnnotation = annotations["value"];
+  if (valueAnnotation && valueAnnotation.type === "const-param") {
+    return valueAnnotation.value;
+  }
+  return undefined;
 }
 
 /** Convert to IDL Message Definitions for serialization and compatibility foxglove studio's Raw Message panel. Returned in order of original definitions*/

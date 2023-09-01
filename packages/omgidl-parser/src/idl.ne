@@ -210,19 +210,25 @@ caseLabel -> ("case" constExpression ":") {% (d) => d[0][1] %}
  
 elementSpec -> typeDeclarator {% d => d[0] %}
 
-enum ->  "enum" fieldName "{" fieldName ("," fieldName):* "}" {% d => {
+enum ->  "enum" fieldName "{" enumFieldName ("," enumFieldName):* "}" {% d => {
   const name = d[1].name;
-  const firstMember = d[3].name;
+  const firstMember = d[3];
   const members = d[4]
     .flat(2)
-    .map((m) => m?.name)
-    .filter(Boolean);
+    // need to filter out commas
+    .filter(item => Boolean(item) && item.type !== ",");
 
   return {
     declarator: 'enum',
     name,
     enumerators: [firstMember, ...members],
   };
+} %}
+
+enumFieldName -> multiAnnotations fieldName {% d => {
+  const annotations = d[0];
+  const name = d[1];
+  return extend([annotations, name]);
 } %}
 
 struct -> "struct" fieldName "{" (member):+ "}" {% d => {

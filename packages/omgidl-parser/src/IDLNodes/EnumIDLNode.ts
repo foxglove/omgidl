@@ -16,7 +16,7 @@ export class EnumIDLNode extends IDLNode<EnumASTNode> implements IEnumIDLNode {
 
   private enumeratorNodes(): IConstantIDLNode[] {
     return this.astNode.enumerators.map((enumerator) =>
-      this.getConstantNode(toScopedIdentifier([...this.scopePath, this.name, enumerator])),
+      this.getConstantNode(toScopedIdentifier([...this.scopePath, this.name, enumerator.name])),
     );
   }
 
