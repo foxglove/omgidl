@@ -1278,7 +1278,32 @@ module idl_parser {
       {
         declarator: "enum",
         name: "COLORS",
-        enumerators: ["RED", "GREEN", "BLUE"],
+        enumerators: [{ name: "RED" }, { name: "GREEN" }, { name: "BLUE" }],
+      },
+    ]);
+  });
+  it("parses enums with value overrides", () => {
+    const msgDef = `
+      enum COLORS {
+        RED,
+        @value(5)
+        GREEN,
+        BLUE
+      };
+    `;
+    const types = parseIDLToAST(msgDef);
+    expect(types).toEqual([
+      {
+        declarator: "enum",
+        name: "COLORS",
+        enumerators: [
+          { name: "RED" },
+          {
+            name: "GREEN",
+            annotations: { value: { name: "value", type: "const-param", value: 5 } },
+          },
+          { name: "BLUE" },
+        ],
       },
     ]);
   });
@@ -1301,7 +1326,7 @@ module idl_parser {
           {
             declarator: "enum",
             name: "COLORS",
-            enumerators: ["RED", "GREEN", "BLUE"],
+            enumerators: [{ name: "RED" }, { name: "GREEN" }, { name: "BLUE" }],
           },
         ],
       },
@@ -1330,7 +1355,7 @@ module idl_parser {
       {
         declarator: "enum",
         name: "COLORS",
-        enumerators: ["RED", "GREEN", "BLUE"],
+        enumerators: [{ name: "RED" }, { name: "GREEN" }, { name: "BLUE" }],
       },
       {
         declarator: "module",
@@ -1533,7 +1558,7 @@ module idl_parser {
     expect(ast).toEqual([
       {
         declarator: "enum",
-        enumerators: ["GRAY", "RGBA", "RGB"],
+        enumerators: [{ name: "GRAY" }, { name: "RGBA" }, { name: "RGB" }],
         name: "ColorMode",
       },
       {

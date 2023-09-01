@@ -1506,6 +1506,72 @@ module rosidl_parser {
       },
     ]);
   });
+  it("parses enums with override values", () => {
+    const msgDef = `
+      enum COLORS {
+        @value(50)
+        RED,
+        GREEN,
+        @value(100)
+        BLUE,
+        CYAN,
+        MAGENTA,
+        @value(80)
+        YELLOW
+      };
+    `;
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        name: "COLORS",
+        aggregatedKind: "module",
+        definitions: [
+          {
+            name: "RED",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 50,
+          },
+          {
+            name: "GREEN",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 0,
+          },
+          {
+            name: "BLUE",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 100,
+          },
+          {
+            name: "CYAN",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 1,
+          },
+          {
+            name: "MAGENTA",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 2,
+          },
+          {
+            name: "YELLOW",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 80,
+          },
+        ],
+      },
+    ]);
+  });
   it("parses enums in modules", () => {
     const msgDef = `
     module Scene {

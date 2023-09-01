@@ -84,7 +84,7 @@ export interface TypedefASTNode extends BaseASTNode, UnresolvedField {
 export interface EnumASTNode extends BaseASTNode {
   declarator: "enum";
   /** Contained enumerator strings in order of declaration */
-  enumerators: string[];
+  enumerators: { name: string; annotations?: Record<string, AnyAnnotation> }[];
 }
 
 export type UnresolvedCase = {
