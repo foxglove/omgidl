@@ -6,7 +6,7 @@
 
 ## MessageReader
 
-Message reader deserializes CDR, and CDR2 messages into plain objects. The messages are fully deserialized.
+Message reader deserializes CDR, XCDR1 and XCDR2 messages into plain objects. The messages are fully deserialized.
 
 ```typescript
 import { parseIDL } from "@foxglove/omgidl-parser";
@@ -47,7 +47,7 @@ message.header.stamp;
 
 ## MessageWriter
 
-Convert an object, array, or primitive value into binary data using CDR or XCDR2 message serialization.
+Convert an object, array, or primitive value into binary data using CDR message serialization. (XCDR1 and XCDR2 writing is not yet supported.)
 
 ```Typescript
 import { MessageWriter } from "@foxglove/omgidl-serialization";
@@ -93,11 +93,16 @@ const uint8Array = writer.writeMessage({
 
 ## Known Limitations
 
-Unsupported:
+`MessageReader` does not support:
+
+- arrays of variable-size arrays. `parseIDL` will error if this is detected in the schema to prevent incorrect deserialization.
+
+`MessageWriter` does not support:
+
+- does not support writing XCDR1 (`PL_CDR`) or XCDR2 (`PL_CDR2`, `DELIMITED_CDR2`) encoded messages utilizing extensible types. However we can deserialize these encapsulation kinds in `MessageReader`.
+
+Both do not support:
 
 - `wchar` and `wstring` - These are written and read using custom implementations that are specific to someone's environment. They are read in by-default as `uint8` chars.
-- `union` types
-
-NOTE: `MessageWriter` does not support writing XCDR1 (`PL_CDR`) or XCDR2 (`PL_CDR2`, `DELIMITED_CDR2`) encoded messages. However we can deserialize these encapsulation kinds in `MessageReader`.
 
 Also see the current IDL parser schema limitations [here](../omgidl-parser/README.md#omg-idl-subset-support)
