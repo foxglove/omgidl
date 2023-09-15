@@ -8,7 +8,6 @@ const numericTypeMap: Record<string, string> = {
   double: "float64",
   float: "float32",
   octet: "uint8",
-  wchar: "uint8",
   char: "uint8",
   byte: "int8",
 };
@@ -22,7 +21,6 @@ export const INTEGER_TYPES = new Set([
   "uint32",
   "int64",
   "uint64",
-  "char",
   "byte",
   "octet",
   "unsigned short",
@@ -36,6 +34,7 @@ export const INTEGER_TYPES = new Set([
 export const SIMPLE_TYPES = new Set([
   "bool",
   "string",
+  "wstring",
   "int8",
   "uint8",
   "int16",
@@ -44,6 +43,7 @@ export const SIMPLE_TYPES = new Set([
   "uint32",
   "int64",
   "uint64",
+  "wchar",
   ...Object.keys(numericTypeMap),
 ]);
 

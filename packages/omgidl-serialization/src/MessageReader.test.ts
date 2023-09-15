@@ -409,6 +409,39 @@ module builtin_interfaces {
     });
   });
 
+  it("fails on wchar", () => {
+    const msgDef = `
+        @mutable
+        struct Address {
+            wchar member;
+        };
+    `;
+
+    const arr = [0x88, 0x88];
+    const buffer = Uint8Array.from([0, 1, 0, 0, ...arr]);
+
+    const rootDef = "Address";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    expect(() => reader.readMessage(buffer)).toThrow(/unrecognized primitive type wchar/i);
+  });
+  it("fails on wstring", () => {
+    const msgDef = `
+        @mutable
+        struct Address {
+            wstring member;
+        };
+    `;
+
+    const arr = [0x80, 0x00, 0x00, 0x00, 0x88, 0x88]; // 4 byte length, 2 byte wchar
+    const buffer = Uint8Array.from([0, 1, 0, 0, ...arr]);
+
+    const rootDef = "Address";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    expect(() => reader.readMessage(buffer)).toThrow(/unrecognized primitive type wstring/i);
+  });
+
   it("reads simple mutable struct", () => {
     const msgDef = `
         @mutable
