@@ -103,6 +103,6 @@ const uint8Array = writer.writeMessage({
 
 Both do not support:
 
-- `wchar` and `wstring` - These are written and read using custom implementations that are specific to someone's environment. They are read in by-default as `uint8` chars.
+- `wchar` and `wstring` - These are written and read using custom implementations that are specific to someone's environment. If encountered during deserialization, they will throw an error saying that they are unsupported.
 
 Also see the current IDL parser schema limitations [here](../omgidl-parser/README.md#omg-idl-subset-support)
