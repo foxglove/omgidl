@@ -410,11 +410,12 @@ customType -> %NAME {% d => {
 }%}
 
 stringType ->  ("string"|"wstring") ("<" (INT | %NAME) ">"):? {% d => {
+  const stringKind = d[0][0].value;
   let strLength = undefined;
   if(d[1] !== null) {
     strLength = getIntOrConstantValue(d[1][1] ? d[1][1][0] : undefined);
   }
-  return {type: "string", upperBound: strLength};
+  return {type: stringKind, upperBound: strLength};
 } %}
 
 booleanType -> "boolean" {% d => ({type: "bool"}) %}

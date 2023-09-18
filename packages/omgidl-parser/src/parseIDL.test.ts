@@ -606,7 +606,7 @@ module rosidl_parser {
             valueText: "wstring_value_\u2122",
             isComplex: false,
             name: "WSTRING_CONSTANT",
-            type: "string",
+            type: "wstring",
           },
           {
             isConstant: true,
@@ -706,7 +706,7 @@ module rosidl_parser {
             isComplex: false,
           },
           {
-            type: "uint8",
+            type: "wchar",
             name: "wchar_value",
             isComplex: false,
           },
@@ -803,18 +803,18 @@ module rosidl_parser {
             isComplex: false,
           },
           {
-            type: "string",
+            type: "wstring",
             name: "wstring_value",
             isComplex: false,
           },
           {
-            type: "string",
+            type: "wstring",
             upperBound: 23,
             name: "bounded_wstring_value",
             isComplex: false,
           },
           {
-            type: "string",
+            type: "wstring",
             upperBound: 42,
             name: "constant_bounded_wstring_value",
             isComplex: false,

@@ -239,6 +239,11 @@ export class MessageReader<T = unknown> {
         return this.readAggregatedType(nestedComplexDef, reader, childOptions);
       }
     } else {
+      if (field.type === "wchar" || field.type === "wstring") {
+        throw new Error(
+          `'wchar' and 'wstring' types are not supported because they are implementation dependent`,
+        );
+      }
       const typeLength = typeToByteLength(field.type);
       if (typeLength == undefined) {
         throw new Error(`Unrecognized primitive type ${field.type}`);
