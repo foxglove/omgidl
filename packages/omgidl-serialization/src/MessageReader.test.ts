@@ -423,7 +423,9 @@ module builtin_interfaces {
     const rootDef = "Address";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    expect(() => reader.readMessage(buffer)).toThrow(/unrecognized primitive type wchar/i);
+    expect(() => reader.readMessage(buffer)).toThrow(
+      /'wchar' and 'wstring' types are not supported/i,
+    );
   });
   it("fails on wstring", () => {
     const msgDef = `
@@ -439,7 +441,9 @@ module builtin_interfaces {
     const rootDef = "Address";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    expect(() => reader.readMessage(buffer)).toThrow(/unrecognized primitive type wstring/i);
+    expect(() => reader.readMessage(buffer)).toThrow(
+      /'wchar' and 'wstring' types are not supported/i,
+    );
   });
 
   it("reads simple mutable struct", () => {
