@@ -32,6 +32,11 @@ export type ArrayDeserializer = (
   | Float64Array
   | string[];
 
+type HeaderOptions = {
+  usesDelimiterHeader: boolean;
+  usesMemberHeader: boolean;
+};
+
 export class MessageReader<T = unknown> {
   rootDefinition: IDLMessageDefinition;
   definitions: Map<string, IDLMessageDefinition>;
@@ -57,7 +62,6 @@ export class MessageReader<T = unknown> {
     const usesMemberHeader = reader.usesMemberHeader;
 
     return this.readAggregatedType(this.rootDefinition, reader, {
-      isTopLevel: true,
       usesDelimiterHeader,
       usesMemberHeader,
     }) as R;
@@ -66,20 +70,19 @@ export class MessageReader<T = unknown> {
   private readAggregatedType(
     aggregatedDef: IDLMessageDefinition,
     reader: CdrReader,
-    options: {
-      isTopLevel: boolean;
-      usesDelimiterHeader: boolean;
-      usesMemberHeader: boolean;
-    },
+    options: HeaderOptions,
+    /** The size of the struct if known (like from an emHeader). If it is known we do not read in a dHeader */
+    knownTypeSize?: number,
   ): Record<string, unknown> {
-    const { usesDelimiterHeader, usesMemberHeader, isTopLevel } = options;
+    const { usesDelimiterHeader, usesMemberHeader } = options;
     const { typeUsesDelimiterHeader, typeUsesMemberHeader } = getHeaderNeeds(aggregatedDef);
 
     const readDelimiterHeader = usesDelimiterHeader && typeUsesDelimiterHeader;
     const readMemberHeader = usesMemberHeader && typeUsesMemberHeader;
 
-    // Delimiter header is only read/written at top level
-    if (isTopLevel && readDelimiterHeader) {
+    // Delimiter header is only read/written if the size of the type is not yet known
+    // (If it hasn't already been read in from a surrounding emHeader)
+    if (knownTypeSize == undefined && readDelimiterHeader) {
       reader.dHeader();
     }
     let msg;
@@ -103,11 +106,7 @@ export class MessageReader<T = unknown> {
   private readStructType(
     complexDef: IDLStructDefinition,
     reader: CdrReader,
-    options: {
-      isTopLevel: boolean;
-      usesDelimiterHeader: boolean;
-      usesMemberHeader: boolean;
-    },
+    options: HeaderOptions,
   ): Record<string, unknown> {
     const msg: Record<string, unknown> = {};
 
@@ -115,11 +114,6 @@ export class MessageReader<T = unknown> {
     const { typeUsesMemberHeader } = getHeaderNeeds(complexDef);
 
     const readMemberHeader = usesMemberHeader && typeUsesMemberHeader;
-
-    const childOptions = {
-      ...options,
-      isTopLevel: false,
-    };
 
     for (const field of complexDef.definitions) {
       if (field.isConstant === true) {
@@ -130,7 +124,7 @@ export class MessageReader<T = unknown> {
         field,
         reader,
         { readMemberHeader, parentName: complexDef.name },
-        childOptions,
+        options,
       );
     }
 
@@ -140,21 +134,12 @@ export class MessageReader<T = unknown> {
   private readUnionType(
     unionDef: IDLUnionDefinition,
     reader: CdrReader,
-    options: {
-      isTopLevel: boolean;
-      usesDelimiterHeader: boolean;
-      usesMemberHeader: boolean;
-    },
+    options: HeaderOptions,
   ): Record<string, unknown> {
     const { usesMemberHeader } = options;
     const { typeUsesMemberHeader } = getHeaderNeeds(unionDef);
 
     const readMemberHeader = usesMemberHeader && typeUsesMemberHeader;
-
-    const childOptions = {
-      ...options,
-      isTopLevel: false,
-    };
 
     // read switchtype value
     const switchTypeDeser = deserializers.get(unionDef.switchType);
@@ -193,7 +178,7 @@ export class MessageReader<T = unknown> {
       caseDefType,
       reader,
       { readMemberHeader, parentName: unionDef.name },
-      childOptions,
+      options,
     );
     return msg;
   }
@@ -202,7 +187,7 @@ export class MessageReader<T = unknown> {
     field: IDLMessageDefinitionField,
     reader: CdrReader,
     emHeaderOptions: { readMemberHeader: boolean; parentName?: string },
-    childOptions: { isTopLevel: boolean; usesDelimiterHeader: boolean; usesMemberHeader: boolean },
+    childOptions: HeaderOptions,
   ): unknown {
     const { readMemberHeader, parentName } = emHeaderOptions;
     const definitionId = getDefinitionId(field);
@@ -231,12 +216,13 @@ export class MessageReader<T = unknown> {
         const arrayLengths = field.arrayLengths ?? [reader.sequenceLength()];
 
         const complexDeserializer = () => {
-          return this.readAggregatedType(nestedComplexDef, reader, childOptions);
+          // We do not pass the emHeaderSizeBytes here because it is not the size of the underlying struct item
+          return this.readAggregatedType(nestedComplexDef, reader, childOptions, undefined);
         };
         const array = readNestedArray(complexDeserializer, arrayLengths, 0);
         return array;
       } else {
-        return this.readAggregatedType(nestedComplexDef, reader, childOptions);
+        return this.readAggregatedType(nestedComplexDef, reader, childOptions, emHeaderSizeBytes);
       }
     } else {
       if (field.type === "wchar" || field.type === "wstring") {
