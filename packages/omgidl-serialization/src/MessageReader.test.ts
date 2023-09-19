@@ -776,4 +776,38 @@ module builtin_interfaces {
       },
     });
   });
+
+  it("Reads a complex PL_CDR2, mutable sequence with underlying mutable struct", () => {
+    const msgDef = `
+      @mutable
+      struct Inner {
+        @id(100) uint8 a;
+      };
+
+      @mutable
+      struct Outer {
+        @id(10) sequence<Inner> arr;
+      };
+    `;
+    const data = {
+      arr: [{ a: 5 }, { a: 10 }],
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(30); // size 4-byte writes + two 1-byte writes
+    writer.emHeader(true, 10, 26); // writes emHeader for arr field sequence
+    writer.sequenceLength(data.arr.length);
+    for (const inner of data.arr) {
+      writer.dHeader(8); // write dHeader for Inner struct
+      writer.emHeader(true, 100, 1); // writes emHeader for a field
+      writer.uint8(inner.a);
+    }
+
+    const rootDef = "Outer";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
 });
