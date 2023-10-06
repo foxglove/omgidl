@@ -2,7 +2,7 @@ import { IDLNode } from "./IDLNode";
 import { StructMemberIDLNode } from "./StructMemberIDLNode";
 import { AnyIDLNode, IEnumIDLNode, ITypedefIDLNode, IUnionIDLNode } from "./interfaces";
 import { UnionASTNode } from "../astTypes";
-import { INTEGER_TYPES, SIMPLE_TYPES } from "../primitiveTypes";
+import { INTEGER_TYPES, SIMPLE_TYPES, normalizeType } from "../primitiveTypes";
 import { Case, IDLMessageDefinition, IDLMessageDefinitionField } from "../types";
 
 export class UnionIDLNode extends IDLNode<UnionASTNode> implements IUnionIDLNode {
@@ -97,7 +97,7 @@ export class UnionIDLNode extends IDLNode<UnionASTNode> implements IUnionIDLNode
     const annotations = this.annotations;
     return {
       name: this.scopedIdentifier,
-      switchType: this.switchType,
+      switchType: normalizeType(this.switchType),
       cases: this.cases,
       aggregatedKind: "union",
       ...(this.astNode.defaultCase ? { defaultCase: this.defaultCase } : undefined),
