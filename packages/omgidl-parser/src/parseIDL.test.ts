@@ -2125,7 +2125,7 @@ module rosidl_parser {
     expect(ast).toEqual([
       {
         name: "MyUnion",
-        switchType: "long",
+        switchType: "int32",
         aggregatedKind: "union",
         cases: [
           {
@@ -2194,7 +2194,7 @@ module rosidl_parser {
     expect(ast).toEqual([
       {
         name: "MyTypes::MyUnion",
-        switchType: "long",
+        switchType: "int32",
         aggregatedKind: "union",
         cases: [
           {
@@ -2261,7 +2261,7 @@ module rosidl_parser {
     expect(ast).toEqual([
       {
         name: "MyUnion",
-        switchType: "long",
+        switchType: "int32",
         aggregatedKind: "union",
         cases: [
           {
