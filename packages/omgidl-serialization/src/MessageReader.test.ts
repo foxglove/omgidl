@@ -595,11 +595,11 @@ module builtin_interfaces {
     writer.dHeader(1);
     writer.emHeader(true, 1, data.name.length + 1); // "name" field emHeader. add 1 for null terminator
     writer.string(data.name, false); // don't write length again
-    writer.emHeader(true, 2, 3 * 8); // xValues emHeader
-    writer.float64Array(data.xValues, false); // do not write length of array again. Already included in emHeader
+    writer.emHeader(true, 2, 3 * 8 + 4); // xValues emHeader
+    writer.float64Array(data.xValues, true); // do not write length of array again. Already included in emHeader
 
-    writer.emHeader(true, 3, 3 * 8); // yValues emHeader
-    writer.float64Array(data.yValues, false); // do not write length of array again. Already included in emHeader
+    writer.emHeader(true, 3, 3 * 8 + 4); // yValues emHeader
+    writer.float64Array(data.yValues, true); // do not write length of array again. Already included in emHeader
 
     writer.emHeader(true, 4, 4); // count emHeader
     writer.uint32(data.count);
@@ -655,8 +655,9 @@ module builtin_interfaces {
       numbers: [],
     };
 
+    writer.dHeader(1); // first writes dHeader for struct object - not taken into consideration for objects
     writer.emHeader(true, 1, data.numbers.length + 4); // writes 4 because the sequence length is after it
-    writer.sequenceLength(0);
+    writer.float64Array([], true); // writes empty array with length
 
     const rootDef = "Array";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
@@ -740,9 +741,9 @@ module builtin_interfaces {
     const msgDef = `
         @mutable
         union ColorOrGray switch (uint8) {
-          case 0:
+          case 5:
             uint8 rgb[3];
-          case 3:
+          case 7:
             uint8 gray;
         };
         @mutable
@@ -755,12 +756,10 @@ module builtin_interfaces {
     writer.emHeader(true, 5, 6); // writes emHeader for color field
 
     writer.emHeader(true, 1, 1); // emHeader for discriminator (switch type)
-    writer.uint8(0x00); // then writes uint8 case for rgb
+    writer.uint8(0x05); // then writes uint8 case for rgb
 
-    writer.emHeader(true, 2, 3); // emHeader for field (rgb)
-    writer.uint8(255); // then writes my favorite color
-    writer.uint8(0);
-    writer.uint8(0);
+    writer.emHeader(true, 2, 4); // emHeader for field (rgb)
+    writer.uint8Array([255, 0, 0], false); // then writes my favorite color
 
     writer.sentinelHeader(); // end union
     writer.sentinelHeader(); // end struct

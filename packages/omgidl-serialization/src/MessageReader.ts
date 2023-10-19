@@ -236,8 +236,6 @@ export class MessageReader<T = unknown> {
       }
       const headerSpecifiedLength =
         emHeaderSizeBytes != undefined ? Math.floor(emHeaderSizeBytes / typeLength) : undefined;
-      const remainderBytes =
-        emHeaderSizeBytes != undefined ? emHeaderSizeBytes % typeLength : undefined;
 
       if (field.isArray === true) {
         const deser = typedArrayDeserializers.get(field.type);
@@ -245,14 +243,9 @@ export class MessageReader<T = unknown> {
           throw new Error(`Unrecognized primitive array type ${field.type}[]`);
         }
 
-        const arrayLengths =
-          field.arrayLengths ??
-          // the byteLength written in the header doesn't help us determine count of strings in the array
-          // This will be the next field in the message
-          (field.type === "string"
-            ? [reader.sequenceLength()]
-            : [headerSpecifiedLength ?? reader.sequenceLength()]);
+        const arrayLengths = field.arrayLengths ?? [reader.sequenceLength()];
 
+        // nested arraylengths
         if (arrayLengths.length > 1) {
           const typedArrayDeserializer = () => {
             return deser(reader, arrayLengths[arrayLengths.length - 1]!);
@@ -260,17 +253,8 @@ export class MessageReader<T = unknown> {
 
           // last arrayLengths length is handled in deserializer. It returns an array
           return readNestedArray(typedArrayDeserializer, arrayLengths.slice(0, -1), 0);
-        } else {
-          // Special case can happen where the emHeader is not divisible by the typeLength and there is a remainder of 4 bytes.
-          // 4 bytes of 0's are printed after the header length
-          // This can happen for 8 byte typeLength types.
-          if (arrayLengths[0] === 0 && remainderBytes === 4) {
-            reader.sequenceLength();
-            return deser(reader, 0);
-          } else {
-            return deser(reader, arrayLengths[0]!);
-          }
         }
+        return deser(reader, arrayLengths[0]!);
       } else {
         const deser = deserializers.get(field.type);
         if (deser == undefined) {
