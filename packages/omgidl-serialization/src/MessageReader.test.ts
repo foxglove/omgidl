@@ -492,8 +492,8 @@ module builtin_interfaces {
     writer.emHeader(true, 1, 8); // heightMeters emHeader
     writer.float64(data.heightMeters);
     writer.emHeader(true, 2, 4 + 4 + 1); // address emHeader
-    // dHeader for inner object not written again because the object size is already specified in the emHeader
-    writer.emHeader(true, 1, 1); // pointer emHeader
+    // dHeader for inner object not written again because the object size is already specified in the emHeader and the lengthCode of 5 allows it to not be written again
+    writer.emHeader(true, 1, 1, 5); // pointer emHeader
     writer.uint8(data.address.pointer);
     writer.emHeader(true, 3, 1); // age emHeader
     writer.uint8(data.age);
@@ -593,12 +593,12 @@ module builtin_interfaces {
     };
 
     writer.dHeader(1);
-    writer.emHeader(true, 1, data.name.length + 1); // "name" field emHeader. add 1 for null terminator
-    writer.string(data.name, false); // don't write length again
-    writer.emHeader(true, 2, 3 * 8); // xValues emHeader
-    writer.float64Array(data.xValues, false); // do not write length of array again. Already included in emHeader
+    writer.emHeader(true, 1, data.name.length + 1, 2); // "name" field emHeader. add 1 for null terminator
+    writer.string(data.name, true); // need to write length because lengthCode < 5
+    writer.emHeader(true, 2, 3 * 8, 7); // xValues emHeader
+    writer.float64Array(data.xValues, false); // do not write length of array again. Already included in emHeader when lengthCode is 7
 
-    writer.emHeader(true, 3, 3 * 8); // yValues emHeader
+    writer.emHeader(true, 3, 3 * 8, 7); // yValues emHeader, lengthCode = 7 means we don't have to write sequenceLength
     writer.float64Array(data.yValues, false); // do not write length of array again. Already included in emHeader
 
     writer.emHeader(true, 4, 4); // count emHeader
@@ -655,8 +655,9 @@ module builtin_interfaces {
       numbers: [],
     };
 
-    writer.emHeader(true, 1, data.numbers.length + 4); // writes 4 because the sequence length is after it
-    writer.sequenceLength(0);
+    writer.dHeader(1); // dHeader of struct
+    writer.emHeader(true, 1, data.numbers.length + 4, 2); // writes 4 because the sequence length is after it
+    writer.sequenceLength(0); // Because its lengthCode < 5
 
     const rootDef = "Array";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
