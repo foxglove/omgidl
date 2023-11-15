@@ -195,7 +195,7 @@ export class MessageReader<T = unknown> {
     if (readMemberHeader) {
       const { id, objectSize: objectSizeBytes, lengthCode } = reader.emHeader();
       emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSizeBytes : undefined;
-      // emHeaderSizeBytes = objectSizeBytes;
+
       // this can help spot misalignments in reading the data
       if (definitionId != undefined && id !== definitionId) {
         throw Error(
@@ -414,6 +414,7 @@ function getCaseForDiscriminator(
   return unionDef.defaultCase;
 }
 
+/** Only length Codes >= 5 should allow for emHeader sizes to be used in place of other integer lengths */
 function useEmHeaderAsLength(lengthCode: number | undefined): boolean {
   return lengthCode != undefined && lengthCode >= 5;
 }
