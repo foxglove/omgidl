@@ -191,10 +191,11 @@ export class MessageReader<T = unknown> {
   ): unknown {
     const { readMemberHeader, parentName } = emHeaderOptions;
     const definitionId = getDefinitionId(field);
-    let emHeaderSizeBytes = undefined;
+    let emHeaderSizeBytes;
     if (readMemberHeader) {
-      const { id, objectSize: objectSizeBytes } = reader.emHeader();
-      emHeaderSizeBytes = objectSizeBytes;
+      const { id, objectSize: objectSizeBytes, lengthCode } = reader.emHeader();
+      emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSizeBytes : undefined;
+
       // this can help spot misalignments in reading the data
       if (definitionId != undefined && id !== definitionId) {
         throw Error(
@@ -236,8 +237,6 @@ export class MessageReader<T = unknown> {
       }
       const headerSpecifiedLength =
         emHeaderSizeBytes != undefined ? Math.floor(emHeaderSizeBytes / typeLength) : undefined;
-      const remainderBytes =
-        emHeaderSizeBytes != undefined ? emHeaderSizeBytes % typeLength : undefined;
 
       if (field.isArray === true) {
         const deser = typedArrayDeserializers.get(field.type);
@@ -261,15 +260,7 @@ export class MessageReader<T = unknown> {
           // last arrayLengths length is handled in deserializer. It returns an array
           return readNestedArray(typedArrayDeserializer, arrayLengths.slice(0, -1), 0);
         } else {
-          // Special case can happen where the emHeader is not divisible by the typeLength and there is a remainder of 4 bytes.
-          // 4 bytes of 0's are printed after the header length
-          // This can happen for 8 byte typeLength types.
-          if (arrayLengths[0] === 0 && remainderBytes === 4) {
-            reader.sequenceLength();
-            return deser(reader, 0);
-          } else {
-            return deser(reader, arrayLengths[0]!);
-          }
+          return deser(reader, arrayLengths[0]!);
         }
       } else {
         const deser = deserializers.get(field.type);
@@ -421,4 +412,9 @@ function getCaseForDiscriminator(
     }
   }
   return unionDef.defaultCase;
+}
+
+/** Only length Codes >= 5 should allow for emHeader sizes to be used in place of other integer lengths */
+function useEmHeaderAsLength(lengthCode: number | undefined): boolean {
+  return lengthCode != undefined && lengthCode >= 5;
 }
