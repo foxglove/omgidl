@@ -573,7 +573,8 @@ module builtin_interfaces {
     });
   });
 
-  it("reads mutable structs with arrays", () => {
+  it("reads mutable structs with arrays where size is in emHeader only", () => {
+    // size in only emheader means that lengthcode > 4
     const msgDef = `
         @mutable
         struct Plot {
@@ -595,11 +596,55 @@ module builtin_interfaces {
     writer.dHeader(1);
     writer.emHeader(true, 1, data.name.length + 1, 2); // "name" field emHeader. add 1 for null terminator
     writer.string(data.name, true); // need to write length because lengthCode < 5
+
     writer.emHeader(true, 2, 3 * 8, 7); // xValues emHeader
     writer.float64Array(data.xValues, false); // do not write length of array again. Already included in emHeader when lengthCode is 7
 
+    // size in only emheader means that lengthcode > 4
     writer.emHeader(true, 3, 3 * 8, 7); // yValues emHeader, lengthCode = 7 means we don't have to write sequenceLength
     writer.float64Array(data.yValues, false); // do not write length of array again. Already included in emHeader
+
+    writer.emHeader(true, 4, 4); // count emHeader
+    writer.uint32(data.count);
+
+    const rootDef = "Plot";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    expect(reader.readMessage(writer.data)).toEqual({
+      name: "MPG",
+      xValues: new Float64Array([1, 2, 3]),
+      yValues: new Float64Array([4, 5, 6]),
+      count: 3,
+    });
+  });
+
+  it("reads mutable structs with arrays using length codes that cause sequenceLength to be written", () => {
+    const msgDef = `
+        @mutable
+        struct Plot {
+          string name;
+          sequence<double> xValues;
+          sequence<double> yValues;
+          uint32 count;
+        };
+    `;
+
+    const writer = new CdrWriter({ size: 256, kind: EncapsulationKind.PL_CDR2_LE });
+    const data = {
+      name: "MPG",
+      xValues: [1, 2, 3],
+      yValues: [4, 5, 6],
+      count: 3,
+    };
+
+    writer.dHeader(1);
+    writer.emHeader(true, 1, data.name.length + 1, 2); // "name" field emHeader. add 1 for null terminator
+    writer.string(data.name, true); // need to write length because lengthCode < 5
+    writer.emHeader(true, 2, 3 * 8 + 1, 4); // xValues emHeader
+    writer.float64Array(data.xValues, /*writeLength:*/ true); // write length because lengthCode < 5
+
+    writer.emHeader(true, 3, 3 * 8 + 1, 4); // yValues emHeader
+    writer.float64Array(data.yValues, /*writeLength:*/ true); // write length because lengthCode < 5
 
     writer.emHeader(true, 4, 4); // count emHeader
     writer.uint32(data.count);
@@ -804,6 +849,58 @@ module builtin_interfaces {
     }
 
     const rootDef = "Outer";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+
+  it("Reads mutable struct with string field that uses lengthCode = 4", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @id(10) string text;
+      };
+    `;
+    const data = {
+      text: "this is a string",
+    };
+    const lengthCode = 4;
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    const cdrTextSizeBytes = data.text.length + 1; // +1 to include null terminator
+    writer.dHeader(8 + 4 + cdrTextSizeBytes); // emHeader 8 bytes header, 4 bytes sequenelength + nextint, then string length
+    writer.emHeader(true, 10, cdrTextSizeBytes, lengthCode); // emHeader does not take place of sequence length
+    writer.string(data.text, true); // write length because of lengthCode value 4
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+
+  it("Reads mutable struct with string field that uses high lengthCode = 5", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @id(10) string text;
+      };
+    `;
+    const data = {
+      text: "this is a string",
+    };
+    const lengthCode = 5;
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    const cdrTextSizeBytes = data.text.length + 1; // +1 to include null terminator
+    writer.dHeader(8 + cdrTextSizeBytes); // emHeader 8 bytes header + nextint, then string length
+    writer.emHeader(true, 10, cdrTextSizeBytes, lengthCode); // emHeader includes string length, because of high length code
+    writer.string(data.text, false); // no need to write length because of high length code
+
+    const rootDef = "Message";
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 

@@ -452,10 +452,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@foxglove/cdr@npm:3.1.0":
-  version: 3.1.0
-  resolution: "@foxglove/cdr@npm:3.1.0"
-  checksum: df27e4d1f2f6f4dab2c61a6a8ead7140ae1fbe4007e43b6c6690022f45db3dee838c8323b8aaf1660c8a9cc5da831f71f93bfbd2f18d94c12d0d2a8716420e47
+"@foxglove/cdr@npm:3.2.0":
+  version: 3.2.0
+  resolution: "@foxglove/cdr@npm:3.2.0"
+  checksum: 1c8497debd32714bbe26724df1dbde783fddd6e8ef2e126df87f10221691419c1d8f1fdfb6dd9fd066408638aaa325d41aa6ccc9d1291c3d3774f2b844c9e546
   languageName: node
   linkType: hard
 
@@ -534,7 +534,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@foxglove/omgidl-serialization@workspace:packages/omgidl-serialization"
   dependencies:
-    "@foxglove/cdr": 3.1.0
+    "@foxglove/cdr": 3.2.0
     "@foxglove/message-definition": ^0.2.0
     "@foxglove/omgidl-parser": "workspace:*"
     "@sounisi5011/jest-binary-data-matchers": 1.2.1
