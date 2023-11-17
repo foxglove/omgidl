@@ -51,6 +51,6 @@
   },
   "dependencies": {
     "@foxglove/cdr": "3.2.0",
-    "@foxglove/message-definition": "^0.2.0"
+    "@foxglove/message-definition": "^0.3.1"
   }
 }
