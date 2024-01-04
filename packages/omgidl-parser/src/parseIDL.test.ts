@@ -1506,7 +1506,49 @@ module rosidl_parser {
       },
     ]);
   });
-  it("parses enums with override values", () => {
+  it("parses enums with only explicit values", () => {
+    const msgDef = `
+      enum COLORS {
+        @value(50)
+        RED,
+        @value(100)
+        BLUE,
+        @value(80)
+        YELLOW
+      };
+    `;
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        name: "COLORS",
+        aggregatedKind: "module",
+        definitions: [
+          {
+            name: "RED",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 50,
+          },
+          {
+            name: "BLUE",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 100,
+          },
+          {
+            name: "YELLOW",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 80,
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses enums with implicit and explicit values", () => {
     const msgDef = `
       enum COLORS {
         @value(50)
@@ -1538,7 +1580,7 @@ module rosidl_parser {
             type: "uint32",
             isComplex: false,
             isConstant: true,
-            value: 0,
+            value: 51,
           },
           {
             name: "BLUE",
@@ -1552,14 +1594,14 @@ module rosidl_parser {
             type: "uint32",
             isComplex: false,
             isConstant: true,
-            value: 1,
+            value: 101,
           },
           {
             name: "MAGENTA",
             type: "uint32",
             isComplex: false,
             isConstant: true,
-            value: 2,
+            value: 102,
           },
           {
             name: "YELLOW",
