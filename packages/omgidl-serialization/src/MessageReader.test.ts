@@ -744,13 +744,15 @@ module builtin_interfaces {
     );
   });
 
-  it("Reads mutable union field", () => {
+  it("Reads mutable union field with id", () => {
     const msgDef = `
         @mutable
         union ColorOrGray switch (uint8) {
           case 0:
+            @id(100)
             uint8 rgb[3];
           case 3:
+            @id(200)
             uint8 gray;
         };
         @mutable
@@ -765,7 +767,7 @@ module builtin_interfaces {
     writer.emHeader(true, 1, 1); // emHeader for discriminator (switch type)
     writer.uint8(0x03); // then writes uint8 case for gray
 
-    writer.emHeader(true, 2, 1); // emHeader for field (gray)
+    writer.emHeader(true, 200, 1); // emHeader for field (gray)
     writer.uint8(55); // then writes uint8
 
     writer.sentinelHeader(); // end union

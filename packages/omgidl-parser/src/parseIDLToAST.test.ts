@@ -1537,6 +1537,105 @@ module idl_parser {
     ]);
   });
 
+  it("can parse simple union declaration that has annotations on definitions", () => {
+    const msgDef = `
+    union MyUnion switch (long) {
+        case 1:
+          @id(100)
+          long long_branch;
+        case 3:
+          @id(200)
+          float float_branch;
+        case 4:
+          @id(300)
+          char  char_branch;
+        default:
+          @id(400)
+          uint8 default;
+    };
+    struct Foo {
+        MyUnion my_union;
+    };
+      `;
+    const ast = parseIDLToAST(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "MyUnion",
+        declarator: "union",
+        switchType: "long",
+        cases: [
+          {
+            predicates: [1],
+            type: {
+              name: "long_branch",
+              isComplex: false,
+              type: "long",
+              annotations: {
+                id: {
+                  name: "id",
+                  type: "const-param",
+                  value: 100,
+                },
+              },
+            },
+          },
+          {
+            predicates: [3],
+            type: {
+              name: "float_branch",
+              isComplex: false,
+              type: "float",
+              annotations: {
+                id: {
+                  name: "id",
+                  type: "const-param",
+                  value: 200,
+                },
+              },
+            },
+          },
+          {
+            predicates: [4],
+            type: {
+              name: "char_branch",
+              isComplex: false,
+              type: "char",
+              annotations: {
+                id: {
+                  name: "id",
+                  type: "const-param",
+                  value: 300,
+                },
+              },
+            },
+          },
+        ],
+        defaultCase: {
+          name: "default",
+          isComplex: false,
+          type: "uint8",
+          annotations: {
+            id: {
+              name: "id",
+              type: "const-param",
+              value: 400,
+            },
+          },
+        },
+      },
+      {
+        name: "Foo",
+        declarator: "struct",
+        definitions: [
+          {
+            name: "my_union",
+            declarator: "struct-member",
+            type: "MyUnion",
+          },
+        ],
+      },
+    ]);
+  });
   it("can parse union that uses enums", () => {
     const msgDef = `
     enum ColorMode {
