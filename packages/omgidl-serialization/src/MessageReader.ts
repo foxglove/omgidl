@@ -2,7 +2,6 @@ import { CdrReader } from "@foxglove/cdr";
 import {
   IDLMessageDefinition,
   IDLMessageDefinitionField,
-  IDLStructDefinition,
   IDLUnionDefinition,
 } from "@foxglove/omgidl-parser";
 
@@ -37,9 +36,46 @@ type HeaderOptions = {
   usesMemberHeader: boolean;
 };
 
+type PrimitiveDeserializationInfo = {
+  type: "primitive";
+  typeLength: number;
+  deserialize: Deserializer;
+};
+
+type PrimitiveArrayDeserializationInfo = {
+  type: "array-primitive";
+  typeLength: number;
+  deserialize: ArrayDeserializer;
+};
+
+type StructDeserializationInfo = HeaderOptions & {
+  type: "struct";
+  fields: FieldDeserializationInfo[];
+};
+
+type UnionDeserializationInfo = HeaderOptions & {
+  type: "union";
+  switchTypeDeser: Deserializer;
+  switchTypeLength: number;
+  definition: IDLUnionDefinition;
+};
+
+type ComplexDeserializationInfo = StructDeserializationInfo | UnionDeserializationInfo;
+type PrimitiveTypeDeserInfo = PrimitiveDeserializationInfo | PrimitiveArrayDeserializationInfo;
+
+type FieldDeserializationInfo = {
+  name: string;
+  type: string;
+  typeDeserInfo: ComplexDeserializationInfo | PrimitiveTypeDeserInfo;
+  isArray?: boolean;
+  arrayLengths?: number[];
+  definitionId?: number;
+};
+
 export class MessageReader<T = unknown> {
-  rootDefinition: IDLMessageDefinition;
+  rootDeserializationInfo: ComplexDeserializationInfo;
   definitions: Map<string, IDLMessageDefinition>;
+  complexDeserializationInfo: Map<string, ComplexDeserializationInfo> = new Map();
 
   constructor(rootDefinitionName: string, definitions: IDLMessageDefinition[]) {
     const rootDefinition = definitions.find((def) => def.name === rootDefinitionName);
@@ -48,10 +84,12 @@ export class MessageReader<T = unknown> {
         `Root definition name "${rootDefinitionName}" not found in schema definitions.`,
       );
     }
-    this.rootDefinition = rootDefinition;
     this.definitions = new Map<string, IDLMessageDefinition>(
       definitions.map((def) => [def.name ?? "", def]),
     );
+
+    // Build the deserialization info tree structure for the root definition.
+    this.rootDeserializationInfo = this.buildComplexDeserializationInfo(rootDefinition);
   }
 
   // We template on R here for call site type information if the class type information T is not
@@ -61,42 +99,38 @@ export class MessageReader<T = unknown> {
     const usesDelimiterHeader = reader.usesDelimiterHeader;
     const usesMemberHeader = reader.usesMemberHeader;
 
-    return this.readAggregatedType(this.rootDefinition, reader, {
-      usesDelimiterHeader,
-      usesMemberHeader,
-    }) as R;
+    return this.readAggregatedType(
+      this.rootDeserializationInfo,
+      reader,
+      {
+        usesDelimiterHeader,
+        usesMemberHeader,
+      },
+      {},
+    ) as R;
   }
 
   private readAggregatedType(
-    aggregatedDef: IDLMessageDefinition,
+    deserInfo: ComplexDeserializationInfo,
     reader: CdrReader,
     options: HeaderOptions,
     /** The size of the struct if known (like from an emHeader). If it is known we do not read in a dHeader */
-    knownTypeSize?: number,
+    flags: { knownTypeSize?: number },
   ): Record<string, unknown> {
-    const { usesDelimiterHeader, usesMemberHeader } = options;
-    const { typeUsesDelimiterHeader, typeUsesMemberHeader } = getHeaderNeeds(aggregatedDef);
-
-    const readDelimiterHeader = usesDelimiterHeader && typeUsesDelimiterHeader;
-    const readMemberHeader = usesMemberHeader && typeUsesMemberHeader;
+    const readDelimiterHeader = options.usesDelimiterHeader && deserInfo.usesDelimiterHeader;
+    const readMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
 
     // Delimiter header is only read/written if the size of the type is not yet known
     // (If it hasn't already been read in from a surrounding emHeader)
-    if (knownTypeSize == undefined && readDelimiterHeader) {
+    if (flags.knownTypeSize == undefined && readDelimiterHeader) {
       reader.dHeader();
     }
-    let msg;
-    switch (aggregatedDef.aggregatedKind) {
-      case "struct":
-        msg = this.readStructType(aggregatedDef, reader, options);
-        break;
-      case "union":
-        msg = this.readUnionType(aggregatedDef, reader, options);
-        break;
-      case "module":
-      default:
-        throw Error(`Modules are not used in serialization`);
-    }
+
+    const msg =
+      deserInfo.type === "struct"
+        ? this.readStructType(deserInfo, reader, options)
+        : this.readUnionType(deserInfo, reader, options);
+
     if (readMemberHeader) {
       reader.sentinelHeader();
     }
@@ -104,26 +138,20 @@ export class MessageReader<T = unknown> {
   }
 
   private readStructType(
-    complexDef: IDLStructDefinition,
+    deserInfo: StructDeserializationInfo,
     reader: CdrReader,
     options: HeaderOptions,
   ): Record<string, unknown> {
+    const readMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
+
     const msg: Record<string, unknown> = {};
-
-    const { usesMemberHeader } = options;
-    const { typeUsesMemberHeader } = getHeaderNeeds(complexDef);
-
-    const readMemberHeader = usesMemberHeader && typeUsesMemberHeader;
-
-    for (const field of complexDef.definitions) {
-      if (field.isConstant === true) {
-        continue;
-      }
-
+    for (const field of deserInfo.fields) {
       msg[field.name] = this.readMemberFieldValue(
         field,
         reader,
-        { readMemberHeader, parentName: complexDef.name },
+        {
+          readMemberHeader,
+        },
         options,
       );
     }
@@ -132,118 +160,106 @@ export class MessageReader<T = unknown> {
   }
 
   private readUnionType(
-    unionDef: IDLUnionDefinition,
+    deserInfo: UnionDeserializationInfo,
     reader: CdrReader,
     options: HeaderOptions,
   ): Record<string, unknown> {
-    const { usesMemberHeader } = options;
-    const { typeUsesMemberHeader } = getHeaderNeeds(unionDef);
-
-    const readMemberHeader = usesMemberHeader && typeUsesMemberHeader;
-
-    // read switchtype value
-    const switchTypeDeser = deserializers.get(unionDef.switchType);
-    if (switchTypeDeser == undefined) {
-      throw new Error(`Unrecognized switch discriminator type ${unionDef.switchType}`);
-    }
+    const readMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
 
     // looks like unions print an emHeader for the switchType
     if (readMemberHeader) {
       const { objectSize: objectSizeBytes } = reader.emHeader();
-      const switchTypeLength = typeToByteLength(unionDef.switchType);
-      if (switchTypeLength != undefined && objectSizeBytes !== switchTypeLength) {
+      if (objectSizeBytes !== deserInfo.switchTypeLength) {
         throw new Error(
-          `Expected switchType length of ${switchTypeLength} but got ${objectSizeBytes} for ${
-            unionDef.name ?? ""
-          }`,
+          `Expected switchType length of ${
+            deserInfo.switchTypeLength
+          } but got ${objectSizeBytes} for ${deserInfo.definition.name ?? ""}`,
         );
       }
     }
-    const discriminatorValue = switchTypeDeser(reader) as number | boolean;
+    const discriminatorValue = deserInfo.switchTypeDeser(reader) as number | boolean;
 
     // get case for switchtype value based on matching predicate
-
-    const caseDefType = getCaseForDiscriminator(unionDef, discriminatorValue);
+    const caseDefType = getCaseForDiscriminator(deserInfo.definition, discriminatorValue);
     if (!caseDefType) {
       throw new Error(
         `No matching case found in ${
-          unionDef.name ?? ""
+          deserInfo.definition.name ?? ""
         } for discriminator value ${discriminatorValue.toString()}`,
       );
     }
 
-    // read case value
-    const msg: Record<string, unknown> = {};
-    msg[caseDefType.name] = this.readMemberFieldValue(
-      caseDefType,
-      reader,
-      { readMemberHeader, parentName: unionDef.name },
-      options,
-    );
-    return msg;
+    if (caseDefType.isComplex === true) {
+      const deser = this.complexDeserializationInfo.get(caseDefType.type);
+      if (!deser) {
+        throw new Error(`Deserializer for union type ${caseDefType.type} not found.`);
+      }
+
+      return {
+        [caseDefType.name]: this.readAggregatedType(deser, reader, options, {}),
+      };
+    } else {
+      const primitiveField = this.buildFieldDeserInfo(caseDefType);
+      return {
+        [caseDefType.name]: this.readMemberFieldValue(
+          primitiveField,
+          reader,
+          {
+            readMemberHeader,
+            parentName: deserInfo.definition.name,
+          },
+          options,
+        ),
+      };
+    }
   }
 
   private readMemberFieldValue(
-    field: IDLMessageDefinitionField,
+    field: FieldDeserializationInfo,
     reader: CdrReader,
     emHeaderOptions: { readMemberHeader: boolean; parentName?: string },
     childOptions: HeaderOptions,
   ): unknown {
-    const { readMemberHeader, parentName } = emHeaderOptions;
-    const definitionId = getDefinitionId(field);
     let emHeaderSizeBytes;
-    if (readMemberHeader) {
+    if (emHeaderOptions.readMemberHeader) {
       const { id, objectSize: objectSizeBytes, lengthCode } = reader.emHeader();
       emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSizeBytes : undefined;
 
       // this can help spot misalignments in reading the data
+      const definitionId = field.definitionId;
       if (definitionId != undefined && id !== definitionId) {
         throw Error(
           `CDR message deserializer error. Expected ${definitionId} but EMHEADER contained ${id} for field "${
             field.name
-          }" in ${parentName ?? "unknown"}`,
+          }" in ${emHeaderOptions.parentName ?? "unknown"}`,
         );
       }
     }
-    if (field.isComplex === true) {
-      // Complex type
-      const nestedComplexDef = this.definitions.get(field.type);
-      if (nestedComplexDef == undefined) {
-        throw new Error(`Unrecognized complex type ${field.type}`);
-      }
 
+    if (field.typeDeserInfo.type === "struct" || field.typeDeserInfo.type === "union") {
       if (field.isArray === true) {
         // For dynamic length arrays we need to read a uint32 prefix
         const arrayLengths = field.arrayLengths ?? [reader.sequenceLength()];
-
-        const complexDeserializer = () => {
-          // We do not pass the emHeaderSizeBytes here because it is not the size of the underlying struct item
-          return this.readAggregatedType(nestedComplexDef, reader, childOptions, undefined);
-        };
-        const array = readNestedArray(complexDeserializer, arrayLengths, 0);
-        return array;
+        return this.readComplexNestedArray(
+          reader,
+          childOptions,
+          field.typeDeserInfo,
+          arrayLengths,
+          0,
+        );
       } else {
-        return this.readAggregatedType(nestedComplexDef, reader, childOptions, emHeaderSizeBytes);
+        return this.readAggregatedType(field.typeDeserInfo, reader, childOptions, {
+          knownTypeSize: emHeaderSizeBytes,
+        });
       }
     } else {
-      if (field.type === "wchar" || field.type === "wstring") {
-        throw new Error(
-          `'wchar' and 'wstring' types are not supported because they are implementation dependent`,
-        );
-      }
-      const typeLength = typeToByteLength(field.type);
-      if (typeLength == undefined) {
-        throw new Error(`Unrecognized primitive type ${field.type}`);
-      }
       const headerSpecifiedLength =
-        emHeaderSizeBytes != undefined ? Math.floor(emHeaderSizeBytes / typeLength) : undefined;
+        emHeaderSizeBytes != undefined
+          ? Math.floor(emHeaderSizeBytes / field.typeDeserInfo.typeLength)
+          : undefined;
 
-      if (field.isArray === true) {
-        const deser = typedArrayDeserializers.get(field.type);
-        if (deser == undefined) {
-          throw new Error(`Unrecognized primitive array type ${field.type}[]`);
-        }
-
+      if (field.typeDeserInfo.type === "array-primitive") {
+        const deser = field.typeDeserInfo.deserialize;
         const arrayLengths =
           field.arrayLengths ??
           // the byteLength written in the header doesn't help us determine count of strings in the array
@@ -262,16 +278,162 @@ export class MessageReader<T = unknown> {
         } else {
           return deser(reader, arrayLengths[0]!);
         }
+      } else if (field.typeDeserInfo.type === "primitive") {
+        return field.typeDeserInfo.deserialize(
+          reader,
+          headerSpecifiedLength, // fieldLength only used for `string` type primitives
+        );
       } else {
-        const deser = deserializers.get(field.type);
-        if (deser == undefined) {
-          throw new Error(`Unrecognized primitive type ${field.type}`);
-        }
-
-        // fieldLength only used for `string` type primitives
-        return deser(reader, headerSpecifiedLength);
+        throw new Error(`Unhandled deserialization info type`);
       }
     }
+  }
+
+  /**
+   * Builds the deserialization info object for a field definition which can be a complex or primitive type.
+   *
+   * @param definition Field definition
+   * @returns Deserialization info
+   */
+  private buildFieldDeserInfo(definition: IDLMessageDefinitionField): FieldDeserializationInfo {
+    const { name, type, isComplex, isArray, arrayLengths } = definition;
+
+    if (isComplex === true) {
+      let typeDeserInfo = this.complexDeserializationInfo.get(type);
+      if (!typeDeserInfo) {
+        const fieldDefinition = this.definitions.get(type);
+        if (!fieldDefinition) {
+          throw new Error(`Failed to find definition for type ${type}`);
+        }
+        typeDeserInfo = this.buildComplexDeserializationInfo(fieldDefinition);
+      }
+
+      return {
+        name,
+        type,
+        typeDeserInfo,
+        isArray,
+        arrayLengths,
+        definitionId: getDefinitionId(definition),
+      };
+    }
+
+    if (type === "wchar" || type === "wstring") {
+      throw new Error(
+        `'wchar' and 'wstring' types are not supported because they are implementation dependent`,
+      );
+    }
+
+    const deserialize =
+      isArray === true ? typedArrayDeserializers.get(type) : deserializers.get(type);
+    if (!deserialize) {
+      throw new Error(`Unrecognized primitive type ${type}`);
+    }
+
+    const typeLength = typeToByteLength(type);
+    if (typeLength == undefined) {
+      throw new Error(`Unrecognized primitive type ${type}`);
+    }
+
+    const fieldDeserInfo: PrimitiveTypeDeserInfo =
+      isArray === true
+        ? {
+            type: "array-primitive",
+            deserialize: deserialize as ArrayDeserializer,
+            typeLength,
+          }
+        : {
+            type: "primitive",
+            deserialize: deserialize as Deserializer,
+            typeLength,
+          };
+
+    return {
+      name,
+      type,
+      typeDeserInfo: fieldDeserInfo,
+      isArray,
+      arrayLengths,
+      definitionId: getDefinitionId(definition),
+    };
+  }
+
+  /**
+   * Builds the deserialization info object for a complex definition (struct or union).
+   * If not found in the cache, deserialization infos of sub-types will be build automatically
+   * and added to the cache.
+   *
+   * @param definition Message definition
+   * @returns Deserialization info
+   */
+  private buildComplexDeserializationInfo(
+    definition: IDLMessageDefinition,
+  ): ComplexDeserializationInfo {
+    if (definition.aggregatedKind === "module") {
+      throw new Error(`Modules are not used in serialization`);
+    }
+
+    const cached = this.complexDeserializationInfo.get(definition.name ?? "");
+    if (cached) {
+      return cached;
+    }
+
+    if (definition.aggregatedKind === "union") {
+      const switchTypeDeser = deserializers.get(definition.switchType);
+      const switchTypeLength = typeToByteLength(definition.switchType);
+
+      if (switchTypeDeser == undefined || switchTypeLength == undefined) {
+        throw new Error(
+          `Unrecognized primitive type ${definition.switchType} in union ${
+            definition.name ?? "unknown"
+          }`,
+        );
+      }
+
+      return {
+        type: "union",
+        ...getHeaderNeeds(definition),
+        definition,
+        switchTypeDeser,
+        switchTypeLength,
+      };
+    }
+
+    const deserInfo: StructDeserializationInfo = {
+      type: "struct",
+      ...getHeaderNeeds(definition),
+      fields: definition.definitions
+        .filter((def) => def.isConstant !== true)
+        .map((fieldDef) => this.buildFieldDeserInfo(fieldDef)),
+    };
+
+    this.complexDeserializationInfo.set(definition.name ?? "", deserInfo);
+    return deserInfo;
+  }
+
+  private readComplexNestedArray(
+    reader: CdrReader,
+    options: HeaderOptions,
+    deserInfo: ComplexDeserializationInfo,
+    arrayLengths: number[],
+    depth: number,
+  ): unknown[] {
+    if (depth > arrayLengths.length - 1 || depth < 0) {
+      throw Error(`Invalid depth ${depth} for array of length ${arrayLengths.length}`);
+    }
+
+    const array = [];
+    for (let i = 0; i < arrayLengths[depth]!; i++) {
+      if (depth === arrayLengths.length - 1) {
+        array.push(this.readAggregatedType(deserInfo, reader, options, {}));
+      } else {
+        array.push(
+          this.readComplexNestedArray(reader, options, deserInfo, arrayLengths, depth + 1),
+        );
+      }
+    }
+
+    return array;
   }
 }
 
@@ -363,22 +525,22 @@ function readStringArray(reader: CdrReader, count: number): string[] {
 }
 
 function getHeaderNeeds(definition: IDLMessageDefinition): {
-  typeUsesDelimiterHeader: boolean;
-  typeUsesMemberHeader: boolean;
+  usesDelimiterHeader: boolean;
+  usesMemberHeader: boolean;
 } {
   const { annotations } = definition;
 
   if (!annotations) {
-    return { typeUsesDelimiterHeader: false, typeUsesMemberHeader: false };
+    return { usesDelimiterHeader: false, usesMemberHeader: false };
   }
 
   if ("mutable" in annotations) {
-    return { typeUsesDelimiterHeader: true, typeUsesMemberHeader: true };
+    return { usesDelimiterHeader: true, usesMemberHeader: true };
   }
   if ("appendable" in annotations) {
-    return { typeUsesDelimiterHeader: true, typeUsesMemberHeader: false };
+    return { usesDelimiterHeader: true, usesMemberHeader: false };
   }
-  return { typeUsesDelimiterHeader: false, typeUsesMemberHeader: false };
+  return { usesDelimiterHeader: false, usesMemberHeader: false };
 }
 
 function getDefinitionId(definition: IDLMessageDefinitionField): number | undefined {
