@@ -80,7 +80,7 @@ describe("DeserializationInfoCache", () => {
     });
   });
 
-  it("creates deserialization info for struct with complext fields", () => {
+  it("creates deserialization info for struct with complex fields", () => {
     const deserializationInfoCache = new DeserializationInfoCache([
       TRANSFORM_DEFINITION,
       VECTOR_DEFINITION,
@@ -141,7 +141,7 @@ describe("DeserializationInfoCache", () => {
     });
   });
 
-  it("can build primitive field deserialization info", () => {
+  it("creates deserialization info for primitive field", () => {
     const deserializationInfoCache = new DeserializationInfoCache([]);
     const fieldDeserInfo = deserializationInfoCache.buildFieldDeserInfo({
       name: "some_field_name",
@@ -153,7 +153,7 @@ describe("DeserializationInfoCache", () => {
     });
   });
 
-  it("can build primitive array field deserialization info", () => {
+  it("creates deserialization info for primitive array field", () => {
     const deserializationInfoCache = new DeserializationInfoCache([]);
     const fieldDeserInfo = deserializationInfoCache.buildFieldDeserInfo({
       name: "some_array_field",
@@ -172,35 +172,71 @@ describe("DeserializationInfoCache", () => {
     });
   });
 
-  it("can build complex field deserialization info", () => {
+  it("creates deserialization info for complex field", () => {
     const deserializationInfoCache = new DeserializationInfoCache([TIME_DEFINITION]);
     const timeFieldDeserInfo = deserializationInfoCache.buildFieldDeserInfo({
       isComplex: true,
       name: "time",
       type: "builtin_interfaces::Time",
     });
-    expect(timeFieldDeserInfo.typeDeserInfo).toMatchObject({
-      type: "struct",
-      fields: [
-        {
-          name: "sec",
-          type: "int32",
-          typeDeserInfo: {
-            type: "primitive",
-            typeLength: 4,
-            deserialize: PRIMITIVE_DESERIALIZERS.get("int32"),
+    expect(timeFieldDeserInfo).toMatchObject({
+      name: "time",
+      type: "builtin_interfaces::Time",
+      typeDeserInfo: {
+        type: "struct",
+        fields: [
+          {
+            name: "sec",
+            type: "int32",
+            typeDeserInfo: {
+              type: "primitive",
+              typeLength: 4,
+              deserialize: PRIMITIVE_DESERIALIZERS.get("int32"),
+            },
           },
-        },
-        {
-          name: "nanosec",
-          type: "uint32",
-          typeDeserInfo: {
-            type: "primitive",
-            typeLength: 4,
-            deserialize: PRIMITIVE_DESERIALIZERS.get("uint32"),
+          {
+            name: "nanosec",
+            type: "uint32",
+            typeDeserInfo: {
+              type: "primitive",
+              typeLength: 4,
+              deserialize: PRIMITIVE_DESERIALIZERS.get("uint32"),
+            },
           },
-        },
-      ],
+        ],
+      },
+    });
+  });
+
+  it("creates deserialization info for complex array field", () => {
+    const deserializationInfoCache = new DeserializationInfoCache([VECTOR_DEFINITION]);
+    const timeFieldDeserInfo = deserializationInfoCache.buildFieldDeserInfo({
+      isComplex: true,
+      isArray: true,
+      name: "vectors",
+      type: "geometry_msgs::msg::Vector3",
+    });
+    expect(timeFieldDeserInfo).toMatchObject({
+      name: "vectors",
+      type: "geometry_msgs::msg::Vector3",
+      isArray: true,
+      typeDeserInfo: {
+        type: "struct",
+        fields: [
+          {
+            name: "x",
+            ...FLOAT64_PRIMITIVE_DESER_INFO,
+          },
+          {
+            name: "y",
+            ...FLOAT64_PRIMITIVE_DESER_INFO,
+          },
+          {
+            name: "z",
+            ...FLOAT64_PRIMITIVE_DESER_INFO,
+          },
+        ],
+      },
     });
   });
 

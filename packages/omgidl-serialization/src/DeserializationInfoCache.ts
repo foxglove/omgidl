@@ -116,21 +116,28 @@ export class DeserializationInfoCache {
         );
       }
 
-      return {
+      const deserInfo: UnionDeserializationInfo = {
         type: "union",
         ...getHeaderNeeds(definition),
         definition,
         switchTypeDeser,
         switchTypeLength,
       };
+
+      this.#complexDeserializationInfo.set(definition.name ?? "", deserInfo);
+      return deserInfo;
     }
 
     const deserInfo: StructDeserializationInfo = {
       type: "struct",
       ...getHeaderNeeds(definition),
-      fields: definition.definitions
-        .filter((def) => def.isConstant !== true)
-        .map((fieldDef) => this.buildFieldDeserInfo(fieldDef)),
+      fields: definition.definitions.reduce(
+        (fieldsAccum, fieldDef) =>
+          fieldDef.isConstant === true
+            ? fieldsAccum
+            : fieldsAccum.concat(this.buildFieldDeserInfo(fieldDef)),
+        [] as FieldDeserializationInfo[],
+      ),
     };
 
     this.#complexDeserializationInfo.set(definition.name ?? "", deserInfo);

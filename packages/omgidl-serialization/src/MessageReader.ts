@@ -39,15 +39,10 @@ export class MessageReader<T = unknown> {
     const usesDelimiterHeader = reader.usesDelimiterHeader;
     const usesMemberHeader = reader.usesMemberHeader;
 
-    return this.readAggregatedType(
-      this.rootDeserializationInfo,
-      reader,
-      {
-        usesDelimiterHeader,
-        usesMemberHeader,
-      },
-      {},
-    ) as R;
+    return this.readAggregatedType(this.rootDeserializationInfo, reader, {
+      usesDelimiterHeader,
+      usesMemberHeader,
+    }) as R;
   }
 
   private readAggregatedType(
@@ -55,14 +50,14 @@ export class MessageReader<T = unknown> {
     reader: CdrReader,
     options: HeaderOptions,
     /** The size of the struct if known (like from an emHeader). If it is known we do not read in a dHeader */
-    flags: { knownTypeSize?: number },
+    knownTypeSize?: number,
   ): Record<string, unknown> {
     const readDelimiterHeader = options.usesDelimiterHeader && deserInfo.usesDelimiterHeader;
     const readMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
 
     // Delimiter header is only read/written if the size of the type is not yet known
     // (If it hasn't already been read in from a surrounding emHeader)
-    if (flags.knownTypeSize == undefined && readDelimiterHeader) {
+    if (knownTypeSize == undefined && readDelimiterHeader) {
       reader.dHeader();
     }
 
@@ -177,9 +172,12 @@ export class MessageReader<T = unknown> {
           0,
         );
       } else {
-        return this.readAggregatedType(field.typeDeserInfo, reader, childOptions, {
-          knownTypeSize: emHeaderSizeBytes,
-        });
+        return this.readAggregatedType(
+          field.typeDeserInfo,
+          reader,
+          childOptions,
+          emHeaderSizeBytes,
+        );
       }
     } else {
       const headerSpecifiedLength =
@@ -232,7 +230,7 @@ export class MessageReader<T = unknown> {
     const array = [];
     for (let i = 0; i < arrayLengths[depth]!; i++) {
       if (depth === arrayLengths.length - 1) {
-        array.push(this.readAggregatedType(deserInfo, reader, options, {}));
+        array.push(this.readAggregatedType(deserInfo, reader, options));
       } else {
         array.push(
           this.readComplexNestedArray(reader, options, deserInfo, arrayLengths, depth + 1),
