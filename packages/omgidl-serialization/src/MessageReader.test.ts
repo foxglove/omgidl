@@ -417,13 +417,9 @@ module builtin_interfaces {
         };
     `;
 
-    const arr = [0x88, 0x88];
-    const buffer = Uint8Array.from([0, 1, 0, 0, ...arr]);
-
     const rootDef = "Address";
-    const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    expect(() => reader.readMessage(buffer)).toThrow(
+    expect(() => new MessageReader(rootDef, parseIDL(msgDef))).toThrow(
       /'wchar' and 'wstring' types are not supported/i,
     );
   });
@@ -435,13 +431,8 @@ module builtin_interfaces {
         };
     `;
 
-    const arr = [0x80, 0x00, 0x00, 0x00, 0x88, 0x88]; // 4 byte length, 2 byte wchar
-    const buffer = Uint8Array.from([0, 1, 0, 0, ...arr]);
-
     const rootDef = "Address";
-    const reader = new MessageReader(rootDef, parseIDL(msgDef));
-
-    expect(() => reader.readMessage(buffer)).toThrow(
+    expect(() => new MessageReader(rootDef, parseIDL(msgDef))).toThrow(
       /'wchar' and 'wstring' types are not supported/i,
     );
   });
