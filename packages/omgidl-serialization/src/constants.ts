@@ -1,0 +1,1 @@
+export const UNION_DISCRIMINATOR_PROPERTY_KEY = "_d";

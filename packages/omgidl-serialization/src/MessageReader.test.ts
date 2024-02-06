@@ -2,6 +2,7 @@ import { CdrWriter, EncapsulationKind } from "@foxglove/cdr";
 import { parseIDL } from "@foxglove/omgidl-parser";
 
 import { MessageReader } from "./MessageReader";
+import { UNION_DISCRIMINATOR_PROPERTY_KEY } from "./constants";
 
 const serializeString = (str: string): Uint8Array => {
   const data = Buffer.from(str, "utf8");
@@ -771,6 +772,7 @@ module builtin_interfaces {
 
     expect(msgout).toEqual({
       color: {
+        [UNION_DISCRIMINATOR_PROPERTY_KEY]: 3,
         gray: 55,
       },
     });
@@ -811,6 +813,7 @@ module builtin_interfaces {
 
     expect(msgout).toEqual({
       color: {
+        [UNION_DISCRIMINATOR_PROPERTY_KEY]: 0,
         rgb: Uint8Array.from([255, 0, 0]),
       },
     });

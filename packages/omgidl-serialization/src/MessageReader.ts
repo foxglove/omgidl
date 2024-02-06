@@ -13,6 +13,7 @@ import {
   StructDeserializationInfo,
   UnionDeserializationInfo,
 } from "./DeserializationInfoCache";
+import { UNION_DISCRIMINATOR_PROPERTY_KEY } from "./constants";
 
 export class MessageReader<T = unknown> {
   rootDeserializationInfo: ComplexDeserializationInfo;
@@ -125,7 +126,9 @@ export class MessageReader<T = unknown> {
     }
 
     const fieldDeserInfo = this.deserializationInfoCache.buildFieldDeserInfo(caseDefType);
+
     return {
+      [UNION_DISCRIMINATOR_PROPERTY_KEY]: discriminatorValue,
       [caseDefType.name]: this.readMemberFieldValue(
         fieldDeserInfo,
         reader,
