@@ -1,4 +1,4 @@
-import { parseIDL as parse } from "./parseIDL";
+import { parseIDL as parse, parseIDL } from "./parseIDL";
 
 describe("omgidl parser tests", () => {
   it("parses a struct", () => {
@@ -2594,6 +2594,28 @@ module rosidl_parser {
           },
         ],
         name: "foxglove::Pose",
+      },
+    ]);
+  });
+  it("can parse struct with member of the same name", () => {
+    const msgDef = `
+    struct ColorSettings {
+        uint8 ColorSettings;
+    };
+      `;
+
+    const ast = parseIDL(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "ColorSettings",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            name: "ColorSettings",
+            isComplex: false,
+            type: "uint8",
+          },
+        ],
       },
     ]);
   });

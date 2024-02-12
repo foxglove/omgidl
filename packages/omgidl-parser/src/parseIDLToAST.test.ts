@@ -1775,7 +1775,29 @@ module idl_parser {
       },
     ]);
   });
+  it("can parse struct with member of the same name", () => {
+    const msgDef = `
+    struct ColorSettings {
+        uint8 ColorSettings;
+    };
+      `;
 
+    const ast = parseIDLToAST(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "ColorSettings",
+        declarator: "struct",
+        definitions: [
+          {
+            name: "ColorSettings",
+            isComplex: false,
+            declarator: "struct-member",
+            type: "uint8",
+          },
+        ],
+      },
+    ]);
+  });
   /****************  Not supported by IDL (as far as I can tell) */
   it("cannot parse constants that reference other constants", () => {
     const msgDef = `
