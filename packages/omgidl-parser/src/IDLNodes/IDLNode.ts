@@ -92,7 +92,7 @@ function resolveScopedOrLocalNodeReference({
   // If using local un-scoped identifier, it will not be found in the definitions map
   // In this case we try by building up the namespace prefix until we find a match
   let referencedNode = undefined;
-  // start with most specific scope than work way up
+  // start with most specific scope and work upwards
   const currPrefix: string[] = [...scopeOfUsage];
   for (;;) {
     const identifierToTry = toScopedIdentifier([...currPrefix, usedIdentifier]);
