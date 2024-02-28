@@ -67,9 +67,12 @@ export class MessageReader<T = unknown> {
         ? this.readStructType(deserInfo, reader, options)
         : this.readUnionType(deserInfo, reader, options);
 
-    if (readMemberHeader) {
+    if (readMemberHeader && this.#unusedEmHeader?.readSentinelHeader !== true) {
       reader.sentinelHeader();
     }
+    // clear emHeader for aggregated type, since if it was defined, it would've likely been used
+    // as the sentinel header
+    this.#unusedEmHeader = undefined;
     return msg;
   }
 
@@ -141,6 +144,8 @@ export class MessageReader<T = unknown> {
     };
   }
 
+  #unusedEmHeader?: ReturnType<CdrReader["emHeader"]>;
+
   private readMemberFieldValue(
     field: FieldDeserializationInfo,
     reader: CdrReader,
@@ -149,18 +154,25 @@ export class MessageReader<T = unknown> {
   ): unknown {
     let emHeaderSizeBytes;
     if (emHeaderOptions.readMemberHeader) {
-      const { id, objectSize: objectSizeBytes, lengthCode } = reader.emHeader();
-      emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSizeBytes : undefined;
-
-      // this can help spot misalignments in reading the data
-      const definitionId = field.definitionId;
-      if (definitionId != undefined && id !== definitionId) {
-        throw Error(
-          `CDR message deserializer error. Expected ${definitionId} but EMHEADER contained ${id} for field "${
-            field.name
-          }" in ${emHeaderOptions.parentName ?? "unknown"}`,
-        );
+      if (this.#unusedEmHeader?.readSentinelHeader === true) {
+        return undefined;
       }
+
+      const emHeader = this.#unusedEmHeader ?? reader.emHeader();
+
+      const definitionId = field.definitionId;
+
+      if (definitionId != undefined && emHeader.id !== definitionId) {
+        // ID mismatch, save emHeader for next field. Could also be a sentinel header
+        this.#unusedEmHeader = emHeader;
+        return undefined;
+      }
+
+      // emHeader is now being used and should be cleared
+      this.#unusedEmHeader = undefined;
+      const { objectSize: objectSizeBytes, lengthCode } = emHeader;
+
+      emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSizeBytes : undefined;
     }
 
     if (field.typeDeserInfo.type === "struct" || field.typeDeserInfo.type === "union") {
