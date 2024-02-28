@@ -50,7 +50,7 @@
     "typescript": "5.2.2"
   },
   "dependencies": {
-    "@foxglove/cdr": "^3.2.1",
+    "@foxglove/cdr": "https://github.com/foxglove/cdr.git#optional-members",
     "@foxglove/message-definition": "^0.3.1"
   }
 }

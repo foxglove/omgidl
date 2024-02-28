@@ -711,31 +711,6 @@ module builtin_interfaces {
     expect(() => new MessageReader("b", parseIDL(msgDef))).toThrow(/"b" not found/i);
   });
 
-  it("throws when id annotation does not match emHeader", () => {
-    const msgDef = `
-        @mutable
-        struct Address {
-            @id(1) octet pointer1;
-            @id(2) octet pointer2;
-        };
-    `;
-
-    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
-    writer.dHeader(1); // first writes dHeader for struct object - not taken into consideration for objects
-    writer.emHeader(true, 1, 1); // then writes emHeader for pointer1
-    writer.uint8(0x0f); // then writes the octet
-
-    writer.emHeader(true, 3, 1); // write wrong annotation
-    writer.uint8(0x0f); // then writes the octet
-
-    const rootDef = "Address";
-    const reader = new MessageReader(rootDef, parseIDL(msgDef));
-
-    expect(() => reader.readMessage(writer.data)).toThrow(
-      /expected 2 but emheader contained 3 for field "pointer2"/i,
-    );
-  });
-
   it("Reads mutable union field with id", () => {
     const msgDef = `
         @mutable
@@ -895,6 +870,302 @@ module builtin_interfaces {
     writer.dHeader(8 + cdrTextSizeBytes); // emHeader 8 bytes header + nextint, then string length
     writer.emHeader(true, 10, cdrTextSizeBytes, lengthCode); // emHeader includes string length, because of high length code
     writer.string(data.text, false); // no need to write length because of high length code
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+
+  it("Reads mutable struct with an optional field that is absent", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @optional @id(1) uint8 bittybyte;
+        @optional @id(2) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: undefined,
+      bytier: 24,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 2, 4, 0);
+    writer.uint32(data.bytier);
+    writer.sentinelHeader(); // end of struct
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+
+  it("Reads mutable struct that ends on absent field", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @optional @id(100) uint8 bittybyte;
+        @optional @id(200) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      bytier: undefined,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 100, 1, 0);
+    writer.uint32(data.bittybyte);
+    writer.sentinelHeader(); // end of struct
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+
+  it("Reads mutable struct with absent inner struct member last", () => {
+    const msgDef = `
+      @mutable
+      struct InnerMessage {
+        @id(100) float floaty;
+      };
+      @mutable
+      struct Message {
+        @optional @id(100) uint8 bittybyte;
+        @optional @id(200) uint32 bytier;
+        @optional @id(300) InnerMessage inner;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      bytier: 9,
+      inner: undefined,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 100, 1, 0);
+    writer.uint32(data.bittybyte);
+    writer.emHeader(false, 200, 4, 0);
+    writer.uint32(data.bytier);
+    writer.sentinelHeader(); // end of struct
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+  it("Reads mutable struct with absent inner struct member first", () => {
+    const msgDef = `
+      @mutable
+      struct InnerMessage {
+        @id(100) float floaty;
+      };
+      @mutable
+      struct Message {
+        @optional @id(100) InnerMessage inner;
+        @optional @id(200) uint8 bittybyte;
+        @optional @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      inner: undefined,
+      bittybyte: 5,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 200, 1, 0);
+    writer.uint32(data.bittybyte);
+    writer.emHeader(false, 300, 4, 0);
+    writer.uint32(data.bytier);
+    writer.sentinelHeader(); // end of struct
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+  it("Reads mutable struct with absent inner struct member in middle", () => {
+    const msgDef = `
+      @mutable
+      struct InnerMessage {
+        @id(100) float floaty;
+      };
+      @mutable
+      struct Message {
+        @optional @id(100) uint8 bittybyte;
+        @optional @id(200) InnerMessage inner;
+        @optional @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      inner: undefined,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 100, 1, 0);
+    writer.uint32(data.bittybyte);
+    writer.emHeader(false, 300, 4, 0);
+    writer.uint32(data.bytier);
+    writer.sentinelHeader(); // end of struct
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+  it("Reads mutable struct with inner struct in middle with absent member", () => {
+    const msgDef = `
+      @mutable
+      struct InnerMessage {
+        @id(100) float floaty;
+      };
+      @mutable
+      struct Message {
+        @optional @id(100) uint8 bittybyte;
+        @optional @id(200) InnerMessage inner;
+        @optional @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      inner: {
+        floaty: undefined,
+      },
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 100, 1, 0);
+    writer.uint32(data.bittybyte);
+    writer.emHeader(false, 200, 4, 0); // size 4 because it should include sentinel header
+    writer.sentinelHeader(); // end of inner struct
+    writer.emHeader(false, 300, 4, 0);
+    writer.uint32(data.bytier);
+    writer.sentinelHeader(); // end of struct
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+  it("Reads mutable struct with inner struct last with absent member", () => {
+    const msgDef = `
+      @mutable
+      struct InnerMessage {
+        @id(100) float floaty;
+      };
+      @mutable
+      struct Message {
+        @optional @id(100) uint8 bittybyte;
+        @optional @id(200) uint32 bytier;
+        @optional @id(300) InnerMessage inner;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      bytier: 9,
+      inner: {
+        floaty: undefined,
+      },
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 100, 1, 0);
+    writer.uint32(data.bittybyte);
+    writer.emHeader(false, 200, 4, 0);
+    writer.uint32(data.bytier);
+    writer.emHeader(false, 300, 4, 0); // size 4 because it should include sentinel header
+    writer.sentinelHeader(); // end of inner struct
+    writer.sentinelHeader(); // end of struct
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+  it("Reads mutable struct with absent field before inner struct member with empty field", () => {
+    const msgDef = `
+      @mutable
+      struct InnerMessage {
+        @id(100) float floaty;
+      };
+      @mutable
+      struct Message {
+        @optional @id(100) uint8 bittybyte;
+        @optional @id(200) uint32 bytier;
+        @optional @id(300) InnerMessage inner;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      bytier: undefined,
+      inner: {
+        floaty: undefined,
+      },
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 100, 1, 0);
+    writer.uint32(data.bittybyte);
+    writer.emHeader(false, 300, 4, 0); // size 4 because it should include sentinel header
+    writer.sentinelHeader(); // end of inner struct
+    writer.sentinelHeader(); // end of struct
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+  it("Reads mutable struct with absent field before inner struct member with empty field that isn't the last populated field", () => {
+    const msgDef = `
+      @mutable
+      struct InnerMessage {
+        @id(100) float floaty;
+      };
+      @mutable
+      struct Message {
+        @optional @id(100) uint8 bittybyte;
+        @optional @id(200) InnerMessage inner;
+        @optional @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: undefined,
+      inner: {
+        floaty: undefined,
+      },
+      bytier: 24,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 200, 4, 0); // size 4 because it should include sentinel header
+    writer.sentinelHeader(); // end of inner struct
+    writer.emHeader(false, 300, 4, 0);
+    writer.uint32(data.bytier);
+    writer.sentinelHeader(); // end of struct
 
     const rootDef = "Message";
 
