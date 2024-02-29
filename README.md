@@ -1,6 +1,6 @@
 # Foxglove OMG IDL
 
-This repo contains implementations for supporting OMG specifications within [Foxglove Studio](https://www.foxglove.dev). The parsers expect schemas according to the MCAP specifications: [ros2idl](https://mcap.dev/spec/registry#ros2idl), [omgidl](https://mcap.dev/spec/registry#omgidl).
+This repo contains implementations for supporting OMG specifications within [Foxglove](https://www.foxglove.dev). The parsers expect schemas according to the MCAP specifications: [ros2idl](https://mcap.dev/spec/registry#ros2idl), [omgidl](https://mcap.dev/spec/registry#omgidl).
 
 | Package name                     | Description                                                                                                               | Reference                                                                                                         | Version                                                                                                                      |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
