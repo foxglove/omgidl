@@ -560,10 +560,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@foxglove/cdr@https://github.com/foxglove/cdr.git#optional-members":
-  version: 3.2.0
-  resolution: "@foxglove/cdr@https://github.com/foxglove/cdr.git#commit=9bfca24fbe9ac2904bf31fad6f68b50a6fd77160"
-  checksum: bfd2b437ec2996e8d176464a8ebb55362cb742cc1739c7b4f7f2204d133a5635ae9d9a8ba8ebdcc8f900489519740f0966c9c4901732caa0001fa64e237d3ade
+"@foxglove/cdr@npm:3.3.0":
+  version: 3.3.0
+  resolution: "@foxglove/cdr@npm:3.3.0"
+  checksum: f1c5479474bbd94a9992f788b52092d9938095014df4983eb6099741dc390c2168ff77c5e8431a8fa3bbf437b34cb74f2c73a0a97331166c837788711f5d501d
   languageName: node
   linkType: hard
 
@@ -642,7 +642,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@foxglove/omgidl-serialization@workspace:packages/omgidl-serialization"
   dependencies:
-    "@foxglove/cdr": "https://github.com/foxglove/cdr.git#optional-members"
+    "@foxglove/cdr": 3.3.0
     "@foxglove/message-definition": ^0.3.1
     "@foxglove/omgidl-parser": "workspace:*"
     "@sounisi5011/jest-binary-data-matchers": 1.2.1

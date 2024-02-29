@@ -71,7 +71,7 @@ export class MessageReader<T = unknown> {
       reader.sentinelHeader();
     }
     // clear emHeader for aggregated type, since if it was defined, it would've likely been used
-    // as the sentinel header
+    // as the sentinel header. This prevents the next field from thinking it's already encountered a sentinel header, and returning undefined.
     this.#unusedEmHeader = undefined;
     return msg;
   }
@@ -144,6 +144,11 @@ export class MessageReader<T = unknown> {
     };
   }
 
+  /** Holds the return value of the previously unused emHeader.
+   * emHeaders remain unused if their return ID does not match the field ID.
+   * They become used if a field is encountered that uses the unusedEmHeader.id or
+   * if the unusedEmheader is a sentinel header.
+   **/
   #unusedEmHeader?: ReturnType<CdrReader["emHeader"]>;
 
   private readMemberFieldValue(
@@ -154,6 +159,7 @@ export class MessageReader<T = unknown> {
   ): unknown {
     let emHeaderSizeBytes;
     if (emHeaderOptions.readMemberHeader) {
+      /** If the unusedEmHeader is a sentinel header, then all remaining fields in the struct are absent. */
       if (this.#unusedEmHeader?.readSentinelHeader === true) {
         return undefined;
       }
