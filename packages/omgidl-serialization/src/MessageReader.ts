@@ -71,7 +71,7 @@ export class MessageReader<T = unknown> {
       reader.sentinelHeader();
     }
     // clear emHeader for aggregated type, since if it was defined, it would've likely been used
-    // as the sentinel header
+    // as the sentinel header. This prevents the next field from thinking it's already encountered a sentinel header, and returning undefined.
     this.#unusedEmHeader = undefined;
     return msg;
   }
