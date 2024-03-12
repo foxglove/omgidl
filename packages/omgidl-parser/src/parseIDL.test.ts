@@ -1,4 +1,4 @@
-import { parseIDL as parse } from "./parseIDL";
+import { parseIDL as parse, parseIDL } from "./parseIDL";
 
 describe("omgidl parser tests", () => {
   it("parses a struct", () => {
@@ -1506,7 +1506,49 @@ module rosidl_parser {
       },
     ]);
   });
-  it("parses enums with override values", () => {
+  it("parses enums with only explicit values", () => {
+    const msgDef = `
+      enum COLORS {
+        @value(50)
+        RED,
+        @value(100)
+        BLUE,
+        @value(80)
+        YELLOW
+      };
+    `;
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        name: "COLORS",
+        aggregatedKind: "module",
+        definitions: [
+          {
+            name: "RED",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 50,
+          },
+          {
+            name: "BLUE",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 100,
+          },
+          {
+            name: "YELLOW",
+            type: "uint32",
+            isComplex: false,
+            isConstant: true,
+            value: 80,
+          },
+        ],
+      },
+    ]);
+  });
+  it("parses enums with implicit and explicit values", () => {
     const msgDef = `
       enum COLORS {
         @value(50)
@@ -1538,7 +1580,7 @@ module rosidl_parser {
             type: "uint32",
             isComplex: false,
             isConstant: true,
-            value: 0,
+            value: 51,
           },
           {
             name: "BLUE",
@@ -1552,14 +1594,14 @@ module rosidl_parser {
             type: "uint32",
             isComplex: false,
             isConstant: true,
-            value: 1,
+            value: 101,
           },
           {
             name: "MAGENTA",
             type: "uint32",
             isComplex: false,
             isConstant: true,
-            value: 2,
+            value: 102,
           },
           {
             name: "YELLOW",
@@ -2125,7 +2167,7 @@ module rosidl_parser {
     expect(ast).toEqual([
       {
         name: "MyUnion",
-        switchType: "long",
+        switchType: "int32",
         aggregatedKind: "union",
         cases: [
           {
@@ -2172,6 +2214,105 @@ module rosidl_parser {
       },
     ]);
   });
+  it("can parse union with annotations on definitions", () => {
+    const msgDef = `
+       union MyUnion switch (long) {
+        case 1:
+          @id(100)
+          long long_branch;
+        case 3:
+          @id(200)
+          float float_branch;
+        case 4:
+          @id(300)
+          char  char_branch;
+        default:
+          @id(400)
+          uint8 default;
+    };
+    struct Foo {
+        MyUnion my_union;
+    };
+      `;
+    const ast = parse(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "MyUnion",
+        switchType: "int32",
+        aggregatedKind: "union",
+        cases: [
+          {
+            predicates: [1],
+            type: {
+              isComplex: false,
+              name: "long_branch",
+              type: "int32",
+              annotations: {
+                id: {
+                  name: "id",
+                  type: "const-param",
+                  value: 100,
+                },
+              },
+            },
+          },
+          {
+            predicates: [3],
+            type: {
+              isComplex: false,
+              name: "float_branch",
+              type: "float32",
+              annotations: {
+                id: {
+                  name: "id",
+                  type: "const-param",
+                  value: 200,
+                },
+              },
+            },
+          },
+          {
+            predicates: [4],
+            type: {
+              isComplex: false,
+              name: "char_branch",
+              type: "uint8",
+              annotations: {
+                id: {
+                  name: "id",
+                  type: "const-param",
+                  value: 300,
+                },
+              },
+            },
+          },
+        ],
+        defaultCase: {
+          isComplex: false,
+          name: "default",
+          type: "uint8",
+          annotations: {
+            id: {
+              name: "id",
+              type: "const-param",
+              value: 400,
+            },
+          },
+        },
+      },
+      {
+        name: "Foo",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            isComplex: true,
+            name: "my_union",
+            type: "MyUnion",
+          },
+        ],
+      },
+    ]);
+  });
   it("can parse simple union in module declaration", () => {
     const msgDef = `
     module MyTypes {
@@ -2194,7 +2335,7 @@ module rosidl_parser {
     expect(ast).toEqual([
       {
         name: "MyTypes::MyUnion",
-        switchType: "long",
+        switchType: "int32",
         aggregatedKind: "union",
         cases: [
           {
@@ -2261,7 +2402,7 @@ module rosidl_parser {
     expect(ast).toEqual([
       {
         name: "MyUnion",
-        switchType: "long",
+        switchType: "int32",
         aggregatedKind: "union",
         cases: [
           {
@@ -2318,6 +2459,7 @@ module rosidl_parser {
       },
     ]);
   });
+
   it("parses foxglove Pose schema", () => {
     const schemaString = `
     // Generated by https://github.com/foxglove/schemas
@@ -2452,6 +2594,28 @@ module rosidl_parser {
           },
         ],
         name: "foxglove::Pose",
+      },
+    ]);
+  });
+  it("can parse struct with member of the same name", () => {
+    const msgDef = `
+    struct ColorSettings {
+        uint8 ColorSettings;
+    };
+      `;
+
+    const ast = parseIDL(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "ColorSettings",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            name: "ColorSettings",
+            isComplex: false,
+            type: "uint8",
+          },
+        ],
       },
     ]);
   });

@@ -26,15 +26,30 @@ export function buildMap(definitions: AnyASTNode[]): Map<string, AnyIDLNode> {
       const newNode = makeIDLNode(scopePath, node, idlMap);
       idlMap.set(newNode.scopedIdentifier, newNode);
       if (node.declarator === "enum") {
-        let nextImplicitIEnumValue = 0;
-        const enumConstants = node.enumerators.map((m) => ({
-          declarator: "const" as const,
-          isConstant: true as const,
-          name: m.name,
-          type: "unsigned long",
-          value: getValueAnnotation(m.annotations) ?? (nextImplicitIEnumValue++ as ConstantValue),
-          isComplex: false,
-        }));
+        // DDS X-Types spec section 7.3.1.2.1.5: Enumerated Literal Values
+        // How C++ does implicit enums is that they will increment after the last explicit enum
+        // even if it collides with an existing enum
+        // initialize to -1 so that first value is 0
+        let prevEnumValue = -1;
+        const enumConstants = node.enumerators.map((m) => {
+          const enumValue = getValueAnnotation(m.annotations) ?? (++prevEnumValue as ConstantValue);
+          if (typeof enumValue !== "number") {
+            throw new Error(
+              `Enum value, ${enumValue?.toString() ?? "undefined"}, assigned to ${node.name}::${
+                m.name
+              } must be a number`,
+            );
+          }
+          prevEnumValue = enumValue;
+          return {
+            declarator: "const" as const,
+            isConstant: true as const,
+            name: m.name,
+            type: "unsigned long",
+            value: enumValue,
+            isComplex: false,
+          };
+        });
         for (const constant of enumConstants) {
           const idlConstantNode = new ConstantIDLNode(namePath, constant, idlMap);
           idlMap.set(idlConstantNode.scopedIdentifier, idlConstantNode);

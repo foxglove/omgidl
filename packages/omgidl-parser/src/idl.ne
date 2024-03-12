@@ -208,7 +208,7 @@ case -> caseLabel:+ elementSpec ";" {% d => {
 caseLabel -> ("case" constExpression ":") {% (d) => d[0][1] %}
  | ("default" ":") {% () => "default" %}
  
-elementSpec -> typeDeclarator {% d => d[0] %}
+elementSpec -> typeDeclaratorWithAnnotations {% d => d[0] %}
 
 enum ->  "enum" fieldName "{" enumFieldName ("," enumFieldName):* "}" {% d => {
   const name = d[1].name;
@@ -244,6 +244,12 @@ struct -> "struct" fieldName "{" (member):+ "}" {% d => {
 typedef -> "typedef" typeDeclarator {% ([_, definition]) => (
   { declarator: "typedef", ...definition }
 )%}
+
+typeDeclaratorWithAnnotations -> multiAnnotations typeDeclarator {% d => {
+  const annotations = d[0];
+  const definition = d[1];
+  return extend([annotations, definition]);
+} %}
 
 typeDeclarator -> (
    allTypes fieldName arrayLengths

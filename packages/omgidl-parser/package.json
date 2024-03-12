@@ -1,6 +1,6 @@
 {
   "name": "@foxglove/omgidl-parser",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Parse OMG IDL to flattened definitions for serialization",
   "license": "MIT",
   "repository": {
@@ -45,7 +45,7 @@
     "tslib": "^2"
   },
   "devDependencies": {
-    "@foxglove/message-definition": "^0.2.0",
+    "@foxglove/message-definition": "^0.3.1",
     "@foxglove/tsconfig": "2.0.0",
     "@types/jest": "29.4.0",
     "@types/nearley": "^2.11.2",
@@ -54,11 +54,11 @@
     "nearley": "^2.20.1",
     "nearley-loader": "^2.0.0",
     "prettier": "2.8.8",
-    "rimraf": "5.0.0",
+    "rimraf": "5.0.5",
     "ts-jest": "29.0.3",
-    "ts-loader": "^9.4.3",
-    "typescript": "5.0.2",
-    "webpack": "^5.88.2",
+    "ts-loader": "^9.5.0",
+    "typescript": "5.2.2",
+    "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4"
   }
 }
