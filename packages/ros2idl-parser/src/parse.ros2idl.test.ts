@@ -424,7 +424,7 @@ module rosidl_parser {
       const unsigned long UNSIGNED_LONG_CONSTANT = 42;
       module rosidl_parser {
         module msg {
-          struct MyMessage {   
+          struct MyMessage {
             string<5> bounded_string_value;
             wstring wstring_value;
             wstring<23> bounded_wstring_value;
@@ -801,7 +801,7 @@ module rosidl_parser {
   });
 
   it("can parse comments", () => {
-    const msgDef = ` 
+    const msgDef = `
       // All of these comments should be ignored
       module action {
         /** another comment */
@@ -850,7 +850,7 @@ module rosidl_parser {
     ]);
   });
   it("can parse multiple forward declarations on same line with default annotation", () => {
-    const msgDef = ` 
+    const msgDef = `
     module action {
       struct MyAction_Goal {
         @default(value=5)
@@ -879,7 +879,7 @@ module rosidl_parser {
       },
     ]);
   });
-  it("normalizes the builtin_interfaces/msg/Time type for use in studio", () => {
+  it("normalizes the builtin_interfaces/msg/Time type for use in foxglove", () => {
     const msgDef = `
     module builtin_interfaces {
       module msg {
@@ -912,7 +912,7 @@ module rosidl_parser {
   });
   /****************  Not supported by IDL (as far as I can tell) */
   it("cannot parse multiple const declarations in a single line", () => {
-    const msgDef = ` 
+    const msgDef = `
       module action {
         module MyAction_Goal_Constants {
           const short short1, short2 = -23;
@@ -923,7 +923,7 @@ module rosidl_parser {
   });
   /****************  Syntax Errors */
   it("missing bracket at the end will result in end of input error", () => {
-    const msgDef = ` 
+    const msgDef = `
     module rosidl_parser {
       module action {
         module MyAction_Goal_Constants {
@@ -939,7 +939,7 @@ module rosidl_parser {
     );
   });
   it("cannot parse empty module", () => {
-    const msgDef = ` 
+    const msgDef = `
     module rosidl_parser {
       module action {
         module MyAction_Goal_Constants {
