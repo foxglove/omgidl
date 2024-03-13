@@ -73,7 +73,7 @@ function getValueAnnotation(
   return undefined;
 }
 
-/** Convert to IDL Message Definitions for serialization and compatibility foxglove studio's Raw Message panel. Returned in order of original definitions*/
+/** Convert to IDL Message Definitions for serialization and compatibility with Foxglove's Raw Message panel. Returned in order of original definitions*/
 export function toIDLMessageDefinitions(map: Map<string, AnyIDLNode>): IDLMessageDefinition[] {
   const messageDefinitions: IDLMessageDefinition[] = [];
   const topLevelConstantDefinitions: MessageDefinitionField[] = [];

@@ -21,7 +21,7 @@ export function parseRos2idl(messageDefinition: string): MessageDefinition[] {
       field.type = normalizeName(field.type);
     }
     // Modify the definition of builtin_interfaces/msg/Time and Duration so they are interpreted as
-    // {sec: number, nsec: number}, compatible with the rest of Studio. The ros2idl builtin types
+    // {sec: number, nsec: number}, compatible with the rest of Foxglove. The ros2idl builtin types
     // use "nanosec" instead of "nsec".
     if (
       def.name === "builtin_interfaces/msg/Time" ||
