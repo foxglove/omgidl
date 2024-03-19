@@ -51,6 +51,8 @@ export type PrimitiveArrayDeserializationInfo = {
 export type StructDeserializationInfo = HeaderOptions & {
   type: "struct";
   fields: FieldDeserializationInfo[];
+  fieldsByName: Record<string, FieldDeserializationInfo>;
+  structLength?: number;
 };
 
 export type UnionDeserializationInfo = HeaderOptions & {
@@ -72,6 +74,7 @@ export type FieldDeserializationInfo = {
   isArray?: boolean;
   arrayLengths?: number[];
   definitionId?: number;
+  knownOffset?: number; // Known field reader offset from the start of the struct
 };
 
 export class DeserializationInfoCache {
@@ -131,14 +134,38 @@ export class DeserializationInfoCache {
     const deserInfo: StructDeserializationInfo = {
       type: "struct",
       ...getHeaderNeeds(definition),
-      fields: definition.definitions.reduce(
-        (fieldsAccum, fieldDef) =>
-          fieldDef.isConstant === true
-            ? fieldsAccum
-            : fieldsAccum.concat(this.buildFieldDeserInfo(fieldDef)),
-        [] as FieldDeserializationInfo[],
-      ),
+      fields: [],
+      fieldsByName: {},
     };
+
+    let knownOffset: number | undefined = 0;
+    for (const fieldDef of definition.definitions) {
+      if (fieldDef.isConstant === true) {
+        continue;
+      }
+
+      const fieldDeserInfo = {
+        ...this.buildFieldDeserInfo(fieldDef),
+        knownOffset,
+      };
+
+      deserInfo.fields.push(fieldDeserInfo);
+      deserInfo.fieldsByName[fieldDef.name] = fieldDeserInfo;
+
+      if (
+        knownOffset != undefined &&
+        fieldDeserInfo.typeDeserInfo.type === "primitive" &&
+        fieldDeserInfo.type !== "string"
+      ) {
+        knownOffset += typeToByteLength(fieldDeserInfo.type)!;
+      } else {
+        knownOffset = undefined;
+      }
+    }
+
+    if (knownOffset != undefined) {
+      deserInfo.structLength = knownOffset;
+    }
 
     this.#complexDeserializationInfo.set(definition.name ?? "", deserInfo);
     return deserInfo;

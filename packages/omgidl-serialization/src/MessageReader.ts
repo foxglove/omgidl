@@ -14,6 +14,39 @@ import {
   UnionDeserializationInfo,
 } from "./DeserializationInfoCache";
 
+type AllFieldsSelection = {
+  type: "all";
+};
+
+type NoFieldsSelection = {
+  type: "none";
+};
+
+type ArraySliceSelection = {
+  type: "slice";
+  start: number;
+  end: number;
+  subSelection: FieldSelection;
+};
+
+type StructFieldSelection = {
+  type: "fields";
+  fields: { [fieldName: string]: FieldSelection };
+};
+
+export type FieldSelection =
+  | AllFieldsSelection
+  | NoFieldsSelection
+  | StructFieldSelection
+  | ArraySliceSelection;
+
+const AllFieldsDefault: AllFieldsSelection = {
+  type: "all",
+};
+const NoFieldsDefault: NoFieldsSelection = {
+  type: "none",
+};
+
 export class MessageReader<T = unknown> {
   rootDeserializationInfo: ComplexDeserializationInfo;
   deserializationInfoCache: DeserializationInfoCache;
@@ -34,21 +67,27 @@ export class MessageReader<T = unknown> {
 
   // We template on R here for call site type information if the class type information T is not
   // known or available
-  readMessage<R = T>(buffer: ArrayBufferView): R {
+  readMessage<R = T>(buffer: ArrayBufferView, fieldSelection?: FieldSelection): R {
     const reader = new CdrReader(buffer);
     const usesDelimiterHeader = reader.usesDelimiterHeader;
     const usesMemberHeader = reader.usesMemberHeader;
 
-    return this.readAggregatedType(this.rootDeserializationInfo, reader, {
-      usesDelimiterHeader,
-      usesMemberHeader,
-    }) as R;
+    return this.readAggregatedType(
+      this.rootDeserializationInfo,
+      reader,
+      {
+        usesDelimiterHeader,
+        usesMemberHeader,
+      },
+      fieldSelection ?? AllFieldsDefault,
+    ) as R;
   }
 
   private readAggregatedType(
     deserInfo: ComplexDeserializationInfo,
     reader: CdrReader,
     options: HeaderOptions,
+    fieldSelection: FieldSelection,
     /** The size of the struct if known (like from an emHeader). If it is known we do not read in a dHeader */
     knownTypeSize?: number,
   ): Record<string, unknown> {
@@ -61,10 +100,15 @@ export class MessageReader<T = unknown> {
       reader.dHeader();
     }
 
-    const msg =
-      deserInfo.type === "struct"
-        ? this.readStructType(deserInfo, reader, options)
-        : this.readUnionType(deserInfo, reader, options);
+    let msg;
+    if (deserInfo.type === "struct") {
+      if (fieldSelection.type === "slice") {
+        throw new Error(`Slices are not allowed for structs`);
+      }
+      msg = this.readStructType(deserInfo, reader, options, fieldSelection);
+    } else {
+      msg = this.readUnionType(deserInfo, reader, options, fieldSelection);
+    }
 
     if (readMemberHeader) {
       reader.sentinelHeader();
@@ -76,19 +120,64 @@ export class MessageReader<T = unknown> {
     deserInfo: StructDeserializationInfo,
     reader: CdrReader,
     options: HeaderOptions,
+    fieldSelection: AllFieldsSelection | NoFieldsSelection | StructFieldSelection,
   ): Record<string, unknown> {
     const readMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
+    const childOptions = { readMemberHeader }; // Can probably use a global constant for that
 
     const msg: Record<string, unknown> = {};
+
+    // If we do not have to read all fields and the struct has a known length, we can seek to
+    // selected fields or directly seek to the end if there is no field to be read.
+    if (!readMemberHeader && deserInfo.structLength != undefined && fieldSelection.type !== "all") {
+      const structOffset = reader.offset;
+
+      if (fieldSelection.type === "fields") {
+        for (const [fieldName, subFields] of Object.entries(fieldSelection.fields)) {
+          const field = deserInfo.fieldsByName[fieldName];
+          if (field == undefined) {
+            throw new Error(`Field ${fieldName} does not exist for type ${deserInfo.type}`);
+          }
+
+          reader.seekTo(structOffset + field.knownOffset!);
+          msg[field.name] = this.readMemberFieldValue(
+            field,
+            reader,
+            childOptions,
+            options,
+            subFields,
+          );
+        }
+      }
+
+      const endOfStructOffset = structOffset + deserInfo.structLength;
+      if (endOfStructOffset !== reader.byteLength) {
+        // We only seek if we do not seek to the very end of the buffer as otherwise the CDR reader
+        // would (erroneously) raise an exception.
+        reader.seekTo(endOfStructOffset);
+      }
+
+      return msg;
+    }
+
     for (const field of deserInfo.fields) {
-      msg[field.name] = this.readMemberFieldValue(
+      const subFieldSelection =
+        fieldSelection.type === "fields" ? fieldSelection.fields[field.name] : fieldSelection;
+
+      const fieldValue = this.readMemberFieldValue(
         field,
         reader,
-        {
-          readMemberHeader,
-        },
+        childOptions,
         options,
+        subFieldSelection ?? NoFieldsDefault,
       );
+
+      if (
+        fieldSelection.type === "all" ||
+        (fieldSelection.type === "fields" && subFieldSelection != undefined)
+      ) {
+        msg[field.name] = fieldValue;
+      }
     }
 
     return msg;
@@ -98,6 +187,7 @@ export class MessageReader<T = unknown> {
     deserInfo: UnionDeserializationInfo,
     reader: CdrReader,
     options: HeaderOptions,
+    fieldSelection: FieldSelection,
   ): Record<string, unknown> {
     const readMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
 
@@ -134,6 +224,7 @@ export class MessageReader<T = unknown> {
           parentName: deserInfo.definition.name,
         },
         options,
+        fieldSelection,
       ),
     };
   }
@@ -143,6 +234,7 @@ export class MessageReader<T = unknown> {
     reader: CdrReader,
     emHeaderOptions: { readMemberHeader: boolean; parentName?: string },
     childOptions: HeaderOptions,
+    fieldSelection: FieldSelection,
   ): unknown {
     let emHeaderSizeBytes;
     if (emHeaderOptions.readMemberHeader) {
@@ -162,6 +254,10 @@ export class MessageReader<T = unknown> {
 
     if (field.typeDeserInfo.type === "struct" || field.typeDeserInfo.type === "union") {
       if (field.isArray === true) {
+        if (fieldSelection.type === "fields") {
+          throw new Error("Field selection not allowed for arrays.");
+        }
+
         // For dynamic length arrays we need to read a uint32 prefix
         const arrayLengths = field.arrayLengths ?? [reader.sequenceLength()];
         return this.readComplexNestedArray(
@@ -170,12 +266,14 @@ export class MessageReader<T = unknown> {
           field.typeDeserInfo,
           arrayLengths,
           0,
+          fieldSelection,
         );
       } else {
         return this.readAggregatedType(
           field.typeDeserInfo,
           reader,
           childOptions,
+          fieldSelection,
           emHeaderSizeBytes,
         );
       }
@@ -222,19 +320,51 @@ export class MessageReader<T = unknown> {
     deserInfo: ComplexDeserializationInfo,
     arrayLengths: number[],
     depth: number,
+    fieldSelection: AllFieldsSelection | NoFieldsSelection | ArraySliceSelection,
   ): unknown[] {
     if (depth > arrayLengths.length - 1 || depth < 0) {
       throw Error(`Invalid depth ${depth} for array of length ${arrayLengths.length}`);
     }
 
+    const startIndex =
+      fieldSelection.type === "slice"
+        ? fieldSelection.start
+        : fieldSelection.type === "all"
+        ? 0
+        : -1;
+    const endIndex =
+      fieldSelection.type === "slice"
+        ? fieldSelection.end
+        : fieldSelection.type === "all"
+        ? Number.MAX_SAFE_INTEGER
+        : -1;
+
     const array = [];
     for (let i = 0; i < arrayLengths[depth]!; i++) {
+      const doRead = startIndex <= i && i <= endIndex;
+
       if (depth === arrayLengths.length - 1) {
-        array.push(this.readAggregatedType(deserInfo, reader, options));
-      } else {
-        array.push(
-          this.readComplexNestedArray(reader, options, deserInfo, arrayLengths, depth + 1),
+        const elem = this.readAggregatedType(
+          deserInfo,
+          reader,
+          options,
+          doRead
+            ? fieldSelection.type === "slice"
+              ? fieldSelection.subSelection
+              : fieldSelection
+            : NoFieldsDefault,
         );
+        array.push(doRead ? elem : undefined);
+      } else {
+        const elem = this.readComplexNestedArray(
+          reader,
+          options,
+          deserInfo,
+          arrayLengths,
+          depth + 1,
+          doRead ? fieldSelection : NoFieldsDefault,
+        );
+        array.push(doRead ? elem : undefined);
       }
     }
 

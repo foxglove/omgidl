@@ -901,4 +901,156 @@ module builtin_interfaces {
 
     expect(msgout).toEqual(data);
   });
+
+  it("reads partial struct", () => {
+    // same buffer as above
+    const buffer = Uint8Array.from(
+      Buffer.from(
+        "0001000001000000286fae6169ddd73108000000747572746c6531000e000000747572746c65315f616865616400000000000000000000000000f03f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f03f",
+        "hex",
+      ),
+    );
+    const msgDef = `
+
+    module geometry_msgs {
+      module msg {
+        struct Transforms {
+          sequence<geometry_msgs::msg::TransformStamped> transforms;
+        };
+      };
+    };
+
+    module geometry_msgs {
+      module msg {
+        struct TransformStamped {
+          std_msgs::msg::Header header;
+          string child_frame_id; // the frame id of the child frame
+          geometry_msgs::msg::Transform transform;
+        };
+      };
+    };
+
+    module std_msgs {
+      module msg {
+        struct Header {
+          builtin_interfaces::Time stamp;
+          string frame_id;
+        };
+      };
+    };
+
+    module geometry_msgs {
+      module msg {
+        struct Transform {
+          geometry_msgs::msg::Vector3 translation;
+          geometry_msgs::msg::Quaternion rotation;
+        };
+      };
+    };
+
+    module geometry_msgs {
+      module msg {
+        struct Vector3 {
+          double x;
+          double y;
+          double z;
+        };
+      };
+    };
+
+    module geometry_msgs {
+      module msg {
+        struct Quaternion {
+          double x;
+          double y;
+          double z;
+          double w;
+        };
+      };
+    };
+
+    // Normally added when generating idl schemas
+
+    module builtin_interfaces {
+      struct Time {
+        int32 sec;
+        uint32 nanosec;
+      };
+    };
+        `;
+
+    {
+      const reader = new MessageReader("geometry_msgs::msg::Transforms", parseIDL(msgDef));
+      expect(reader.readMessage(buffer, { type: "none" })).toEqual({});
+    }
+
+    {
+      const reader = new MessageReader("geometry_msgs::msg::Transforms", parseIDL(msgDef));
+      expect(reader.readMessage(buffer)).toEqual({
+        transforms: [
+          {
+            child_frame_id: "turtle1_ahead",
+            header: {
+              frame_id: "turtle1",
+              stamp: {
+                nanosec: 836230505,
+                sec: 1638821672,
+              },
+            },
+            transform: {
+              translation: { x: 1, y: 0, z: 0 },
+              rotation: { x: 0, y: 0, z: 0, w: 1 },
+            },
+          },
+        ],
+      });
+    }
+
+    {
+      const reader = new MessageReader("geometry_msgs::msg::Transforms", parseIDL(msgDef));
+      expect(
+        reader.readMessage(buffer, {
+          type: "fields",
+          fields: {
+            transforms: {
+              type: "slice",
+              start: 0,
+              end: 0,
+              subSelection: {
+                type: "fields",
+                fields: {
+                  header: { type: "all" },
+                  transform: {
+                    type: "fields",
+                    fields: {
+                      rotation: {
+                        type: "fields",
+                        fields: { x: { type: "all" }, w: { type: "all" } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        }),
+      ).toEqual({
+        transforms: [
+          {
+            // child_frame_id: "turtle1_ahead",
+            header: {
+              frame_id: "turtle1",
+              stamp: {
+                nanosec: 836230505,
+                sec: 1638821672,
+              },
+            },
+            transform: {
+              rotation: { x: 0, w: 1 },
+            },
+          },
+        ],
+      });
+    }
+  });
 });
