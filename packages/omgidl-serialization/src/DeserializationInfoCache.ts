@@ -311,7 +311,9 @@ export class DeserializationInfoCache {
       } else if (deserInfo.type === "struct") {
         defaultMessage = {};
         for (const field of deserInfo.fields) {
-          defaultMessage[field.name] = this.getFieldDefault(field);
+          if (!field.isOptional) {
+            defaultMessage[field.name] = this.getFieldDefault(field);
+          }
         }
       }
 

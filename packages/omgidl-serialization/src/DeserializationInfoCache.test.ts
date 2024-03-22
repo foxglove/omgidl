@@ -341,6 +341,29 @@ describe("DeserializationInfoCache", () => {
       b: 0,
     });
   });
+  it("creates correct default for a struct field with optional and non-optional members", () => {
+    const unionDefinition: IDLMessageDefinition = {
+      name: "test::Message",
+      aggregatedKind: "struct",
+      definitions: [
+        { name: "a", type: "uint32", isComplex: false },
+        {
+          name: "b",
+          type: "uint32",
+          isComplex: false,
+          annotations: {
+            optional: { type: "no-params", name: "optional" },
+          },
+        },
+      ],
+    };
+    const deserializationInfoCache = new DeserializationInfoCache([unionDefinition]);
+    const fieldDeserInfo = makeFieldDeserFromComplexDef(unionDefinition, deserializationInfoCache);
+    expect(deserializationInfoCache.getFieldDefault(fieldDeserInfo)).toEqual({
+      a: 0,
+      b: undefined,
+    });
+  });
   it("throws if required type definitions are not found", () => {
     const deserializationInfoCache = new DeserializationInfoCache([TIME_DEFINITION]);
     expect(() =>
