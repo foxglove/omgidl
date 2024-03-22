@@ -12,6 +12,7 @@ import {
   HeaderOptions,
   StructDeserializationInfo,
   UnionDeserializationInfo,
+  makeNestedArray,
 } from "./DeserializationInfoCache";
 import { UNION_DISCRIMINATOR_PROPERTY_KEY } from "./constants";
 
@@ -171,7 +172,11 @@ export class MessageReader<T = unknown> {
       if (definitionId != undefined && emHeader.id !== definitionId) {
         // ID mismatch, save emHeader for next field. Could also be a sentinel header
         this.#unusedEmHeader = emHeader;
-        return undefined;
+        if (field.isOptional) {
+          return undefined;
+        } else {
+          return this.deserializationInfoCache.getFieldDefault(field);
+        }
       }
 
       // emHeader is now being used and should be cleared
@@ -222,7 +227,7 @@ export class MessageReader<T = unknown> {
           };
 
           // last arrayLengths length is handled in deserializer. It returns an array
-          return readNestedArray(typedArrayDeserializer, arrayLengths.slice(0, -1), 0);
+          return makeNestedArray(typedArrayDeserializer, arrayLengths.slice(0, -1), 0);
         } else {
           return deser(reader, arrayLengths[0]!);
         }
@@ -261,24 +266,6 @@ export class MessageReader<T = unknown> {
 
     return array;
   }
-}
-
-function readNestedArray(deser: () => unknown, arrayLengths: number[], depth: number): unknown[] {
-  if (depth > arrayLengths.length - 1 || depth < 0) {
-    throw Error(`Invalid depth ${depth} for array of length ${arrayLengths.length}`);
-  }
-
-  const array = [];
-
-  for (let i = 0; i < arrayLengths[depth]!; i++) {
-    if (depth === arrayLengths.length - 1) {
-      array.push(deser());
-    } else {
-      array.push(readNestedArray(deser, arrayLengths, depth + 1));
-    }
-  }
-
-  return array;
 }
 
 function getCaseForDiscriminator(

@@ -2,8 +2,17 @@ import { CdrReader } from "@foxglove/cdr";
 import {
   IDLMessageDefinition,
   IDLMessageDefinitionField,
+  IDLStructDefinition,
   IDLUnionDefinition,
 } from "@foxglove/omgidl-parser";
+
+import { UNION_DISCRIMINATOR_PROPERTY_KEY } from "./constants";
+import {
+  DEFAULT_BOOLEAN_VALUE,
+  DEFAULT_BYTE_VALUE,
+  DEFAULT_NUMERICAL_VALUE,
+  DEFAULT_STRING_VALUE,
+} from "./defaultValues";
 
 export type Deserializer = (
   reader: CdrReader,
@@ -51,6 +60,7 @@ export type PrimitiveArrayDeserializationInfo = {
 export type StructDeserializationInfo = HeaderOptions & {
   type: "struct";
   fields: FieldDeserializationInfo[];
+  definition: IDLStructDefinition;
 };
 
 export type UnionDeserializationInfo = HeaderOptions & {
@@ -65,13 +75,23 @@ export type PrimitiveTypeDeserInfo =
   | PrimitiveDeserializationInfo
   | PrimitiveArrayDeserializationInfo;
 
-export type FieldDeserializationInfo = {
+export type FieldDeserializationInfo<
+  DeserInfo extends ComplexDeserializationInfo | PrimitiveTypeDeserInfo =
+    | ComplexDeserializationInfo
+    | PrimitiveTypeDeserInfo,
+> = {
   name: string;
   type: string;
-  typeDeserInfo: ComplexDeserializationInfo | PrimitiveTypeDeserInfo;
+  typeDeserInfo: DeserInfo;
   isArray?: boolean;
   arrayLengths?: number[];
   definitionId?: number;
+  /** Optional fields show undefined if not present in the message.
+   * Non-optional fields show a default value per the spec:
+   * https://www.omg.org/spec/DDS-XTypes/1.3/PDF 7.2.2.4.4.4.7
+   */
+  isOptional: boolean;
+  isComplex: DeserInfo extends ComplexDeserializationInfo ? true : false;
 };
 
 export class DeserializationInfoCache {
@@ -131,6 +151,7 @@ export class DeserializationInfoCache {
     const deserInfo: StructDeserializationInfo = {
       type: "struct",
       ...getHeaderNeeds(definition),
+      definition,
       fields: definition.definitions.reduce(
         (fieldsAccum, fieldDef) =>
           fieldDef.isConstant === true
@@ -170,6 +191,8 @@ export class DeserializationInfoCache {
         isArray,
         arrayLengths,
         definitionId: getDefinitionId(definition),
+        isOptional: isOptional(definition),
+        isComplex: true,
       };
     }
 
@@ -209,11 +232,97 @@ export class DeserializationInfoCache {
       name,
       type,
       typeDeserInfo: fieldDeserInfo,
+      isComplex: false,
       isArray,
       arrayLengths,
       definitionId: getDefinitionId(definition),
+      isOptional: isOptional(definition),
     };
   }
+
+  public getFieldDefault(deserInfo: FieldDeserializationInfo): unknown {
+    const { isArray, arrayLengths, type, isComplex } = deserInfo;
+
+    if (isArray === true && arrayLengths == undefined) {
+      return [];
+    }
+    let defaultValueGetter;
+    if (isComplex) {
+      defaultValueGetter = this.#createOrGetComplexDefaultValueGetter(
+        deserInfo.typeDeserInfo as ComplexDeserializationInfo,
+      );
+    } else {
+      // fixed length arrays are filled with default values
+      defaultValueGetter = PRIMITIVE_DEFAULT_VALUE_GETTERS.get(type);
+      if (!defaultValueGetter) {
+        throw new Error(`Failed to find default value getter for type ${type}`);
+      }
+    }
+    // Used for fixed length arrays that may be nested
+    const needsNestedArray = isArray === true && arrayLengths != undefined;
+    return needsNestedArray
+      ? makeNestedArray(defaultValueGetter, arrayLengths, 0)
+      : defaultValueGetter();
+  }
+
+  #complexDefaultValueGetters = new Map<string, () => Record<string, unknown>>();
+
+  #createOrGetComplexDefaultValueGetter = (
+    deserInfo: ComplexDeserializationInfo,
+  ): (() => Record<string, unknown>) => {
+    const mapKey = deserInfo.definition.name ?? "";
+
+    if (this.#complexDefaultValueGetters.has(mapKey)) {
+      return this.#complexDefaultValueGetters.get(mapKey)!;
+    }
+    let defaultMessage: Record<string, unknown> | undefined = undefined;
+    const defaultValueGetter: () => Record<string, unknown> = () => {
+      // if `structuredClone` is part of the environment, use it to clone the default message
+      // want to avoid defaultValues having references to the same object
+      if (defaultMessage != undefined && typeof structuredClone !== "undefined") {
+        return structuredClone(defaultMessage);
+      }
+      if (deserInfo.type === "union") {
+        const { definition: unionDef } = deserInfo;
+        const { switchType } = unionDef;
+
+        defaultMessage = {};
+        let defaultCase: IDLMessageDefinitionField | undefined = unionDef.defaultCase;
+        // use existing default case if there is one
+        if (!defaultCase) {
+          // choose default based off of default value of switch case type
+          const switchTypeDefaultGetter = PRIMITIVE_DEFAULT_VALUE_GETTERS.get(switchType);
+          if (switchTypeDefaultGetter == undefined) {
+            throw new Error(`Failed to find default value getter for type ${switchType}`);
+          }
+          const switchValue = switchTypeDefaultGetter() as number | boolean;
+
+          defaultCase = unionDef.cases.find((c) => c.predicates.includes(switchValue))?.type;
+          if (!defaultCase) {
+            throw new Error(`Failed to find default case for union ${unionDef.name ?? ""}`);
+          }
+          defaultMessage[UNION_DISCRIMINATOR_PROPERTY_KEY] = switchValue;
+        } else {
+          // default exists, default value of switch case type is not needed
+          defaultMessage[UNION_DISCRIMINATOR_PROPERTY_KEY] = undefined;
+        }
+        const defaultCaseDeserInfo = this.buildFieldDeserInfo(defaultCase);
+        defaultMessage[defaultCaseDeserInfo.name] = this.getFieldDefault(defaultCaseDeserInfo);
+      } else if (deserInfo.type === "struct") {
+        defaultMessage = {};
+        for (const field of deserInfo.fields) {
+          defaultMessage[field.name] = this.getFieldDefault(field);
+        }
+      }
+
+      if (defaultMessage == undefined) {
+        throw new Error(`Unrecognized complex type ${deserInfo.type as string}`);
+      }
+      return defaultMessage;
+    };
+    this.#complexDefaultValueGetters.set(deserInfo.definition.name ?? "", defaultValueGetter);
+    return defaultValueGetter;
+  };
 }
 
 function typeToByteLength(type: string): number | undefined {
@@ -269,6 +378,43 @@ export const PRIMITIVE_ARRAY_DESERIALIZERS = new Map<string, ArrayDeserializer>(
   ["string", readStringArray],
 ]);
 
+export const PRIMITIVE_DEFAULT_VALUE_GETTERS = new Map<string, () => unknown>([
+  ["bool", () => DEFAULT_BOOLEAN_VALUE],
+  ["int8", () => DEFAULT_BYTE_VALUE],
+  ["uint8", () => DEFAULT_BYTE_VALUE],
+  ["int16", () => DEFAULT_NUMERICAL_VALUE],
+  ["uint16", () => DEFAULT_NUMERICAL_VALUE],
+  ["int32", () => DEFAULT_NUMERICAL_VALUE],
+  ["uint32", () => DEFAULT_NUMERICAL_VALUE],
+  ["int64", () => DEFAULT_NUMERICAL_VALUE],
+  ["uint64", () => DEFAULT_NUMERICAL_VALUE],
+  ["float32", () => DEFAULT_NUMERICAL_VALUE],
+  ["float64", () => DEFAULT_NUMERICAL_VALUE],
+  ["string", () => DEFAULT_STRING_VALUE],
+]);
+
+export function makeNestedArray(
+  getValue: () => unknown,
+  arrayLengths: number[],
+  depth: number,
+): unknown[] {
+  if (depth > arrayLengths.length - 1 || depth < 0) {
+    throw Error(`Invalid depth ${depth} for array of length ${arrayLengths.length}`);
+  }
+
+  const array = [];
+
+  for (let i = 0; i < arrayLengths[depth]!; i++) {
+    if (depth === arrayLengths.length - 1) {
+      array.push(getValue());
+    } else {
+      array.push(makeNestedArray(getValue, arrayLengths, depth + 1));
+    }
+  }
+
+  return array;
+}
+
 function readBoolArray(reader: CdrReader, count: number): boolean[] {
   const array = new Array<boolean>(count);
   for (let i = 0; i < count; i++) {
@@ -283,6 +429,16 @@ function readStringArray(reader: CdrReader, count: number): string[] {
     array[i] = reader.string();
   }
   return array;
+}
+
+function isOptional(definition: IDLMessageDefinitionField): boolean {
+  const { annotations } = definition;
+
+  if (!annotations) {
+    return false;
+  }
+
+  return "optional" in annotations;
 }
 
 function getHeaderNeeds(definition: IDLMessageDefinition): {

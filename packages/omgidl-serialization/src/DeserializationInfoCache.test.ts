@@ -1,10 +1,12 @@
-import { IDLMessageDefinition } from "@foxglove/omgidl-parser";
+import { IDLMessageDefinition, IDLMessageDefinitionField } from "@foxglove/omgidl-parser";
 
 import {
   DeserializationInfoCache,
+  FieldDeserializationInfo,
   PRIMITIVE_ARRAY_DESERIALIZERS,
   PRIMITIVE_DESERIALIZERS,
 } from "./DeserializationInfoCache";
+import { UNION_DISCRIMINATOR_PROPERTY_KEY } from "./constants";
 
 const TRANSFORM_DEFINITION: IDLMessageDefinition = {
   name: "geometry_msgs::msg::Transform",
@@ -51,6 +53,16 @@ const FLOAT64_PRIMITIVE_DESER_INFO = {
   },
 };
 
+function makeFieldDeserFromComplexDef(
+  complexDefinition: IDLMessageDefinition,
+  deserializationInfoCache: DeserializationInfoCache,
+): FieldDeserializationInfo {
+  return deserializationInfoCache.buildFieldDeserInfo({
+    name: `${complexDefinition.name ?? ""}_field`,
+    type: complexDefinition.name ?? "",
+    isComplex: true,
+  } as IDLMessageDefinitionField);
+}
 describe("DeserializationInfoCache", () => {
   it("creates deserialization info for struct with primitive fields", () => {
     const deserializationInfoCache = new DeserializationInfoCache([TIME_DEFINITION]);
@@ -239,7 +251,96 @@ describe("DeserializationInfoCache", () => {
       },
     });
   });
+  it("creates default value for struct with primitive fields", () => {
+    const deserializationInfoCache = new DeserializationInfoCache([TIME_DEFINITION]);
+    const fieldDeserInfo = makeFieldDeserFromComplexDef(TIME_DEFINITION, deserializationInfoCache);
+    expect(deserializationInfoCache.getFieldDefault(fieldDeserInfo)).toMatchObject({
+      sec: 0,
+      nanosec: 0,
+    });
+  });
 
+  it("creates default value for struct with complex fields", () => {
+    const deserializationInfoCache = new DeserializationInfoCache([
+      TRANSFORM_DEFINITION,
+      VECTOR_DEFINITION,
+      QUATERNION_DEFINITION,
+    ]);
+    const fieldDeserInfo = makeFieldDeserFromComplexDef(
+      TRANSFORM_DEFINITION,
+      deserializationInfoCache,
+    );
+    expect(deserializationInfoCache.getFieldDefault(fieldDeserInfo)).toMatchObject({
+      translation: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0, w: 0 },
+    });
+  });
+
+  it("creates default value for primitive field", () => {
+    const deserializationInfoCache = new DeserializationInfoCache([]);
+    const fieldDeserInfo = deserializationInfoCache.buildFieldDeserInfo({
+      name: "some_field_name",
+      type: "float64",
+    });
+    expect(deserializationInfoCache.getFieldDefault(fieldDeserInfo)).toEqual(0);
+  });
+  it("creates correct default for a complex array field", () => {
+    const deserializationInfoCache = new DeserializationInfoCache([VECTOR_DEFINITION]);
+    const vectorFieldDeserInfo = deserializationInfoCache.buildFieldDeserInfo({
+      isComplex: true,
+      isArray: true,
+      name: "vectors",
+      type: "geometry_msgs::msg::Vector3",
+    });
+    expect(deserializationInfoCache.getFieldDefault(vectorFieldDeserInfo)).toEqual([]);
+  });
+  it("creates correct default for a union field with a default case", () => {
+    const unionDefinition: IDLMessageDefinition = {
+      name: "test::Union",
+      aggregatedKind: "union",
+      switchType: "uint32",
+      cases: [
+        {
+          predicates: [0],
+          type: { name: "a", type: "int32", isComplex: false },
+        },
+        {
+          predicates: [1],
+          type: { name: "b", type: "float64", isComplex: false },
+        },
+      ],
+      defaultCase: { name: "c", type: "string", isComplex: false },
+    };
+    const deserializationInfoCache = new DeserializationInfoCache([unionDefinition]);
+    const fieldDeserInfo = makeFieldDeserFromComplexDef(unionDefinition, deserializationInfoCache);
+    expect(deserializationInfoCache.getFieldDefault(fieldDeserInfo)).toEqual({
+      [UNION_DISCRIMINATOR_PROPERTY_KEY]: undefined,
+      c: "",
+    });
+  });
+  it("creates correct default for a union field without a default case", () => {
+    const unionDefinition: IDLMessageDefinition = {
+      name: "test::Union",
+      aggregatedKind: "union",
+      switchType: "uint32",
+      cases: [
+        {
+          predicates: [1],
+          type: { name: "a", type: "uint8", isComplex: false },
+        },
+        {
+          predicates: [0], // default case because default value for switch case is 0
+          type: { name: "b", type: "float64", isComplex: false },
+        },
+      ],
+    };
+    const deserializationInfoCache = new DeserializationInfoCache([unionDefinition]);
+    const fieldDeserInfo = makeFieldDeserFromComplexDef(unionDefinition, deserializationInfoCache);
+    expect(deserializationInfoCache.getFieldDefault(fieldDeserInfo)).toEqual({
+      [UNION_DISCRIMINATOR_PROPERTY_KEY]: 0,
+      b: 0,
+    });
+  });
   it("throws if required type definitions are not found", () => {
     const deserializationInfoCache = new DeserializationInfoCache([TIME_DEFINITION]);
     expect(() =>
