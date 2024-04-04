@@ -61,6 +61,8 @@ export type StructDeserializationInfo = HeaderOptions & {
   type: "struct";
   fields: FieldDeserializationInfo[];
   definition: IDLStructDefinition;
+  /** optional allows for defaultValues to be calculated lazily */
+  defaultValue?: Record<string, unknown>;
 };
 
 export type UnionDeserializationInfo = HeaderOptions & {
@@ -68,6 +70,8 @@ export type UnionDeserializationInfo = HeaderOptions & {
   switchTypeDeser: Deserializer;
   switchTypeLength: number;
   definition: IDLUnionDefinition;
+  /** optional allows for defaultValues to be calculated lazily */
+  defaultValue?: Record<string, unknown>;
 };
 
 export type ComplexDeserializationInfo = StructDeserializationInfo | UnionDeserializationInfo;
@@ -92,6 +96,8 @@ export type FieldDeserializationInfo<
    */
   isOptional: boolean;
   isComplex: DeserInfo extends ComplexDeserializationInfo ? true : false;
+  /** optional allows for defaultValues to be calculated lazily */
+  defaultValue?: unknown;
 };
 
 export class DeserializationInfoCache {
@@ -240,11 +246,26 @@ export class DeserializationInfoCache {
     };
   }
 
+  /** Returns default value for given FieldDeserializationInfo.
+   * If defaultValue is not defined on FieldDeserializationInfo, it will be calculated and set.
+   */
   public getFieldDefault(deserInfo: FieldDeserializationInfo): unknown {
-    const { isArray, arrayLengths, type, isComplex } = deserInfo;
+    if (deserInfo.defaultValue != undefined) {
+      return deserInfo.defaultValue;
+    }
+
+    return this.#updateFieldDeserInfoWithDefaultValue(deserInfo);
+  }
+
+  #updateFieldDeserInfoWithDefaultValue(deserInfo: FieldDeserializationInfo): unknown {
+    const { isArray, arrayLengths, type, isComplex, defaultValue } = deserInfo;
+    if (defaultValue != undefined) {
+      return deserInfo.defaultValue;
+    }
 
     if (isArray === true && arrayLengths == undefined) {
-      return [];
+      deserInfo.defaultValue = [];
+      return deserInfo.defaultValue;
     }
     let defaultValueGetter;
     if (isComplex) {
@@ -260,9 +281,10 @@ export class DeserializationInfoCache {
     }
     // Used for fixed length arrays that may be nested
     const needsNestedArray = isArray === true && arrayLengths != undefined;
-    return needsNestedArray
+    deserInfo.defaultValue = needsNestedArray
       ? makeNestedArray(defaultValueGetter, arrayLengths, 0)
       : defaultValueGetter();
+    return deserInfo.defaultValue;
   }
 
   #complexDefaultValueGetters = new Map<string, () => Record<string, unknown>>();
@@ -272,21 +294,22 @@ export class DeserializationInfoCache {
   ): (() => Record<string, unknown>) => {
     const mapKey = deserInfo.definition.name ?? "";
 
+    // need to make sure all complexDefaultValueGetters for a given type are the same
     if (this.#complexDefaultValueGetters.has(mapKey)) {
       return this.#complexDefaultValueGetters.get(mapKey)!;
     }
-    let defaultMessage: Record<string, unknown> | undefined = undefined;
     const defaultValueGetter: () => Record<string, unknown> = () => {
       // if `structuredClone` is part of the environment, use it to clone the default message
       // want to avoid defaultValues having references to the same object
-      if (defaultMessage != undefined && typeof structuredClone !== "undefined") {
-        return structuredClone(defaultMessage);
+      if (deserInfo.defaultValue != undefined && typeof structuredClone !== "undefined") {
+        return structuredClone(deserInfo.defaultValue);
       }
+      deserInfo.defaultValue = {};
+      const defaultMessage = deserInfo.defaultValue;
       if (deserInfo.type === "union") {
         const { definition: unionDef } = deserInfo;
         const { switchType } = unionDef;
 
-        defaultMessage = {};
         let defaultCase: IDLMessageDefinitionField | undefined = unionDef.defaultCase;
         // use existing default case if there is one
         if (!defaultCase) {
@@ -307,12 +330,12 @@ export class DeserializationInfoCache {
           defaultMessage[UNION_DISCRIMINATOR_PROPERTY_KEY] = undefined;
         }
         const defaultCaseDeserInfo = this.buildFieldDeserInfo(defaultCase);
-        defaultMessage[defaultCaseDeserInfo.name] = this.getFieldDefault(defaultCaseDeserInfo);
+        defaultMessage[defaultCaseDeserInfo.name] =
+          this.#updateFieldDeserInfoWithDefaultValue(defaultCaseDeserInfo);
       } else if (deserInfo.type === "struct") {
-        defaultMessage = {};
         for (const field of deserInfo.fields) {
           if (!field.isOptional) {
-            defaultMessage[field.name] = this.getFieldDefault(field);
+            defaultMessage[field.name] = this.#updateFieldDeserInfoWithDefaultValue(field);
           }
         }
       }
