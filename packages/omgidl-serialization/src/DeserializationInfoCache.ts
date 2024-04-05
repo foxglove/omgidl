@@ -253,15 +253,7 @@ export class DeserializationInfoCache {
     if (deserInfo.defaultValue != undefined) {
       return deserInfo.defaultValue;
     }
-
-    return this.#updateFieldDeserInfoWithDefaultValue(deserInfo);
-  }
-
-  #updateFieldDeserInfoWithDefaultValue(deserInfo: FieldDeserializationInfo): unknown {
-    const { isArray, arrayLengths, type, isComplex, defaultValue } = deserInfo;
-    if (defaultValue != undefined) {
-      return deserInfo.defaultValue;
-    }
+    const { isArray, arrayLengths, type, isComplex } = deserInfo;
 
     if (isArray === true && arrayLengths == undefined) {
       deserInfo.defaultValue = [];
@@ -269,9 +261,11 @@ export class DeserializationInfoCache {
     }
     let defaultValueGetter;
     if (isComplex) {
-      defaultValueGetter = this.#createOrGetComplexDefaultValueGetter(
-        deserInfo.typeDeserInfo as ComplexDeserializationInfo,
-      );
+      defaultValueGetter = () => {
+        return this.#getComplexDeserInfoDefault(
+          deserInfo.typeDeserInfo as ComplexDeserializationInfo,
+        );
+      };
     } else {
       // fixed length arrays are filled with default values
       defaultValueGetter = PRIMITIVE_DEFAULT_VALUE_GETTERS.get(type);
@@ -287,67 +281,52 @@ export class DeserializationInfoCache {
     return deserInfo.defaultValue;
   }
 
-  #complexDefaultValueGetters = new Map<string, () => Record<string, unknown>>();
-
-  #createOrGetComplexDefaultValueGetter = (
-    deserInfo: ComplexDeserializationInfo,
-  ): (() => Record<string, unknown>) => {
-    const mapKey = deserInfo.definition.name ?? "";
-
-    // need to make sure all complexDefaultValueGetters for a given type are the same
-    if (this.#complexDefaultValueGetters.has(mapKey)) {
-      return this.#complexDefaultValueGetters.get(mapKey)!;
+  /** Computes and sets the default value on the complex deserialization info */
+  #getComplexDeserInfoDefault(deserInfo: ComplexDeserializationInfo): Record<string, unknown> {
+    // if `structuredClone` is part of the environment, use it to clone the default message
+    // want to avoid defaultValues having references to the same object
+    if (deserInfo.defaultValue != undefined && typeof structuredClone !== "undefined") {
+      return structuredClone(deserInfo.defaultValue);
     }
-    const defaultValueGetter: () => Record<string, unknown> = () => {
-      // if `structuredClone` is part of the environment, use it to clone the default message
-      // want to avoid defaultValues having references to the same object
-      if (deserInfo.defaultValue != undefined && typeof structuredClone !== "undefined") {
-        return structuredClone(deserInfo.defaultValue);
-      }
-      deserInfo.defaultValue = {};
-      const defaultMessage = deserInfo.defaultValue;
-      if (deserInfo.type === "union") {
-        const { definition: unionDef } = deserInfo;
-        const { switchType } = unionDef;
+    deserInfo.defaultValue = {};
+    const defaultMessage = deserInfo.defaultValue;
+    if (deserInfo.type === "union") {
+      const { definition: unionDef } = deserInfo;
+      const { switchType } = unionDef;
 
-        let defaultCase: IDLMessageDefinitionField | undefined = unionDef.defaultCase;
-        // use existing default case if there is one
+      let defaultCase: IDLMessageDefinitionField | undefined = unionDef.defaultCase;
+      // use existing default case if there is one
+      if (!defaultCase) {
+        // choose default based off of default value of switch case type
+        const switchTypeDefaultGetter = PRIMITIVE_DEFAULT_VALUE_GETTERS.get(switchType);
+        if (switchTypeDefaultGetter == undefined) {
+          throw new Error(`Failed to find default value getter for type ${switchType}`);
+        }
+        const switchValue = switchTypeDefaultGetter() as number | boolean;
+
+        defaultCase = unionDef.cases.find((c) => c.predicates.includes(switchValue))?.type;
         if (!defaultCase) {
-          // choose default based off of default value of switch case type
-          const switchTypeDefaultGetter = PRIMITIVE_DEFAULT_VALUE_GETTERS.get(switchType);
-          if (switchTypeDefaultGetter == undefined) {
-            throw new Error(`Failed to find default value getter for type ${switchType}`);
-          }
-          const switchValue = switchTypeDefaultGetter() as number | boolean;
-
-          defaultCase = unionDef.cases.find((c) => c.predicates.includes(switchValue))?.type;
-          if (!defaultCase) {
-            throw new Error(`Failed to find default case for union ${unionDef.name ?? ""}`);
-          }
-          defaultMessage[UNION_DISCRIMINATOR_PROPERTY_KEY] = switchValue;
-        } else {
-          // default exists, default value of switch case type is not needed
-          defaultMessage[UNION_DISCRIMINATOR_PROPERTY_KEY] = undefined;
+          throw new Error(`Failed to find default case for union ${unionDef.name ?? ""}`);
         }
-        const defaultCaseDeserInfo = this.buildFieldDeserInfo(defaultCase);
-        defaultMessage[defaultCaseDeserInfo.name] =
-          this.#updateFieldDeserInfoWithDefaultValue(defaultCaseDeserInfo);
-      } else if (deserInfo.type === "struct") {
-        for (const field of deserInfo.fields) {
-          if (!field.isOptional) {
-            defaultMessage[field.name] = this.#updateFieldDeserInfoWithDefaultValue(field);
-          }
+        defaultMessage[UNION_DISCRIMINATOR_PROPERTY_KEY] = switchValue;
+      } else {
+        // default exists, default value of switch case type is not needed
+        defaultMessage[UNION_DISCRIMINATOR_PROPERTY_KEY] = undefined;
+      }
+      const defaultCaseDeserInfo = this.buildFieldDeserInfo(defaultCase);
+      defaultMessage[defaultCaseDeserInfo.name] = this.getFieldDefault(defaultCaseDeserInfo);
+    } else if (deserInfo.type === "struct") {
+      for (const field of deserInfo.fields) {
+        if (!field.isOptional) {
+          defaultMessage[field.name] = this.getFieldDefault(field);
         }
       }
-
-      if (defaultMessage == undefined) {
-        throw new Error(`Unrecognized complex type ${deserInfo.type as string}`);
-      }
-      return defaultMessage;
-    };
-    this.#complexDefaultValueGetters.set(deserInfo.definition.name ?? "", defaultValueGetter);
-    return defaultValueGetter;
-  };
+    }
+    if (defaultMessage == undefined) {
+      throw new Error(`Unrecognized complex type ${deserInfo.type as string}`);
+    }
+    return defaultMessage;
+  }
 }
 
 function typeToByteLength(type: string): number | undefined {
