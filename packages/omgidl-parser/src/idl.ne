@@ -7,7 +7,6 @@ const keywords = [
   , "module"
   , "enum"
   , "const"
-  , "include"
   , "typedef"
   , "union"
   , "switch"

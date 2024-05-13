@@ -2674,4 +2674,24 @@ module rosidl_parser {
     };`;
     expect(() => parse(msgDef)).toThrow(/unexpected RCBR token: "}"/i);
   });
+  it("supports 'include' as a field name", () => {
+    const msgDef = `
+    struct SomeStruct {
+      boolean include;
+    };`;
+    const ast = parseIDL(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "SomeStruct",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            name: "include",
+            isComplex: false,
+            type: "bool",
+          },
+        ],
+      },
+    ]);
+  });
 });
