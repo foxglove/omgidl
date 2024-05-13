@@ -1819,12 +1819,19 @@ module idl_parser {
     `;
     expect(() => parseIDLToAST(msgDef)).toThrow(/unexpected , token/i);
   });
-  it("cannot parse empty struct", () => {
+  it("can parse empty struct", () => {
     const msgDef = `
       struct a {
       };
     `;
-    expect(() => parseIDLToAST(msgDef)).toThrow(/unexpected RCBR token/i);
+    const ast = parseIDLToAST(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "a",
+        declarator: "struct",
+        definitions: [],
+      },
+    ]);
   });
   /****************  Syntax Errors */
   it("missing bracket at the end will result in end of input error", () => {

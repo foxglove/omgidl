@@ -231,7 +231,7 @@ enumFieldName -> multiAnnotations fieldName {% d => {
   return extend([annotations, name]);
 } %}
 
-struct -> "struct" fieldName "{" (member):+ "}" {% d => {
+struct -> "struct" fieldName "{" (member):* "}" {% d => {
   const name = d[1].name;
   const definitions = d[3].flat(2).filter(def => def !== null);
   return {
