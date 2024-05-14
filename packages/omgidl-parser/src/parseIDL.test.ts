@@ -2619,6 +2619,20 @@ module rosidl_parser {
       },
     ]);
   });
+  it("can parse empty struct", () => {
+    const msgDef = `
+      struct a {
+      };
+    `;
+    const ast = parseIDL(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "a",
+        aggregatedKind: "struct",
+        definitions: [],
+      },
+    ]);
+  });
   // **************** Not supported in our implementation yet
   it("cannot compose variable size arrays (no serialization support)", () => {
     const msgDef = `
