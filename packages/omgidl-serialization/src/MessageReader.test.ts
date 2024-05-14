@@ -1326,6 +1326,20 @@ module builtin_interfaces {
     `;
     const data = {};
     const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+
+    const rootDef = "Message";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+    const msgout = reader.readMessage(writer.data);
+    expect(msgout).toEqual(data);
+  });
+  it("Reads mutable struct with no members", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+      };
+    `;
+    const data = {};
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
     writer.sentinelHeader(); // end of struct
 
     const rootDef = "Message";
