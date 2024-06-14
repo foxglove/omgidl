@@ -2619,6 +2619,49 @@ module rosidl_parser {
       },
     ]);
   });
+  it("can parse typedefs with annotations", () => {
+    const msgDef = `
+      module Some_index {                                                                                                   
+        @min(1) @max(8) @default(1) 
+        typedef unsigned short index;                                             
+      };                                                                                                                 
+      struct SomeStruct {
+        Some_index::index sensor_index;
+      };
+    `;
+    const out = parseIDL(msgDef);
+    expect(out).toEqual([
+      {
+        name: "SomeStruct",
+        aggregatedKind: "struct",
+        definitions: [
+          {
+            annotations: {
+              default: {
+                name: "default",
+                type: "const-param",
+                value: 1,
+              },
+              max: {
+                name: "max",
+                type: "const-param",
+                value: 8,
+              },
+              min: {
+                name: "min",
+                type: "const-param",
+                value: 1,
+              },
+            },
+            defaultValue: 1,
+            isComplex: false,
+            name: "sensor_index",
+            type: "uint16",
+          },
+        ],
+      },
+    ]);
+  });
   it("can parse empty struct", () => {
     const msgDef = `
       struct a {

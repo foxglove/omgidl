@@ -1812,6 +1812,61 @@ module idl_parser {
       },
     ]);
   });
+  it("can parse typedefs with annotations", () => {
+    const msgDef = `
+      module Some_index {                                                                                                   
+        @min(1) @max(8) @default(1) 
+        typedef unsigned short index;                                             
+      };                                                                                                                 
+      struct SomeStruct {
+        Some_index::index sensor_index;
+      };
+    `;
+    const ast = parseIDLToAST(msgDef);
+    expect(ast).toEqual([
+      {
+        name: "Some_index",
+        declarator: "module",
+        definitions: [
+          {
+            annotations: {
+              default: {
+                name: "default",
+                type: "const-param",
+                value: 1,
+              },
+              max: {
+                name: "max",
+                type: "const-param",
+                value: 8,
+              },
+              min: {
+                name: "min",
+                type: "const-param",
+                value: 1,
+              },
+            },
+            declarator: "typedef",
+            isComplex: false,
+            name: "index",
+            type: "unsigned short",
+          },
+        ],
+      },
+      {
+        name: "SomeStruct",
+        declarator: "struct",
+        definitions: [
+          {
+            declarator: "struct-member",
+            name: "sensor_index",
+            type: "Some_index::index",
+          },
+        ],
+      },
+    ]);
+  });
+
   /****************  Not supported by IDL (as far as I can tell) */
   it("cannot parse constants that reference other constants", () => {
     const msgDef = `
