@@ -753,7 +753,7 @@ module builtin_interfaces {
     });
   });
 
-  it("Reads mutable union with default case with id where discriminator case does not exist a", () => {
+  it("Reads mutable union with default case with id where discriminator case does not exist", () => {
     const msgDef = `
         @mutable
         union ColorOrGray switch (uint8) {
@@ -794,7 +794,7 @@ module builtin_interfaces {
       },
     });
   });
-  it("Reads mutable union field with id where discriminator case does not exist", () => {
+  it("Reads mutable union field with with id where discriminator case does not exist and there is no default", () => {
     const msgDef = `
         @mutable
         union ColorOrGray switch (uint8) {
