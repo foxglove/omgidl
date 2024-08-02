@@ -752,6 +752,87 @@ module builtin_interfaces {
       },
     });
   });
+
+  it("Reads mutable union with default case with id where discriminator case does not exist a", () => {
+    const msgDef = `
+        @mutable
+        union ColorOrGray switch (uint8) {
+          case 0:
+            @id(100)
+            uint8 rgb[3];
+          default:
+            @id(200)
+            uint8 gray;
+        };
+        @mutable
+        struct Fence {
+            @id(5) ColorOrGray color;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(true, 5, 6); // writes emHeader for color field
+
+    writer.emHeader(true, 1, 1); // emHeader for discriminator (switch type)
+    writer.uint8(0x09); // then writes uint8 case for gray
+
+    writer.emHeader(true, 200, 1); // emHeader for field (gray)
+    writer.uint8(55); // then writes uint8
+
+    writer.sentinelHeader(); // end union
+    writer.sentinelHeader(); // end struct
+
+    const rootDef = "Fence";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual({
+      color: {
+        [UNION_DISCRIMINATOR_PROPERTY_KEY]: 9,
+        gray: 55,
+      },
+    });
+  });
+  it("Reads mutable union field with id where discriminator case does not exist", () => {
+    const msgDef = `
+        @mutable
+        union ColorOrGray switch (uint8) {
+          case 0:
+            @id(100)
+            uint8 rgb[3];
+          case 3:
+            @id(200)
+            uint8 gray;
+        };
+        @mutable
+        struct Fence {
+            @id(5) ColorOrGray color;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(true, 5, 6); // writes emHeader for color field
+
+    writer.emHeader(true, 1, 1); // emHeader for discriminator (switch type)
+    writer.uint8(0x09); // then writes uint8 case for gray
+
+    // absent value because discriminator doesn't exist
+
+    writer.sentinelHeader(); // end union
+    writer.sentinelHeader(); // end struct
+
+    const rootDef = "Fence";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual({
+      color: {
+        [UNION_DISCRIMINATOR_PROPERTY_KEY]: 9,
+      },
+    });
+  });
   it("Reads array from mutable union field", () => {
     const msgDef = `
         @mutable

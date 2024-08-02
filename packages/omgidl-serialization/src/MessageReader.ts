@@ -119,17 +119,24 @@ export class MessageReader<T = unknown> {
     }
     const discriminatorValue = deserInfo.switchTypeDeser(reader) as number | boolean;
 
+    // Discriminator case determination: Section 7.4.1.4.4.4.2 of https://www.omg.org/spec/IDL/4.2/PDF
     // get case for switchtype value based on matching predicate
-    const caseDefType = getCaseForDiscriminator(deserInfo.definition, discriminatorValue);
+    let caseDefType = getCaseForDiscriminator(deserInfo.definition, discriminatorValue);
+    // If no case is found, use the default case
     if (!caseDefType) {
-      throw new Error(
-        `No matching case found in ${
-          deserInfo.definition.name ?? ""
-        } for discriminator value ${discriminatorValue.toString()}`,
-      );
+      caseDefType = deserInfo.definition.defaultCase;
     }
 
-    const fieldDeserInfo = this.deserializationInfoCache.buildFieldDeserInfo(caseDefType);
+    const fieldDeserInfo = caseDefType
+      ? this.deserializationInfoCache.buildFieldDeserInfo(caseDefType)
+      : undefined;
+
+    // if no matching case and no default case, only return discriminator value
+    if (!fieldDeserInfo || !caseDefType) {
+      return {
+        [UNION_DISCRIMINATOR_PROPERTY_KEY]: discriminatorValue,
+      };
+    }
 
     return {
       [UNION_DISCRIMINATOR_PROPERTY_KEY]: discriminatorValue,
