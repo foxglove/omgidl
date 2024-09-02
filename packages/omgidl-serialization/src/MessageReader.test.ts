@@ -1413,6 +1413,102 @@ module builtin_interfaces {
     const msgout = reader.readMessage(writer.data);
     expect(msgout).toEqual(data);
   });
+  it("Reads mutable struct with absent inner struct member at the end using PL_CDR2", () => {
+    const msgDef = `
+      @mutable
+      struct InnerMessage {
+        @id(100) float floaty;
+      };
+      @mutable
+      struct Message {
+        @optional @id(100) uint8 bittybyte;
+        @optional @id(200) uint32 bytier;
+        @optional @id(300) InnerMessage inner;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      bytier: 9,
+      inner: undefined, // optional fields are populated with undefined
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(4 + 1 + 4 + 4);
+    writer.emHeader(false, 100, 1, 5);
+    writer.uint32(data.bittybyte);
+    writer.emHeader(false, 200, 4, 5);
+    writer.uint32(data.bytier);
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+  it("Reads final struct with optional field", () => {
+    const msgDef = `
+      struct InnerMessage {
+        float floaty;
+      };
+      struct Message {
+        uint8 bittybyte;
+        @optional uint32 bytier;
+        InnerMessage inner;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      bytier: 9,
+      inner: {
+        floaty: 2.5, // optional fields are populated with undefined
+      },
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.CDR_LE });
+    writer.uint32(data.bittybyte);
+    writer.emHeader(false, 1, 4, 5); // optional field gets an emHeader to confirm existence
+    writer.uint32(data.bytier);
+    writer.float32(data.inner.floaty);
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+  it("Reads final struct with absent optional field", () => {
+    const msgDef = `
+      struct InnerMessage {
+        float floaty;
+      };
+      struct Message {
+        uint8 bittybyte;
+        @optional uint32 bytier;
+        InnerMessage inner;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      bytier: undefined,
+      inner: {
+        floaty: 2.5, // optional fields are populated with undefined
+      },
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.CDR_LE });
+    writer.uint32(data.bittybyte);
+    writer.emHeader(false, 1, 0, 5); // optional field gets an emHeader even though it is undefined
+    writer.float32(data.inner.floaty);
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
   it("Reads mutable struct with no members", () => {
     const msgDef = `
       @mutable
