@@ -91,6 +91,7 @@ export class MessageReader<T = unknown> {
         reader,
         {
           readMemberHeader,
+          parentName: deserInfo.definition.name ?? "<unnamed-struct>",
         },
         options,
       );
@@ -145,7 +146,7 @@ export class MessageReader<T = unknown> {
         reader,
         {
           readMemberHeader,
-          parentName: deserInfo.definition.name,
+          parentName: deserInfo.definition.name ?? "<unnamed-union>",
         },
         options,
       ),
@@ -162,90 +163,113 @@ export class MessageReader<T = unknown> {
   private readMemberFieldValue(
     field: FieldDeserializationInfo,
     reader: CdrReader,
-    emHeaderOptions: { readMemberHeader: boolean; parentName?: string },
+    emHeaderOptions: { readMemberHeader: boolean; parentName: string },
     childOptions: HeaderOptions,
   ): unknown {
     let emHeaderSizeBytes;
-    if (emHeaderOptions.readMemberHeader) {
-      /** If the unusedEmHeader is a sentinel header, then all remaining fields in the struct are absent. */
-      if (this.#unusedEmHeader?.readSentinelHeader === true) {
-        return undefined;
-      }
-
-      const emHeader = this.#unusedEmHeader ?? reader.emHeader();
-
-      const definitionId = field.definitionId;
-
-      if (definitionId != undefined && emHeader.id !== definitionId) {
-        // ID mismatch, save emHeader for next field. Could also be a sentinel header
-        this.#unusedEmHeader = emHeader;
-        if (field.isOptional) {
+    try {
+      // if a field is marked as optional it gets an emHeader regardless of emHeaderOptions
+      // that would be set by the struct's mutability.
+      if (emHeaderOptions.readMemberHeader || field.isOptional) {
+        /** If the unusedEmHeader is a sentinel header, then all remaining fields in the struct are absent. */
+        if (this.#unusedEmHeader?.readSentinelHeader === true) {
           return undefined;
+        }
+
+        let emHeader;
+        try {
+          emHeader = this.#unusedEmHeader ?? reader.emHeader();
+        } catch (err: unknown) {
+          if (err instanceof RangeError && field.isOptional) {
+            // If we get a RangeError, it means we've reached the end of the buffer
+            // This is expected if the field is optional
+            return undefined;
+          }
+          throw err;
+        }
+
+        const definitionId = field.definitionId;
+
+        if (definitionId != undefined && emHeader.id !== definitionId) {
+          // ID mismatch, save emHeader for next field. Could also be a sentinel header
+          this.#unusedEmHeader = emHeader;
+          if (field.isOptional) {
+            return undefined;
+          } else {
+            return this.deserializationInfoCache.getFieldDefault(field);
+          }
+        }
+
+        // emHeader is now being used and should be cleared
+        this.#unusedEmHeader = undefined;
+        const { objectSize: objectSizeBytes, lengthCode } = emHeader;
+
+        if (field.isOptional && objectSizeBytes === 0) {
+          return undefined;
+        }
+
+        emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSizeBytes : undefined;
+      }
+
+      if (field.typeDeserInfo.type === "struct" || field.typeDeserInfo.type === "union") {
+        if (field.isArray === true) {
+          // For dynamic length arrays we need to read a uint32 prefix
+          const arrayLengths = field.arrayLengths ?? [reader.sequenceLength()];
+          return this.readComplexNestedArray(
+            reader,
+            childOptions,
+            field.typeDeserInfo,
+            arrayLengths,
+            0,
+          );
         } else {
-          return this.deserializationInfoCache.getFieldDefault(field);
+          return this.readAggregatedType(
+            field.typeDeserInfo,
+            reader,
+            childOptions,
+            emHeaderSizeBytes,
+          );
+        }
+      } else {
+        const headerSpecifiedLength =
+          emHeaderSizeBytes != undefined
+            ? Math.floor(emHeaderSizeBytes / field.typeDeserInfo.typeLength)
+            : undefined;
+
+        if (field.typeDeserInfo.type === "array-primitive") {
+          const deser = field.typeDeserInfo.deserialize;
+          const arrayLengths =
+            field.arrayLengths ??
+            // the byteLength written in the header doesn't help us determine count of strings in the array
+            // This will be the next field in the message
+            (field.type === "string"
+              ? [reader.sequenceLength()]
+              : [headerSpecifiedLength ?? reader.sequenceLength()]);
+
+          if (arrayLengths.length > 1) {
+            const typedArrayDeserializer = () => {
+              return deser(reader, arrayLengths[arrayLengths.length - 1]!);
+            };
+
+            // last arrayLengths length is handled in deserializer. It returns an array
+            return makeNestedArray(typedArrayDeserializer, arrayLengths.slice(0, -1), 0);
+          } else {
+            return deser(reader, arrayLengths[0]!);
+          }
+        } else if (field.typeDeserInfo.type === "primitive") {
+          return field.typeDeserInfo.deserialize(
+            reader,
+            headerSpecifiedLength, // fieldLength only used for `string` type primitives
+          );
+        } else {
+          throw new Error(`Unhandled deserialization info type`);
         }
       }
-
-      // emHeader is now being used and should be cleared
-      this.#unusedEmHeader = undefined;
-      const { objectSize: objectSizeBytes, lengthCode } = emHeader;
-
-      emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSizeBytes : undefined;
-    }
-
-    if (field.typeDeserInfo.type === "struct" || field.typeDeserInfo.type === "union") {
-      if (field.isArray === true) {
-        // For dynamic length arrays we need to read a uint32 prefix
-        const arrayLengths = field.arrayLengths ?? [reader.sequenceLength()];
-        return this.readComplexNestedArray(
-          reader,
-          childOptions,
-          field.typeDeserInfo,
-          arrayLengths,
-          0,
-        );
-      } else {
-        return this.readAggregatedType(
-          field.typeDeserInfo,
-          reader,
-          childOptions,
-          emHeaderSizeBytes,
-        );
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        err.message = `${err.message} in field ${field.name} of ${emHeaderOptions.parentName} at location ${reader.offset}.`;
       }
-    } else {
-      const headerSpecifiedLength =
-        emHeaderSizeBytes != undefined
-          ? Math.floor(emHeaderSizeBytes / field.typeDeserInfo.typeLength)
-          : undefined;
-
-      if (field.typeDeserInfo.type === "array-primitive") {
-        const deser = field.typeDeserInfo.deserialize;
-        const arrayLengths =
-          field.arrayLengths ??
-          // the byteLength written in the header doesn't help us determine count of strings in the array
-          // This will be the next field in the message
-          (field.type === "string"
-            ? [reader.sequenceLength()]
-            : [headerSpecifiedLength ?? reader.sequenceLength()]);
-
-        if (arrayLengths.length > 1) {
-          const typedArrayDeserializer = () => {
-            return deser(reader, arrayLengths[arrayLengths.length - 1]!);
-          };
-
-          // last arrayLengths length is handled in deserializer. It returns an array
-          return makeNestedArray(typedArrayDeserializer, arrayLengths.slice(0, -1), 0);
-        } else {
-          return deser(reader, arrayLengths[0]!);
-        }
-      } else if (field.typeDeserInfo.type === "primitive") {
-        return field.typeDeserInfo.deserialize(
-          reader,
-          headerSpecifiedLength, // fieldLength only used for `string` type primitives
-        );
-      } else {
-        throw new Error(`Unhandled deserialization info type`);
-      }
+      throw err;
     }
   }
 
