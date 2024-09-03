@@ -91,6 +91,7 @@ export class MessageReader<T = unknown> {
         reader,
         {
           readMemberHeader,
+          parentName: deserInfo.definition.name ?? "<unnamed-struct>",
         },
         options,
       );
@@ -145,7 +146,7 @@ export class MessageReader<T = unknown> {
         reader,
         {
           readMemberHeader,
-          parentName: deserInfo.definition.name,
+          parentName: deserInfo.definition.name ?? "<unnamed-union>",
         },
         options,
       ),
@@ -162,7 +163,7 @@ export class MessageReader<T = unknown> {
   private readMemberFieldValue(
     field: FieldDeserializationInfo,
     reader: CdrReader,
-    emHeaderOptions: { readMemberHeader: boolean; parentName?: string },
+    emHeaderOptions: { readMemberHeader: boolean; parentName: string },
     childOptions: HeaderOptions,
   ): unknown {
     let emHeaderSizeBytes;
@@ -266,9 +267,7 @@ export class MessageReader<T = unknown> {
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
-        err.message = `${err.message} in field ${field.name} of ${
-          emHeaderOptions.parentName ?? ""
-        } at location ${reader.offset}.`;
+        err.message = `${err.message} in field ${field.name} of ${emHeaderOptions.parentName} at location ${reader.offset}.`;
       }
       throw err;
     }
