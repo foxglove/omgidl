@@ -47,7 +47,7 @@
   "devDependencies": {
     "@foxglove/omgidl-parser": "workspace:*",
     "@sounisi5011/jest-binary-data-matchers": "1.2.1",
-    "typescript": "5.2.2"
+    "typescript": "5.6.2"
   },
   "dependencies": {
     "@foxglove/cdr": "3.3.0",
