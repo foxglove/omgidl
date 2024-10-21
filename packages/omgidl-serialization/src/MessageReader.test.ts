@@ -1538,8 +1538,8 @@ module builtin_interfaces {
     const data = {
       inners: [],
     };
-    const writer = new CdrWriter({ kind: EncapsulationKind.RTPS_CDR2_LE });
-    writer.sentinelHeader(); // end of struct
+    // new CdrWriter({ kind: EncapsulationKind.RTPS_DELIMITED_CDR2_LE });
+    // would write this
     const buffer = new Uint8Array([0, 9, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0]);
 
     const rootDef = "Outer";
@@ -1557,8 +1557,8 @@ module builtin_interfaces {
     const data = {
       inners: new Uint8Array([]),
     };
-    const writer = new CdrWriter({ kind: EncapsulationKind.RTPS_CDR2_LE });
-    writer.sentinelHeader(); // end of struct
+    // new CdrWriter({ kind: EncapsulationKind.RTPS_DELIMITED_CDR2_LE });
+    // would write this
     const buffer = new Uint8Array([0, 9, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0]);
 
     const rootDef = "Outer";
