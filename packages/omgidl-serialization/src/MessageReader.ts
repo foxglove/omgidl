@@ -107,11 +107,11 @@ export class MessageReader<T = unknown> {
     reader: CdrReader,
     options: HeaderOptions,
   ): Record<string, unknown> {
-    const readMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
-    const readDelimiterHeader = options.usesDelimiterHeader && deserInfo.usesDelimiterHeader;
+    const shouldReadEmHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
+    const shouldReadDHeader = options.usesDelimiterHeader && deserInfo.usesDelimiterHeader;
 
     // looks like unions print an emHeader for the switchType
-    if (readMemberHeader) {
+    if (shouldReadEmHeader) {
       const { objectSize: objectSizeBytes } = reader.emHeader();
       if (objectSizeBytes !== deserInfo.switchTypeLength) {
         throw new Error(
@@ -148,8 +148,8 @@ export class MessageReader<T = unknown> {
         fieldDeserInfo,
         reader,
         {
-          readDelimiterHeader,
-          readMemberHeader,
+          readDelimiterHeader: shouldReadDHeader,
+          readMemberHeader: shouldReadEmHeader,
           parentName: deserInfo.definition.name ?? "<unnamed-union>",
         },
         options,
@@ -220,6 +220,8 @@ export class MessageReader<T = unknown> {
         if (field.isArray === true) {
           // sequences and arrays have dHeaders only when emHeaders were not already written
           if (headerOptions.readDelimiterHeader && !readEmHeader) {
+            // return value is ignored because we don't do partial deserialization
+            // in that case it would be used to skip the field if it was irrelevant
             reader.dHeader();
           }
           // For dynamic length arrays we need to read a uint32 prefix
@@ -249,6 +251,8 @@ export class MessageReader<T = unknown> {
           const deser = field.typeDeserInfo.deserialize;
           // sequences and arrays have dHeaders only when emHeaders were not already written
           if (headerOptions.readDelimiterHeader && !readEmHeader) {
+            // return value is ignored because we don't do partial deserialization
+            // in that case it would be used to skip the field if it was irrelevant
             reader.dHeader();
           }
           const arrayLengths =
