@@ -171,10 +171,12 @@ export class MessageReader<T = unknown> {
     childOptions: HeaderOptions,
   ): unknown {
     let emHeaderSizeBytes;
+
+    // if a field is marked as optional it gets an emHeader regardless of emHeaderOptions
+    // that would be set by the struct's mutability.
     const readEmHeader = headerOptions.readMemberHeader || field.isOptional;
+
     try {
-      // if a field is marked as optional it gets an emHeader regardless of emHeaderOptions
-      // that would be set by the struct's mutability.
       if (readEmHeader) {
         /** If the unusedEmHeader is a sentinel header, then all remaining fields in the struct are absent. */
         if (this.#unusedEmHeader?.readSentinelHeader === true) {
