@@ -1524,4 +1524,58 @@ module builtin_interfaces {
     const msgout = reader.readMessage(writer.data);
     expect(msgout).toEqual(data);
   });
+  it("Reads appendable struct with complex inner sequence", () => {
+    const msgDef = `
+      @appendable
+      struct Inner {
+        uint32 a;
+      };
+      @appendable
+      struct Outer {
+        sequence<Inner> inners;
+      };
+    `;
+    const data = {
+      inners: [],
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.RTPS_DELIMITED_CDR2_LE });
+    writer.dHeader(8); // for the object
+    writer.dHeader(4); // for the inner sequence field
+    writer.sequenceLength(0);
+
+    // buffer provided from issue https://github.com/foxglove/omgidl/issues/227
+    // written by cyclonedds
+    const buffer = new Uint8Array([0, 9, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0]);
+    expect(writer.data).toEqual(buffer);
+
+    const rootDef = "Outer";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+    const msgout = reader.readMessage(buffer);
+    expect(msgout).toEqual(data);
+  });
+  it("Reads appendable struct with primitive inner sequence", () => {
+    const msgDef = `
+      @appendable
+      struct Outer {
+        sequence<uint8> inners;
+      };
+    `;
+    const data = {
+      inners: new Uint8Array([]),
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.RTPS_DELIMITED_CDR2_LE });
+    writer.dHeader(8); // for the object
+    writer.dHeader(4); // for the inner sequence field
+    writer.sequenceLength(0);
+
+    // buffer provided from issue https://github.com/foxglove/omgidl/issues/227
+    // written by cyclonedds
+    const buffer = new Uint8Array([0, 9, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0]);
+    expect(writer.data).toEqual(buffer);
+
+    const rootDef = "Outer";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+    const msgout = reader.readMessage(buffer);
+    expect(msgout).toEqual(data);
+  });
 });

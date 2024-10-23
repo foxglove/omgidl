@@ -83,6 +83,7 @@ export class MessageReader<T = unknown> {
     options: HeaderOptions,
   ): Record<string, unknown> {
     const readMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
+    const readDelimiterHeader = options.usesDelimiterHeader && deserInfo.usesDelimiterHeader;
 
     const msg: Record<string, unknown> = {};
     for (const field of deserInfo.fields) {
@@ -90,6 +91,7 @@ export class MessageReader<T = unknown> {
         field,
         reader,
         {
+          readDelimiterHeader,
           readMemberHeader,
           parentName: deserInfo.definition.name ?? "<unnamed-struct>",
         },
@@ -105,10 +107,11 @@ export class MessageReader<T = unknown> {
     reader: CdrReader,
     options: HeaderOptions,
   ): Record<string, unknown> {
-    const readMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
+    const shouldReadEmHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
+    const shouldReadDHeader = options.usesDelimiterHeader && deserInfo.usesDelimiterHeader;
 
     // looks like unions print an emHeader for the switchType
-    if (readMemberHeader) {
+    if (shouldReadEmHeader) {
       const { objectSize: objectSizeBytes } = reader.emHeader();
       if (objectSizeBytes !== deserInfo.switchTypeLength) {
         throw new Error(
@@ -145,7 +148,8 @@ export class MessageReader<T = unknown> {
         fieldDeserInfo,
         reader,
         {
-          readMemberHeader,
+          readDelimiterHeader: shouldReadDHeader,
+          readMemberHeader: shouldReadEmHeader,
           parentName: deserInfo.definition.name ?? "<unnamed-union>",
         },
         options,
@@ -163,14 +167,17 @@ export class MessageReader<T = unknown> {
   private readMemberFieldValue(
     field: FieldDeserializationInfo,
     reader: CdrReader,
-    emHeaderOptions: { readMemberHeader: boolean; parentName: string },
+    headerOptions: { readMemberHeader: boolean; readDelimiterHeader: boolean; parentName: string },
     childOptions: HeaderOptions,
   ): unknown {
     let emHeaderSizeBytes;
+
+    // if a field is marked as optional it gets an emHeader regardless of emHeaderOptions
+    // that would be set by the struct's mutability.
+    const readEmHeader = headerOptions.readMemberHeader || field.isOptional;
+
     try {
-      // if a field is marked as optional it gets an emHeader regardless of emHeaderOptions
-      // that would be set by the struct's mutability.
-      if (emHeaderOptions.readMemberHeader || field.isOptional) {
+      if (readEmHeader) {
         /** If the unusedEmHeader is a sentinel header, then all remaining fields in the struct are absent. */
         if (this.#unusedEmHeader?.readSentinelHeader === true) {
           return undefined;
@@ -213,6 +220,12 @@ export class MessageReader<T = unknown> {
 
       if (field.typeDeserInfo.type === "struct" || field.typeDeserInfo.type === "union") {
         if (field.isArray === true) {
+          // sequences and arrays have dHeaders only when emHeaders were not already written
+          if (headerOptions.readDelimiterHeader && !readEmHeader) {
+            // return value is ignored because we don't do partial deserialization
+            // in that case it would be used to skip the field if it was irrelevant
+            reader.dHeader();
+          }
           // For dynamic length arrays we need to read a uint32 prefix
           const arrayLengths = field.arrayLengths ?? [reader.sequenceLength()];
           return this.readComplexNestedArray(
@@ -238,6 +251,12 @@ export class MessageReader<T = unknown> {
 
         if (field.typeDeserInfo.type === "array-primitive") {
           const deser = field.typeDeserInfo.deserialize;
+          // sequences and arrays have dHeaders only when emHeaders were not already written
+          if (headerOptions.readDelimiterHeader && !readEmHeader) {
+            // return value is ignored because we don't do partial deserialization
+            // in that case it would be used to skip the field if it was irrelevant
+            reader.dHeader();
+          }
           const arrayLengths =
             field.arrayLengths ??
             // the byteLength written in the header doesn't help us determine count of strings in the array
@@ -267,7 +286,7 @@ export class MessageReader<T = unknown> {
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
-        err.message = `${err.message} in field ${field.name} of ${emHeaderOptions.parentName} at location ${reader.offset}.`;
+        err.message = `${err.message} in field ${field.name} of ${headerOptions.parentName} at location ${reader.offset}.`;
       }
       throw err;
     }
