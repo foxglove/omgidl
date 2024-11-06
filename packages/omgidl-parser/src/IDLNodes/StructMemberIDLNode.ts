@@ -34,6 +34,9 @@ export class StructMemberIDLNode
     if (this.isArray != undefined) {
       msgDefinitionField.isArray = this.isArray;
     }
+    if (this.enumType != undefined) {
+      msgDefinitionField.enumType = this.enumType;
+    }
 
     const maybeDefault = this.annotations?.default;
     if (maybeDefault && maybeDefault.type !== "no-params") {

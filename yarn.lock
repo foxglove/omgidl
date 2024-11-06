@@ -586,6 +586,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@foxglove/message-definition@github:foxglove/message-definition#dbfd8029fb421e9044a5c357c5443e49e2bf27c8":
+  version: 0.3.1
+  resolution: "@foxglove/message-definition@https://github.com/foxglove/message-definition.git#commit=dbfd8029fb421e9044a5c357c5443e49e2bf27c8"
+  checksum: a59d74d92e19ef41ab25dc3da9b8f95cbd0bfd7073aaa778f0919d809e8cc57cab839e2c3e5de9145467cb1cecea01613d71d439a5615605db59595087563358
+  languageName: node
+  linkType: hard
+
 "@foxglove/message-definition@npm:^0.3.1":
   version: 0.3.1
   resolution: "@foxglove/message-definition@npm:0.3.1"
@@ -619,7 +626,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@foxglove/omgidl-parser@workspace:packages/omgidl-parser"
   dependencies:
-    "@foxglove/message-definition": ^0.3.1
+    "@foxglove/message-definition": "github:foxglove/message-definition#dbfd8029fb421e9044a5c357c5443e49e2bf27c8"
     "@foxglove/tsconfig": 2.0.0
     "@types/jest": 29.4.0
     "@types/nearley": ^2.11.5
