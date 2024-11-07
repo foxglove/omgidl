@@ -30,7 +30,7 @@ describe("omgidl parser tests", () => {
     struct A {
       int32 num;
     };
-    
+
     `;
     const types = parse(schema);
     expect(types).toEqual([
@@ -66,7 +66,7 @@ describe("omgidl parser tests", () => {
       sequence<uint8, 10> seq;
       string str;
     };
-    
+
     `;
     const types = parse(schema);
     expect(types).toEqual([
@@ -1662,7 +1662,7 @@ module rosidl_parser {
       GREEN,
       BLUE
     };
- 
+
     struct Line {
       COLORS color;
     };
@@ -1704,6 +1704,7 @@ module rosidl_parser {
             name: "color",
             type: "uint32",
             isComplex: false,
+            enumType: "COLORS",
           },
         ],
       },
@@ -1712,26 +1713,28 @@ module rosidl_parser {
   it("parses enums used as constants", () => {
     const msgDef = `
 
-    enum COLORS {
-      RED,
-      GREEN,
-      BLUE
+    module Test {
+      enum COLORS {
+        RED,
+        GREEN,
+        BLUE
+      };
     };
- 
+
     module Scene {
       module DefaultColors {
-        const COLORS red = COLORS::RED;
+        const Test::COLORS red = Test::COLORS::RED;
       };
       struct Line {
-        @default(value=COLORS::GREEN)
-        COLORS color;
+        @default(value=Test::COLORS::GREEN)
+        Test::COLORS color;
       };
     };
    `;
     const types = parse(msgDef);
     expect(types).toEqual([
       {
-        name: "COLORS",
+        name: "Test::COLORS",
         aggregatedKind: "module",
         definitions: [
           {
@@ -1767,7 +1770,7 @@ module rosidl_parser {
             type: "uint32",
             isComplex: false,
             value: 0,
-            valueText: "COLORS::RED",
+            valueText: "Test::COLORS::RED",
           },
         ],
       },
@@ -1779,13 +1782,14 @@ module rosidl_parser {
             name: "color",
             type: "uint32",
             isComplex: false,
+            enumType: "Test::COLORS",
             defaultValue: 1,
             annotations: {
               default: {
                 name: "default",
                 type: "named-params",
                 namedParams: {
-                  value: { usesConstant: true, name: "COLORS::GREEN" },
+                  value: { usesConstant: true, name: "Test::COLORS::GREEN" },
                 },
               },
             },
@@ -2475,7 +2479,7 @@ module rosidl_parser {
       double z;
     };
     };
-    
+
     module foxglove {
     struct Quaternion {
       double x;
@@ -2485,7 +2489,7 @@ module rosidl_parser {
       double w;
     };
     };
-    
+
     module foxglove {
     // A position and orientation for an object or reference frame in 3D space
     struct Pose {
@@ -2621,10 +2625,10 @@ module rosidl_parser {
   });
   it("can parse typedefs with annotations", () => {
     const msgDef = `
-      module Some_index {                                                                                                   
-        @min(1) @max(8) @default(1) 
-        typedef unsigned short index;                                             
-      };                                                                                                                 
+      module Some_index {
+        @min(1) @max(8) @default(1)
+        typedef unsigned short index;
+      };
       struct SomeStruct {
         Some_index::index sensor_index;
       };

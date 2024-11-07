@@ -46,6 +46,7 @@ export interface IReferenceTypeIDLNode<T extends TypedefASTNode | StructMemberAS
   extends IIDLNode<T> {
   type: string;
   isComplex: boolean;
+  enumType: string | undefined;
   isArray: boolean | undefined;
   arrayLengths: number[] | undefined;
   arrayUpperBound: number | undefined;

@@ -62,6 +62,16 @@ export abstract class ReferenceTypeIDLNode<T extends TypedefASTNode | StructMemb
     return parent.declarator === "struct" || parent.declarator === "union";
   }
 
+  get enumType(): string | undefined {
+    if (this.typeNeedsResolution) {
+      const parent = this.typeRef();
+      if (parent.declarator === "enum") {
+        return parent.scopedIdentifier;
+      }
+    }
+    return undefined;
+  }
+
   get isArray(): boolean | undefined {
     let isArray = this.astNode.isArray;
 

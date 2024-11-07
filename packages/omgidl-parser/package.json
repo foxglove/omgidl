@@ -1,6 +1,6 @@
 {
   "name": "@foxglove/omgidl-parser",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "Parse OMG IDL to flattened definitions for serialization",
   "license": "MIT",
   "repository": {
@@ -45,7 +45,7 @@
     "tslib": "^2"
   },
   "devDependencies": {
-    "@foxglove/message-definition": "^0.3.1",
+    "@foxglove/message-definition": "^0.4.0",
     "@foxglove/tsconfig": "2.0.0",
     "@types/jest": "29.4.0",
     "@types/nearley": "^2.11.5",
