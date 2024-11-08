@@ -36,6 +36,7 @@ export class MessageReader<T = unknown> {
 
   // We template on R here for call site type information if the class type information T is not
   // known or available
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   readMessage<R = T>(buffer: ArrayBufferView): R {
     const reader = new CdrReader(buffer);
     const usesDelimiterHeader = reader.usesDelimiterHeader;
@@ -275,6 +276,7 @@ export class MessageReader<T = unknown> {
           } else {
             return deser(reader, arrayLengths[0]!);
           }
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         } else if (field.typeDeserInfo.type === "primitive") {
           return field.typeDeserInfo.deserialize(
             reader,

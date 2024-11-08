@@ -102,7 +102,7 @@ export type FieldDeserializationInfo<
 
 export class DeserializationInfoCache {
   #definitions: Map<string, IDLMessageDefinition>;
-  #complexDeserializationInfo: Map<string, ComplexDeserializationInfo> = new Map();
+  #complexDeserializationInfo = new Map<string, ComplexDeserializationInfo>();
 
   constructor(definitions: IDLMessageDefinition[]) {
     this.#definitions = new Map<string, IDLMessageDefinition>(
@@ -158,12 +158,12 @@ export class DeserializationInfoCache {
       type: "struct",
       ...getHeaderNeeds(definition),
       definition,
-      fields: definition.definitions.reduce(
+      fields: definition.definitions.reduce<FieldDeserializationInfo[]>(
         (fieldsAccum, fieldDef) =>
           fieldDef.isConstant === true
             ? fieldsAccum
             : fieldsAccum.concat(this.buildFieldDeserInfo(fieldDef)),
-        [] as FieldDeserializationInfo[],
+        [],
       ),
     };
 
@@ -315,6 +315,7 @@ export class DeserializationInfoCache {
       }
       const defaultCaseDeserInfo = this.buildFieldDeserInfo(defaultCase);
       defaultMessage[defaultCaseDeserInfo.name] = this.getFieldDefault(defaultCaseDeserInfo);
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (deserInfo.type === "struct") {
       for (const field of deserInfo.fields) {
         if (!field.isOptional) {
@@ -322,6 +323,7 @@ export class DeserializationInfoCache {
         }
       }
     }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (defaultMessage == undefined) {
       throw new Error(`Unrecognized complex type ${deserInfo.type as string}`);
     }
@@ -476,6 +478,7 @@ function getDefinitionId(definition: IDLMessageDefinitionField): number | undefi
   }
 
   const id = annotations.id;
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (id != undefined && id.type === "const-param" && typeof id.value === "number") {
     return id.value;
   }

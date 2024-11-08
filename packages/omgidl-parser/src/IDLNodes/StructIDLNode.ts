@@ -1,14 +1,10 @@
 import { IDLNode } from "./IDLNode";
 import { StructMemberIDLNode } from "./StructMemberIDLNode";
-import { AnyIDLNode, IStructIDLNode } from "./interfaces";
+import { IStructIDLNode } from "./interfaces";
 import { StructASTNode } from "../astTypes";
 import { IDLMessageDefinition } from "../types";
 
 export class StructIDLNode extends IDLNode<StructASTNode> implements IStructIDLNode {
-  constructor(scopePath: string[], astNode: StructASTNode, idlMap: Map<string, AnyIDLNode>) {
-    super(scopePath, astNode, idlMap);
-  }
-
   get type(): string {
     return this.astNode.name;
   }

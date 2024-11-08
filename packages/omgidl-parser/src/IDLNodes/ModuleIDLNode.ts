@@ -5,10 +5,6 @@ import { ModuleASTNode } from "../astTypes";
 import { IDLMessageDefinition, IDLMessageDefinitionField } from "../types";
 
 export class ModuleIDLNode extends IDLNode<ModuleASTNode> implements IModuleIDLNode {
-  constructor(scopePath: string[], astNode: ModuleASTNode, idlMap: Map<string, AnyIDLNode>) {
-    super(scopePath, astNode, idlMap);
-  }
-
   /** Writes out module to message definition that contains only its directly descendent constant definitions */
   toIDLMessageDefinition(): IDLMessageDefinition | undefined {
     const definitions: IDLMessageDefinitionField[] = this.definitions.flatMap((def) => {

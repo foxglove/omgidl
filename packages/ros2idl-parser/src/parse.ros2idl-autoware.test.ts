@@ -28,14 +28,14 @@ const passingAutowareSchemas = [
 describe("test autoware generated idl schemas", () => {
   const idlRegex = /IDL: ([\w/]*)/;
   const passTestMap = passingAutowareSchemas.map((schema) => [
-    schema.match(idlRegex)![0]!.split("/").pop(),
+    idlRegex.exec(schema)![0].split("/").pop(),
     schema,
   ]) as [string, string][];
   it.each(passTestMap)("parses %s", (_idl, schema) => {
     expect(() => parse(schema)).not.toThrow();
   });
   const failTestMap = failingAutowareSchemas.map((schema) => [
-    schema.match(idlRegex)![0]!.split("/").pop(),
+    idlRegex.exec(schema)![0].split("/").pop(),
     schema,
   ]) as [string, string][];
   it.each(failTestMap)("fails to parse %s", (_idl, schema) => {

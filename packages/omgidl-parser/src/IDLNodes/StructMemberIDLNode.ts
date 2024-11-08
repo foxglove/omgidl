@@ -1,5 +1,5 @@
 import { ReferenceTypeIDLNode } from "./ReferenceTypeIDLNode";
-import { AnyIDLNode, IStructMemberIDLNode } from "./interfaces";
+import { IStructMemberIDLNode } from "./interfaces";
 import { StructMemberASTNode } from "../astTypes";
 import { normalizeType } from "../primitiveTypes";
 import { IDLMessageDefinitionField } from "../types";
@@ -8,10 +8,6 @@ export class StructMemberIDLNode
   extends ReferenceTypeIDLNode<StructMemberASTNode>
   implements IStructMemberIDLNode
 {
-  constructor(scopePath: string[], node: StructMemberASTNode, idlMap: Map<string, AnyIDLNode>) {
-    super(scopePath, node, idlMap);
-  }
-
   /** Writes out ASTNode as a fully resolved IDL message definition */
   toIDLMessageDefinitionField(): IDLMessageDefinitionField {
     const msgDefinitionField: IDLMessageDefinitionField = {

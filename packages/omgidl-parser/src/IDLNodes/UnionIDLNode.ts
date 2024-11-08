@@ -18,6 +18,7 @@ export class UnionIDLNode extends IDLNode<UnionASTNode> implements IUnionIDLNode
     return this.astNode.name;
   }
 
+  // eslint-disable-next-line @typescript-eslint/class-literal-property-style
   get isComplex(): boolean {
     return true;
   }
