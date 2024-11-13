@@ -70,9 +70,9 @@ describe("MessageWriter", () => {
     [
       `struct a {double sample; };`,
       "a",
-      // eslint-disable-next-line @typescript-eslint/no-loss-of-precision
+      // eslint-disable-next-line no-loss-of-precision
       new Uint8Array(Float64Array.of(0.123456789121212121212).buffer),
-      // eslint-disable-next-line @typescript-eslint/no-loss-of-precision
+      // eslint-disable-next-line no-loss-of-precision
       { sample: 0.123456789121212121212 },
     ],
     [

@@ -40,6 +40,7 @@ export class ConstantIDLNode extends IDLNode<ConstantASTNode> implements IConsta
     return this.referencedEnumNode;
   }
 
+  // eslint-disable-next-line @typescript-eslint/class-literal-property-style
   get isConstant(): true {
     return true;
   }

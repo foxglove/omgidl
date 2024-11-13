@@ -139,7 +139,9 @@ const makeIDLNode = (
 function traverseIDL(path: AnyASTNode[], processNode: (path: AnyASTNode[]) => void) {
   const currNode = path[path.length - 1]!;
   if ("definitions" in currNode) {
-    currNode.definitions.forEach((n) => traverseIDL([...path, n], processNode));
+    currNode.definitions.forEach((n) => {
+      traverseIDL([...path, n], processNode);
+    });
   }
   processNode(path);
 }

@@ -1,15 +1,12 @@
 import { IDLNode, toScopedIdentifier } from "./IDLNode";
-import { AnyIDLNode, IConstantIDLNode, IEnumIDLNode } from "./interfaces";
+import { IConstantIDLNode, IEnumIDLNode } from "./interfaces";
 import { EnumASTNode } from "../astTypes";
 import { IDLMessageDefinition } from "../types";
 
 /** Class used to resolve an Enum ASTNode to an IDLMessageDefinition */
 
 export class EnumIDLNode extends IDLNode<EnumASTNode> implements IEnumIDLNode {
-  constructor(scopePath: string[], astNode: EnumASTNode, idlMap: Map<string, AnyIDLNode>) {
-    super(scopePath, astNode, idlMap);
-  }
-
+  // eslint-disable-next-line @typescript-eslint/class-literal-property-style
   get type(): string {
     return "uint32";
   }

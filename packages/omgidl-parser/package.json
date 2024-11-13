@@ -34,8 +34,8 @@
   "scripts": {
     "clean": "rimraf dist",
     "build": "yarn clean && webpack",
-    "lint": "eslint --report-unused-disable-directives --fix .",
-    "lint:ci": "eslint --report-unused-disable-directives .",
+    "lint": "eslint --fix .",
+    "lint:ci": "eslint .",
     "prepack": "yarn build",
     "prepublishOnly": "yarn lint:ci && yarn test",
     "test": "jest"

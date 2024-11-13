@@ -78,6 +78,7 @@ export abstract class ReferenceTypeIDLNode<T extends TypedefASTNode | StructMemb
     if (this.typeNeedsResolution) {
       const parent = this.typeRef();
       if (parent.declarator === "typedef") {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         isArray ||= parent.isArray;
       }
     }
