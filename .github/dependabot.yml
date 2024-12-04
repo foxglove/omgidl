@@ -7,8 +7,10 @@ updates:
     directory: /
     schedule:
       interval: daily
+    labels: [] # Disable default labels
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: daily
+    labels: [] # Disable default labels
