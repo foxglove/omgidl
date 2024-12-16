@@ -35,6 +35,7 @@ export function buildMap(definitions: AnyASTNode[]): Map<string, AnyIDLNode> {
           const enumValue = getValueAnnotation(m.annotations) ?? (++prevEnumValue as ConstantValue);
           if (typeof enumValue !== "number") {
             throw new Error(
+              // eslint-disable-next-line @typescript-eslint/no-base-to-string
               `Enum value, ${enumValue?.toString() ?? "undefined"}, assigned to ${node.name}::${
                 m.name
               } must be a number`,
