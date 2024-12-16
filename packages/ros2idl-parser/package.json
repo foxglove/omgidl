@@ -41,7 +41,7 @@
     "prepublishOnly": "yarn lint:ci && yarn test",
     "test": "jest"
   },
-  "packageManager": "yarn@3.3.1",
+  "packageManager": "yarn@4.5.3",
   "engines": {
     "node": ">= 14"
   },

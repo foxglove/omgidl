@@ -43,7 +43,7 @@
   "engines": {
     "node": ">= 14"
   },
-  "packageManager": "yarn@3.3.1",
+  "packageManager": "yarn@4.5.3",
   "devDependencies": {
     "@foxglove/omgidl-parser": "workspace:*",
     "@sounisi5011/jest-binary-data-matchers": "1.2.1",
