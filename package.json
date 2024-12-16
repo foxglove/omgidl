@@ -9,11 +9,11 @@
     "url": "https://github.com/foxglove/omgidl.git"
   },
   "scripts": {
-    "clean": "yarn workspaces foreach run clean",
-    "test": "yarn workspaces foreach run test --color",
-    "lint": "yarn workspaces foreach run lint --color",
-    "lint:ci": "yarn workspaces foreach run lint:ci",
-    "build": "yarn workspaces foreach run build",
+    "clean": "yarn workspaces foreach --all run clean",
+    "test": "yarn workspaces foreach --all run test --color",
+    "lint": "yarn workspaces foreach --all run lint --color",
+    "lint:ci": "yarn workspaces foreach --all run lint:ci",
+    "build": "yarn workspaces foreach --all run build",
     "parser:test": "yarn workspace @foxglove/omgidl-parser test",
     "parser:build": "yarn workspace @foxglove/omgidl-parser build",
     "serde:test": "yarn workspace @foxglove/omgidl-serialization test",
