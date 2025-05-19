@@ -1918,4 +1918,20 @@ module idl_parser {
     };`;
     expect(() => parseIDLToAST(msgDef)).toThrow(/unexpected RCBR token: "}"/i);
   });
+  it("can parse hexadecimal literals", () => {
+    const msgDef = `
+      const short SHORT_CONSTANT = 0x0C;
+    `;
+    expect(parseIDLToAST(msgDef)).toEqual([
+      {
+        isConstant: true,
+        declarator: "const",
+        type: "short",
+        name: "SHORT_CONSTANT",
+        valueText: "0x0C",
+        value: 12,
+        isComplex: false,
+      },
+    ]);
+  });
 });
