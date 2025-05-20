@@ -50,13 +50,6 @@ describe("Unsupported IDL grammar features", () => {
     ]);
   });
 
-  it("cannot parse hexadecimal literals", () => {
-    const msgDef = `
-    const short SHORT_CONSTANT = 0x0C;
-      `;
-    expect(() => parseIDLToAST(msgDef)).toThrow();
-  });
-
   it("cannot parse escape sequence character literals", () => {
     const msgDef = `
     const short SHORT_CONSTANT = \n

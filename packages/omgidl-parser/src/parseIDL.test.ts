@@ -2755,4 +2755,37 @@ module rosidl_parser {
       },
     ]);
   });
+  it("parses hexadecimal literals in annotations", () => {
+    const msgDef = `
+        module rosidl_parser {
+          module msg {
+            struct MyMessage {
+              @range ( min=-0xf7, max=0x5b )
+              long long_value;
+            };
+          };
+        };
+    `;
+    const types = parse(msgDef);
+    expect(types).toEqual([
+      {
+        name: "rosidl_parser::msg::MyMessage",
+        definitions: [
+          {
+            name: "long_value",
+            type: "int32",
+            isComplex: false,
+            annotations: {
+              range: {
+                type: "named-params",
+                name: "range",
+                namedParams: { min: -0xf7, max: 0x5b },
+              },
+            },
+          },
+        ],
+        aggregatedKind: "struct",
+      },
+    ]);
+  });
 });

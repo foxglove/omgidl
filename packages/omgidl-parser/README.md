@@ -155,7 +155,7 @@ NOTE: numbers like `7.4.1` refer to sections of the [OMG IDL specification](http
   - unary operators
   - default value annotation type checking
   - identifiers prefixed with `::` scope
-  - `7.2.6.1` - Octal and hexadecimal integers are not supported (`014` and `0xC`)
+  - `7.2.6.1` - Octal integers are not supported (`014`)
   - `7.2.6.2.1` wide character and wide string has limited support
     - can be read in to schema but only considered `uint8`
     - wide character and string literals are not supported (`L'X'`)

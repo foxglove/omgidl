@@ -1918,4 +1918,40 @@ module idl_parser {
     };`;
     expect(() => parseIDLToAST(msgDef)).toThrow(/unexpected RCBR token: "}"/i);
   });
+  it("can parse hexadecimal literals", () => {
+    const msgDef = `
+      const short SHORT_CONSTANT_L = 0x0C;
+      const short SHORT_CONSTANT_U = 0XFF;
+      const short SHORT_CONSTANT_N = -0xA3Ef;
+    `;
+    expect(parseIDLToAST(msgDef)).toEqual([
+      {
+        isConstant: true,
+        declarator: "const",
+        type: "short",
+        name: "SHORT_CONSTANT_L",
+        valueText: "0x0C",
+        value: 12,
+        isComplex: false,
+      },
+      {
+        isConstant: true,
+        declarator: "const",
+        type: "short",
+        name: "SHORT_CONSTANT_U",
+        valueText: "0XFF",
+        value: 255,
+        isComplex: false,
+      },
+      {
+        isConstant: true,
+        declarator: "const",
+        type: "short",
+        name: "SHORT_CONSTANT_N",
+        valueText: "-0xA3Ef",
+        value: -41967,
+        isComplex: false,
+      },
+    ]);
+  });
 });
