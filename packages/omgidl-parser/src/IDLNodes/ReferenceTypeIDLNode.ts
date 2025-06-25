@@ -194,9 +194,7 @@ export abstract class ReferenceTypeIDLNode<T extends TypedefASTNode | StructMemb
    * Also checks the parent against current serialization limitations. (ie: we do not support composing variable length arrays with typedefs)
    */
   private typeRef(): PossibleTypeRefNode {
-    if (this.typeRefNode == undefined) {
-      this.typeRefNode = this.getValidTypeReference(this.astNode.type);
-    }
+    this.typeRefNode ??= this.getValidTypeReference(this.astNode.type);
 
     if (!(this.typeRefNode instanceof ReferenceTypeIDLNode)) {
       return this.typeRefNode;
