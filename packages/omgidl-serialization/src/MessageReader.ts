@@ -128,9 +128,7 @@ export class MessageReader<T = unknown> {
     // get case for switchtype value based on matching predicate
     let caseDefType = getCaseForDiscriminator(deserInfo.definition, discriminatorValue);
     // If no case is found, use the default case
-    if (!caseDefType) {
-      caseDefType = deserInfo.definition.defaultCase;
-    }
+    caseDefType ??= deserInfo.definition.defaultCase;
 
     const fieldDeserInfo = caseDefType
       ? this.deserializationInfoCache.buildFieldDeserInfo(caseDefType)
