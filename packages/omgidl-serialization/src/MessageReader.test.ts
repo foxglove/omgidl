@@ -1578,4 +1578,21 @@ module builtin_interfaces {
     const msgout = reader.readMessage(buffer);
     expect(msgout).toEqual(data);
   });
+  it("Reads an XCDR2-encoded struct with unspecified extensibility as if it were appendable", () => {
+    const msgDef = `
+      struct X {
+        uint8 a;
+      };
+    `;
+    const data = {
+      a: 73,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.RTPS_DELIMITED_CDR2_LE });
+    writer.dHeader(1);
+    writer.uint8(data.a);
+    const rootDef = "X";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+    const msgout = reader.readMessage(writer.data);
+    expect(msgout).toEqual(data);
+  });
 });

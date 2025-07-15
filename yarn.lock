@@ -613,6 +613,7 @@ __metadata:
     "@foxglove/message-definition": "npm:^0.4.0"
     "@foxglove/omgidl-parser": "workspace:*"
     "@sounisi5011/jest-binary-data-matchers": "npm:1.2.1"
+    jest: "npm:29.7.0"
     typescript: "npm:5.8.3"
   languageName: unknown
   linkType: soft

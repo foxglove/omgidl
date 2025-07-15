@@ -453,17 +453,19 @@ function getHeaderNeeds(definition: IDLMessageDefinition): {
 } {
   const { annotations } = definition;
 
-  if (!annotations) {
-    return { usesDelimiterHeader: false, usesMemberHeader: false };
+  if (annotations) {
+    if ("final" in annotations) {
+      return { usesDelimiterHeader: false, usesMemberHeader: false };
+    }
+
+    if ("mutable" in annotations) {
+      return { usesDelimiterHeader: true, usesMemberHeader: true };
+    }
   }
 
-  if ("mutable" in annotations) {
-    return { usesDelimiterHeader: true, usesMemberHeader: true };
-  }
-  if ("appendable" in annotations) {
-    return { usesDelimiterHeader: true, usesMemberHeader: false };
-  }
-  return { usesDelimiterHeader: false, usesMemberHeader: false };
+  // Default extensibility is appendable according to section 7.3.1.2.1.8 "Type
+  // Extensibility and Mutability" (page 80) of DDS-XTypes v1.3
+  return { usesDelimiterHeader: true, usesMemberHeader: false };
 }
 
 function getDefinitionId(definition: IDLMessageDefinitionField): number | undefined {
