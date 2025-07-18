@@ -16,6 +16,8 @@ export class StructMemberIDLNode
       isComplex: this.isComplex,
     };
     if (this.arrayLengths != undefined) {
+      // NOTE: if arrayLengths is undefined that means it is an IDL Sequence
+      // which affects deserialization
       msgDefinitionField.arrayLengths = this.arrayLengths;
     }
     if (this.arrayUpperBound != undefined) {
