@@ -266,7 +266,7 @@ export class MessageReader<T = unknown> {
           const arrayLengths = field.arrayLengths ?? [
             headerSpecifiedLength ?? reader.sequenceLength(),
           ];
-          if (arrayLengths.length == 1) {
+          if (arrayLengths.length === 1) {
             return deser(reader, arrayLengths[0]!);
           }
           // P_ARRAY types
