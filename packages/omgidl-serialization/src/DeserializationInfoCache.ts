@@ -56,7 +56,6 @@ export type PrimitiveArrayDeserializationInfo = {
   /** The bye length of the type. (ie: 2 bytes for Uint16) */
   typeLength: number;
   deserialize: ArrayDeserializer;
-  isSequence: boolean;
 };
 
 export type StructDeserializationInfo = HeaderOptions & {
@@ -229,8 +228,6 @@ export class DeserializationInfoCache {
             type: "array-primitive",
             deserialize: deserialize as ArrayDeserializer,
             typeLength,
-            // Because arrays require a length, sequences are encoded when there is an absence of arraylengths
-            isSequence: arrayLengths == undefined,
           }
         : {
             type: "primitive",
