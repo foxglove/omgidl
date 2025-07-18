@@ -252,9 +252,9 @@ export class MessageReader<T = unknown> {
         if (field.typeDeserInfo.type === "array-primitive") {
           const deser = field.typeDeserInfo.deserialize;
 
-          // SEQUENCE and ARRAY types need dheaders -- this should only ever happen here for strings
-          // P_ARRAY and P_SEQUENCEtypes -- never have a dHeader.
+          // SEQUENCE and ARRAY types need dHeaders -- this should only ever happen here for strings
           // since they are the only type that we call "primitive" here but are not "primitive" to XCDR
+          // P_ARRAY and P_SEQUENCE types -- never have a dHeader (anything that's not a string here)
           // sequences and arrays have dHeaders only when emHeaders were not already written
           if (headerOptions.readDelimiterHeader && !readEmHeader && field.type === "string") {
             // return value is ignored because we don't do partial deserialization
@@ -262,15 +262,14 @@ export class MessageReader<T = unknown> {
             reader.dHeader();
           }
 
-          // Sequence types will never have an arrayLengths
+          // Sequence types will never have an arrayLengths defined
           const arrayLengths = field.arrayLengths ?? [
             headerSpecifiedLength ?? reader.sequenceLength(),
           ];
           if (arrayLengths.length === 1) {
             return deser(reader, arrayLengths[0]!);
           }
-          // P_ARRAY types
-          // Multi-dimensional P_ARRAY types.
+          // Multi-dimensional array types.
           const typedArrayDeserializer = () => {
             return deser(reader, arrayLengths[arrayLengths.length - 1]!);
           };
