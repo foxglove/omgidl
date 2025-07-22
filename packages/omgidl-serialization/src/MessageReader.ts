@@ -243,6 +243,7 @@ export class MessageReader<T = unknown> {
           );
         }
       } else {
+        // if emheader specified a length it is meant to be used as the sequence length instead of reading the sequence length again
         const headerSpecifiedLength =
           emHeaderSizeBytes != undefined
             ? Math.floor(emHeaderSizeBytes / field.typeDeserInfo.typeLength)
@@ -250,30 +251,32 @@ export class MessageReader<T = unknown> {
 
         if (field.typeDeserInfo.type === "array-primitive") {
           const deser = field.typeDeserInfo.deserialize;
+
+          // SEQUENCE and ARRAY types need dHeaders -- this should only ever happen here for strings
+          // since they are the only type that we call "primitive" here but are not "primitive" to XCDR
+          // P_ARRAY and P_SEQUENCE types -- never have a dHeader (anything that's not a string here)
           // sequences and arrays have dHeaders only when emHeaders were not already written
-          if (headerOptions.readDelimiterHeader && !readEmHeader) {
+          if (headerOptions.readDelimiterHeader && !readEmHeader && field.type === "string") {
             // return value is ignored because we don't do partial deserialization
             // in that case it would be used to skip the field if it was irrelevant
             reader.dHeader();
           }
-          const arrayLengths =
-            field.arrayLengths ??
-            // the byteLength written in the header doesn't help us determine count of strings in the array
-            // This will be the next field in the message
-            (field.type === "string"
-              ? [reader.sequenceLength()]
-              : [headerSpecifiedLength ?? reader.sequenceLength()]);
 
-          if (arrayLengths.length > 1) {
-            const typedArrayDeserializer = () => {
-              return deser(reader, arrayLengths[arrayLengths.length - 1]!);
-            };
-
-            // last arrayLengths length is handled in deserializer. It returns an array
-            return makeNestedArray(typedArrayDeserializer, arrayLengths.slice(0, -1), 0);
-          } else {
+          // Sequence types will never have an arrayLengths defined
+          const arrayLengths = field.arrayLengths ?? [
+            headerSpecifiedLength ?? reader.sequenceLength(),
+          ];
+          if (arrayLengths.length === 1) {
             return deser(reader, arrayLengths[0]!);
           }
+          // Multi-dimensional array types.
+          const typedArrayDeserializer = () => {
+            return deser(reader, arrayLengths[arrayLengths.length - 1]!);
+          };
+
+          // last arrayLengths length is handled in deserializer. It returns an array
+          return makeNestedArray(typedArrayDeserializer, arrayLengths.slice(0, -1), 0);
+
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         } else if (field.typeDeserInfo.type === "primitive") {
           return field.typeDeserInfo.deserialize(

@@ -53,6 +53,7 @@ export type PrimitiveDeserializationInfo = {
 
 export type PrimitiveArrayDeserializationInfo = {
   type: "array-primitive";
+  /** The bye length of the type. (ie: 2 bytes for Uint16) */
   typeLength: number;
   deserialize: ArrayDeserializer;
 };

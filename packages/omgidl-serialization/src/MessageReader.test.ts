@@ -1564,13 +1564,11 @@ module builtin_interfaces {
       inners: new Uint8Array([]),
     };
     const writer = new CdrWriter({ kind: EncapsulationKind.RTPS_DELIMITED_CDR2_LE });
-    writer.dHeader(8); // for the object
-    writer.dHeader(4); // for the inner sequence field
+    writer.dHeader(4); // for the object
+    // no dheader because primitive sequences don't have a dheader
     writer.sequenceLength(0);
 
-    // buffer provided from issue https://github.com/foxglove/omgidl/issues/227
-    // written by cyclonedds
-    const buffer = new Uint8Array([0, 9, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0]);
+    const buffer = new Uint8Array([0, 9, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0]);
     expect(writer.data).toEqual(buffer);
 
     const rootDef = "Outer";
