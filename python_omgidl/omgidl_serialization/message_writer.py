@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import struct
+from enum import IntEnum
 from typing import List, Dict, Any, Optional
 
 from omgidl_parser.parse import Struct, Field, Module
@@ -35,15 +36,61 @@ PRIMITIVE_FORMATS: Dict[str, str] = {
 }
 
 
+class EncapsulationKind(IntEnum):
+    """Encapsulation header representation identifiers."""
+
+    CDR_BE = 0x00
+    CDR_LE = 0x01
+    PL_CDR_BE = 0x02
+    PL_CDR_LE = 0x03
+    CDR2_BE = 0x10
+    CDR2_LE = 0x11
+    PL_CDR2_BE = 0x12
+    PL_CDR2_LE = 0x13
+    DELIMITED_CDR2_BE = 0x14
+    DELIMITED_CDR2_LE = 0x15
+    RTPS_CDR2_BE = 0x06
+    RTPS_CDR2_LE = 0x07
+    RTPS_DELIMITED_CDR2_BE = 0x08
+    RTPS_DELIMITED_CDR2_LE = 0x09
+    RTPS_PL_CDR2_BE = 0x0A
+    RTPS_PL_CDR2_LE = 0x0B
+
+
+_LITTLE_ENDIAN_KINDS = {
+    EncapsulationKind.CDR_LE,
+    EncapsulationKind.PL_CDR_LE,
+    EncapsulationKind.CDR2_LE,
+    EncapsulationKind.PL_CDR2_LE,
+    EncapsulationKind.DELIMITED_CDR2_LE,
+    EncapsulationKind.RTPS_CDR2_LE,
+    EncapsulationKind.RTPS_DELIMITED_CDR2_LE,
+    EncapsulationKind.RTPS_PL_CDR2_LE,
+}
+
+
+def _encapsulation_header(kind: EncapsulationKind) -> bytes:
+    """Return the 4-byte encapsulation header for ``kind``."""
+    return bytes((0, int(kind), 0, 0))
+
+
 class MessageWriter:
     """Serialize Python dictionaries to CDR-encoded bytes.
 
     This is a minimal Python port of the TypeScript MessageWriter. It supports
     primitive fields, fixed-length arrays, and variable-length sequences as
     produced by the simplified ``parse_idl`` parser.
+
+    ``encapsulation_kind`` selects the representation identifier written to the
+    start of each message. ``EncapsulationKind.CDR_LE`` is used by default.
     """
 
-    def __init__(self, root_definition_name: str, definitions: List[Struct | Module]) -> None:
+    def __init__(
+        self,
+        root_definition_name: str,
+        definitions: List[Struct | Module],
+        encapsulation_kind: EncapsulationKind = EncapsulationKind.CDR_LE,
+    ) -> None:
         root = _find_struct(definitions, root_definition_name)
         if root is None:
             raise ValueError(
@@ -51,6 +98,9 @@ class MessageWriter:
             )
         self.root = root
         self.definitions = definitions
+        self.encapsulation_kind = encapsulation_kind
+        self._little_endian = encapsulation_kind in _LITTLE_ENDIAN_KINDS
+        self._fmt_prefix = "<" if self._little_endian else ">"
 
     # public API -------------------------------------------------------------
     def calculate_byte_size(self, message: Dict[str, Any]) -> int:
@@ -59,8 +109,7 @@ class MessageWriter:
     def write_message(self, message: Dict[str, Any]) -> bytes:
         size = self.calculate_byte_size(message)
         buffer = bytearray(size)
-        # CDR header for little-endian PL_CDR2
-        buffer[0:4] = b"\x00\x01\x00\x00"
+        buffer[0:4] = _encapsulation_header(self.encapsulation_kind)
         self._write(self.root.fields, message, buffer, 4)
         return bytes(buffer)
 
@@ -178,7 +227,7 @@ class MessageWriter:
                     offset += _padding(offset, 4)
                     encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
                     length = len(encoded) + (1 if t == "string" else 2)
-                    struct.pack_into("<I", buffer, offset, length)
+                    struct.pack_into(self._fmt_prefix + "I", buffer, offset, length)
                     offset += 4
                     buffer[offset:offset + len(encoded)] = encoded
                     offset += len(encoded)
@@ -186,7 +235,7 @@ class MessageWriter:
                     offset += 1 if t == "string" else 2
             elif t in PRIMITIVE_SIZES:
                 size = _primitive_size(t)
-                fmt = "<" + PRIMITIVE_FORMATS[t]
+                fmt = self._fmt_prefix + PRIMITIVE_FORMATS[t]
                 arr = value if isinstance(value, (list, tuple)) else []
                 offset += _padding(offset, size)
                 for i in range(field.array_length):
@@ -211,7 +260,7 @@ class MessageWriter:
                         f"Field '{field.name}' sequence length {length} exceeds bound {field.sequence_bound}"
                     )
                 offset += _padding(offset, 4)
-                struct.pack_into("<I", buffer, offset, length)
+                struct.pack_into(self._fmt_prefix + "I", buffer, offset, length)
                 offset += 4
                 if t in ("string", "wstring"):
                     for s in arr:
@@ -223,7 +272,7 @@ class MessageWriter:
                         offset += _padding(offset, 4)
                         encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
                         length_s = len(encoded) + (1 if t == "string" else 2)
-                        struct.pack_into("<I", buffer, offset, length_s)
+                        struct.pack_into(self._fmt_prefix + "I", buffer, offset, length_s)
                         offset += 4
                         buffer[offset:offset + len(encoded)] = encoded
                         offset += len(encoded)
@@ -231,7 +280,7 @@ class MessageWriter:
                         offset += 1 if t == "string" else 2
                 elif t in PRIMITIVE_SIZES:
                     size = _primitive_size(t)
-                    fmt = "<" + PRIMITIVE_FORMATS[t]
+                    fmt = self._fmt_prefix + PRIMITIVE_FORMATS[t]
                     offset += _padding(offset, size)
                     for v in arr:
                         v = v if v is not None else 0
@@ -254,7 +303,7 @@ class MessageWriter:
                     offset += _padding(offset, 4)
                     encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
                     length = len(encoded) + (1 if t == "string" else 2)
-                    struct.pack_into("<I", buffer, offset, length)
+                    struct.pack_into(self._fmt_prefix + "I", buffer, offset, length)
                     offset += 4
                     buffer[offset:offset + len(encoded)] = encoded
                     offset += len(encoded)
@@ -262,7 +311,7 @@ class MessageWriter:
                     offset += 1 if t == "string" else 2
                 elif t in PRIMITIVE_SIZES:
                     size = _primitive_size(t)
-                    fmt = "<" + PRIMITIVE_FORMATS[t]
+                    fmt = self._fmt_prefix + PRIMITIVE_FORMATS[t]
                     offset += _padding(offset, size)
                     v = value if value is not None else 0
                     struct.pack_into(fmt, buffer, offset, v)

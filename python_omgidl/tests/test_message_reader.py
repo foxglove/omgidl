@@ -1,7 +1,7 @@
 import unittest
 
 from omgidl_parser.parse import parse_idl, Struct, Field
-from omgidl_serialization import MessageWriter, MessageReader
+from omgidl_serialization import MessageWriter, MessageReader, EncapsulationKind
 
 
 class TestMessageReader(unittest.TestCase):
@@ -16,6 +16,35 @@ class TestMessageReader(unittest.TestCase):
         writer = MessageWriter("A", defs)
         reader = MessageReader("A", defs)
         msg = {"num": 5, "flag": 7}
+        buf = writer.write_message(msg)
+        decoded = reader.read_message(buf)
+        self.assertEqual(decoded, msg)
+
+    def test_big_endian_roundtrip(self) -> None:
+        schema = """
+        struct A {
+            int32 num;
+            uint8 flag;
+        };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs, encapsulation_kind=EncapsulationKind.CDR_BE)
+        reader = MessageReader("A", defs)
+        msg = {"num": 5, "flag": 7}
+        buf = writer.write_message(msg)
+        decoded = reader.read_message(buf)
+        self.assertEqual(decoded, msg)
+
+    def test_pl_cdr2_header_roundtrip(self) -> None:
+        schema = """
+        struct A {
+            int32 num;
+        };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs, encapsulation_kind=EncapsulationKind.PL_CDR2_LE)
+        reader = MessageReader("A", defs)
+        msg = {"num": 42}
         buf = writer.write_message(msg)
         decoded = reader.read_message(buf)
         self.assertEqual(decoded, msg)
