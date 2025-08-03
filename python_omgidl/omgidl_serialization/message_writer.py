@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import struct
+from array import array
 from enum import IntEnum
 from typing import List, Dict, Any, Optional
 
@@ -34,6 +35,8 @@ PRIMITIVE_FORMATS: Dict[str, str] = {
     "float32": "f",
     "float64": "d",
 }
+
+_SEQUENCE_TYPES = (list, tuple, array, memoryview)
 
 
 class EncapsulationKind(IntEnum):
@@ -129,10 +132,13 @@ class MessageWriter:
         if field.array_lengths:
             return self._byte_size_array(field, value, field.array_lengths, offset)
         # Single field or dynamic sequence
-        if field.is_sequence or isinstance(value, (list, tuple)):
+        if field.is_sequence or isinstance(value, _SEQUENCE_TYPES):
             # Variable-length sequence
-            arr = value if isinstance(value, (list, tuple)) else []
-            length = len(arr)
+            arr = value if isinstance(value, _SEQUENCE_TYPES) else []
+            if t in PRIMITIVE_SIZES and isinstance(arr, memoryview):
+                length = arr.nbytes // _primitive_size(t)
+            else:
+                length = len(arr)
             if field.sequence_bound is not None and length > field.sequence_bound:
                 raise ValueError(
                     f"Field '{field.name}' sequence length {length} exceeds bound {field.sequence_bound}"
@@ -197,16 +203,19 @@ class MessageWriter:
         self, field: Field, value: Any, lengths: List[int], offset: int
     ) -> int:
         t = field.type
-        arr = value if isinstance(value, (list, tuple)) else []
+        arr = value if isinstance(value, _SEQUENCE_TYPES) else []
         length = lengths[0]
+        arr_len = (
+            arr.nbytes // _primitive_size(t) if isinstance(arr, memoryview) and t in PRIMITIVE_SIZES else len(arr)
+        )
         if len(lengths) > 1:
             for i in range(length):
-                sub = arr[i] if i < len(arr) else []
+                sub = arr[i] if i < arr_len else []
                 offset = self._byte_size_array(field, sub, lengths[1:], offset)
             return offset
         if t in ("string", "wstring"):
             for i in range(length):
-                s = arr[i] if i < len(arr) and isinstance(arr[i], str) else ""
+                s = arr[i] if i < arr_len and isinstance(arr[i], str) else ""
                 if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
                     raise ValueError(
                         f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
@@ -222,14 +231,14 @@ class MessageWriter:
             struct_def = _find_struct(self.definitions, t)
             if struct_def is not None:
                 for i in range(length):
-                    msg = arr[i] if i < len(arr) and isinstance(arr[i], dict) else {}
+                    msg = arr[i] if i < arr_len and isinstance(arr[i], dict) else {}
                     offset = self._byte_size(struct_def.fields, msg, offset)
             else:
                 union_def = _find_union(self.definitions, t)
                 if union_def is None:
                     raise ValueError(f"Unrecognized struct or union type {t}")
                 for i in range(length):
-                    msg = arr[i] if i < len(arr) and isinstance(arr[i], dict) else {}
+                    msg = arr[i] if i < arr_len and isinstance(arr[i], dict) else {}
                     offset = self._byte_size_union(union_def, msg, offset)
         return offset
 
@@ -248,10 +257,13 @@ class MessageWriter:
         if field.array_lengths:
             return self._write_array(field, value, buffer, offset, field.array_lengths)
         else:
-            if field.is_sequence or isinstance(value, (list, tuple)):
+            if field.is_sequence or isinstance(value, _SEQUENCE_TYPES):
                 # Variable-length sequence
-                arr = value if isinstance(value, (list, tuple)) else []
-                length = len(arr)
+                arr = value if isinstance(value, _SEQUENCE_TYPES) else []
+                if t in PRIMITIVE_SIZES and isinstance(arr, memoryview):
+                    length = arr.nbytes // _primitive_size(t)
+                else:
+                    length = len(arr)
                 if field.sequence_bound is not None and length > field.sequence_bound:
                     raise ValueError(
                         f"Field '{field.name}' sequence length {length} exceeds bound {field.sequence_bound}"
@@ -336,16 +348,19 @@ class MessageWriter:
         self, field: Field, value: Any, buffer: bytearray, offset: int, lengths: List[int]
     ) -> int:
         t = field.type
-        arr = value if isinstance(value, (list, tuple)) else []
+        arr = value if isinstance(value, _SEQUENCE_TYPES) else []
         length = lengths[0]
+        arr_len = (
+            arr.nbytes // _primitive_size(t) if isinstance(arr, memoryview) and t in PRIMITIVE_SIZES else len(arr)
+        )
         if len(lengths) > 1:
             for i in range(length):
-                sub = arr[i] if i < len(arr) else []
+                sub = arr[i] if i < arr_len else []
                 offset = self._write_array(field, sub, buffer, offset, lengths[1:])
             return offset
         if t in ("string", "wstring"):
             for i in range(length):
-                s = arr[i] if i < len(arr) and isinstance(arr[i], str) else ""
+                s = arr[i] if i < arr_len and isinstance(arr[i], str) else ""
                 if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
                     raise ValueError(
                         f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
@@ -366,21 +381,21 @@ class MessageWriter:
             fmt = self._fmt_prefix + PRIMITIVE_FORMATS[t]
             offset += _padding(offset, size)
             for i in range(length):
-                v = arr[i] if i < len(arr) else 0
+                v = arr[i] if i < arr_len else 0
                 struct.pack_into(fmt, buffer, offset, v)
                 offset += size
         else:
             struct_def = _find_struct(self.definitions, t)
             if struct_def is not None:
                 for i in range(length):
-                    msg = arr[i] if i < len(arr) and isinstance(arr[i], dict) else {}
+                    msg = arr[i] if i < arr_len and isinstance(arr[i], dict) else {}
                     offset = self._write(struct_def.fields, msg, buffer, offset)
             else:
                 union_def = _find_union(self.definitions, t)
                 if union_def is None:
                     raise ValueError(f"Unrecognized struct or union type {t}")
                 for i in range(length):
-                    msg = arr[i] if i < len(arr) and isinstance(arr[i], dict) else {}
+                    msg = arr[i] if i < arr_len and isinstance(arr[i], dict) else {}
                     offset = self._write_union(union_def, msg, buffer, offset)
         return offset
 

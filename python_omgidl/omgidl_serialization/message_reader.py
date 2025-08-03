@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import struct
+import sys
+from array import array
 from typing import Any, Dict, List, Tuple
 
 from omgidl_parser.parse import Struct, Field, Module, Union as IDLUnion
@@ -75,8 +77,8 @@ class MessageReader:
             offset += _padding(offset, 4)
             length = struct.unpack_from(self._fmt_prefix + "I", view, offset)[0]
             offset += 4
-            arr: List[Any] = []
             if t in ("string", "wstring"):
+                arr: List[Any] = []
                 for _ in range(length):
                     offset += _padding(offset, 4)
                     slen = struct.unpack_from(self._fmt_prefix + "I", view, offset)[0]
@@ -92,17 +94,21 @@ class MessageReader:
                     arr.append(s)
             elif t in PRIMITIVE_SIZES:
                 size = _primitive_size(t)
-                fmt = self._fmt_prefix + PRIMITIVE_FORMATS[t]
+                typecode = PRIMITIVE_FORMATS[t]
                 offset += _padding(offset, size)
-                for _ in range(length):
-                    val = struct.unpack_from(fmt, view, offset)[0]
-                    offset += size
-                    if t == "bool":
-                        val = bool(val)
-                    arr.append(val)
+                byte_length = size * length
+                data = view[offset : offset + byte_length]
+                arr = array(typecode)
+                arr.frombytes(data.tobytes())
+                offset += byte_length
+                if (self._fmt_prefix == "<" and sys.byteorder == "big") or (
+                    self._fmt_prefix == ">" and sys.byteorder == "little"
+                ):
+                    arr.byteswap()
             else:
                 if field.type_info is None:
                     raise ValueError(f"Unrecognized struct or union type {t}")
+                arr = []
                 for _ in range(length):
                     if isinstance(field.type_info, StructDeserializationInfo):
                         msg, offset = self._read_struct(field.type_info, view, offset)
@@ -175,15 +181,17 @@ class MessageReader:
 
         if t in PRIMITIVE_SIZES:
             size = _primitive_size(t)
-            fmt = self._fmt_prefix + PRIMITIVE_FORMATS[t]
-            arr: List[Any] = []
+            typecode = PRIMITIVE_FORMATS[t]
             offset += _padding(offset, size)
-            for _ in range(length):
-                val = struct.unpack_from(fmt, view, offset)[0]
-                offset += size
-                if t == "bool":
-                    val = bool(val)
-                arr.append(val)
+            byte_length = size * length
+            data = view[offset : offset + byte_length]
+            arr = array(typecode)
+            arr.frombytes(data.tobytes())
+            offset += byte_length
+            if (self._fmt_prefix == "<" and sys.byteorder == "big") or (
+                self._fmt_prefix == ">" and sys.byteorder == "little"
+            ):
+                arr.byteswap()
             return arr, offset
 
         if field.type_info is None:

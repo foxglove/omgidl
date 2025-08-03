@@ -1,4 +1,5 @@
 import unittest
+from array import array
 
 from omgidl_parser.parse import parse_idl, Struct, Field
 from omgidl_serialization import MessageWriter, MessageReader, EncapsulationKind
@@ -76,7 +77,7 @@ class TestMessageReader(unittest.TestCase):
         defs = parse_idl(schema)
         writer = MessageWriter("A", defs)
         reader = MessageReader("A", defs)
-        msg = {"data": [1, 2, 3, 4]}
+        msg = {"data": array('B', [1, 2, 3, 4])}
         buf = writer.write_message(msg)
         decoded = reader.read_message(buf)
         self.assertEqual(decoded, msg)
@@ -90,7 +91,7 @@ class TestMessageReader(unittest.TestCase):
         defs = parse_idl(schema)
         writer = MessageWriter("A", defs)
         reader = MessageReader("A", defs)
-        msg = {"data": [[1, 2, 3], [4, 5, 6]]}
+        msg = {"data": [array('B', [1, 2, 3]), array('B', [4, 5, 6])]}
         buf = writer.write_message(msg)
         decoded = reader.read_message(buf)
         self.assertEqual(decoded, msg)
@@ -157,7 +158,16 @@ class TestMessageReader(unittest.TestCase):
         defs = [Struct(name="A", fields=[Field(name="data", type="int32", is_sequence=True)])]
         writer = MessageWriter("A", defs)
         reader = MessageReader("A", defs)
-        msg = {"data": [3, 7]}
+        msg = {"data": array('i', [3, 7])}
+        buf = writer.write_message(msg)
+        decoded = reader.read_message(buf)
+        self.assertEqual(decoded, msg)
+
+    def test_roundtrip_typed_float_sequence(self) -> None:
+        defs = [Struct(name="A", fields=[Field(name="data", type="float32", is_sequence=True)])]
+        writer = MessageWriter("A", defs)
+        reader = MessageReader("A", defs)
+        msg = {"data": array('f', [1.0, 2.0])}
         buf = writer.write_message(msg)
         decoded = reader.read_message(buf)
         self.assertEqual(decoded, msg)
