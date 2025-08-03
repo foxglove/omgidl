@@ -8,6 +8,18 @@ from typing import List, Dict, Any, Optional
 from omgidl_parser.parse import Struct, Field, Module, Union as IDLUnion
 
 from .constants import UNION_DISCRIMINATOR_PROPERTY_KEY
+from .deserialization_info_cache import (
+    DeserializationInfoCache,
+    FieldDeserializationInfo,
+    StructDeserializationInfo,
+    UnionDeserializationInfo,
+    _get_header_needs,
+)
+from .headers import (
+    write_delimiter_header,
+    write_member_header,
+    write_sentinel_header,
+)
 
 
 PRIMITIVE_SIZES: Dict[str, int] = {
@@ -101,32 +113,88 @@ class MessageWriter:
             raise ValueError(
                 f'Root definition name "{root_definition_name}" not found in schema definitions.'
             )
-        self.root = root
         self.definitions = definitions
+        self.cache = DeserializationInfoCache(definitions)
+        self.root_info = self.cache.get_complex_deser_info(root)
         self.encapsulation_kind = encapsulation_kind
         self._little_endian = encapsulation_kind in _LITTLE_ENDIAN_KINDS
         self._fmt_prefix = "<" if self._little_endian else ">"
 
     # public API -------------------------------------------------------------
     def calculate_byte_size(self, message: Dict[str, Any]) -> int:
-        return self._byte_size(self.root.fields, message, 4)
+        msg = message or {}
+        return self._byte_size_struct(self.root_info.definition, msg, 4)
 
     def write_message(self, message: Dict[str, Any]) -> bytes:
         size = self.calculate_byte_size(message)
         buffer = bytearray(size)
         buffer[0:4] = _encapsulation_header(self.encapsulation_kind)
-        self._write(self.root.fields, message, buffer, 4)
+        self._write_struct(self.root_info.definition, message or {}, buffer, 4)
         return bytes(buffer)
 
     # internal helpers ------------------------------------------------------
-    def _byte_size(self, definition: List[Field], message: Dict[str, Any], offset: int) -> int:
+    def _byte_size_struct(self, struct_def: Struct, message: Dict[str, Any], offset: int) -> int:
+        uses_delim, uses_member = _get_header_needs(struct_def)
         msg = message or {}
         new_offset = offset
-        for field in definition:
-            value = msg.get(field.name)
-            if value is None and field.annotations.get("default") is not None:
-                value = field.annotations["default"]
-            new_offset = self._field_size(field, value, new_offset)
+        if uses_delim:
+            new_offset += _padding(new_offset, 4)
+            new_offset += 4
+            if uses_member:
+                for idx, field in enumerate(struct_def.fields):
+                    fid = field.annotations.get("id", idx + 1)
+                    value = msg.get(field.name)
+                    if value is None:
+                        if "optional" in field.annotations:
+                            continue
+                        if field.annotations.get("default") is not None:
+                            value = field.annotations["default"]
+                        else:
+                            field_info = self.cache.build_field_info(field, fid)
+                            value = self.cache.get_field_default(field_info)
+                    new_offset += 4
+                    new_offset = self._field_size(field, value, new_offset)
+                new_offset += 4
+            else:
+                for field in struct_def.fields:
+                    value = msg.get(field.name)
+                    if value is None:
+                        if "optional" in field.annotations:
+                            continue
+                        if field.annotations.get("default") is not None:
+                            value = field.annotations["default"]
+                        else:
+                            field_info = self.cache.build_field_info(field)
+                            value = self.cache.get_field_default(field_info)
+                    new_offset = self._field_size(field, value, new_offset)
+        else:
+            if uses_member:
+                for idx, field in enumerate(struct_def.fields):
+                    fid = field.annotations.get("id", idx + 1)
+                    value = msg.get(field.name)
+                    if value is None:
+                        if "optional" in field.annotations:
+                            continue
+                        if field.annotations.get("default") is not None:
+                            value = field.annotations["default"]
+                        else:
+                            field_info = self.cache.build_field_info(field, fid)
+                            value = self.cache.get_field_default(field_info)
+                    new_offset += 4
+                    new_offset = self._field_size(field, value, new_offset)
+                new_offset += 4
+            else:
+                for field in struct_def.fields:
+                    value = msg.get(field.name)
+                    if value is None:
+                        if "optional" in field.annotations:
+                            continue
+                        if field.annotations.get("default") is not None:
+                            value = field.annotations["default"]
+                        else:
+                            field_info = self.cache.build_field_info(field)
+                            value = self.cache.get_field_default(field_info)
+                    new_offset = self._field_size(field, value, new_offset)
         return new_offset
 
     def _field_size(self, field: Field, value: Any, offset: int) -> int:
@@ -166,7 +234,7 @@ class MessageWriter:
                 if struct_def is not None:
                     for msg in arr:
                         msg_dict = msg if isinstance(msg, dict) else {}
-                        offset = self._byte_size(struct_def.fields, msg_dict, offset)
+                        offset = self._byte_size_struct(struct_def, msg_dict, offset)
                 else:
                     union_def = _find_union(self.definitions, t)
                     if union_def is None:
@@ -192,7 +260,7 @@ class MessageWriter:
                 struct_def = _find_struct(self.definitions, t)
                 if struct_def is not None:
                     msg_dict = value if isinstance(value, dict) else {}
-                    offset = self._byte_size(struct_def.fields, msg_dict, offset)
+                    offset = self._byte_size_struct(struct_def, msg_dict, offset)
                 else:
                     union_def = _find_union(self.definitions, t)
                     if union_def is None:
@@ -234,7 +302,7 @@ class MessageWriter:
             if struct_def is not None:
                 for i in range(length):
                     msg = arr[i] if i < arr_len and isinstance(arr[i], dict) else {}
-                    offset = self._byte_size(struct_def.fields, msg, offset)
+                    offset = self._byte_size_struct(struct_def, msg, offset)
             else:
                 union_def = _find_union(self.definitions, t)
                 if union_def is None:
@@ -244,14 +312,50 @@ class MessageWriter:
                     offset = self._byte_size_union(union_def, msg, offset)
         return offset
 
-    def _write(self, definition: List[Field], message: Dict[str, Any], buffer: bytearray, offset: int) -> int:
+    def _write_struct(
+        self, struct_def: Struct, message: Dict[str, Any], buffer: bytearray, offset: int
+    ) -> int:
+        uses_delim, uses_member = _get_header_needs(struct_def)
         msg = message or {}
         new_offset = offset
-        for field in definition:
-            value = msg.get(field.name)
-            if value is None and field.annotations.get("default") is not None:
-                value = field.annotations["default"]
-            new_offset = self._write_field(field, value, buffer, new_offset)
+        length_offset = None
+        if uses_delim:
+            new_offset += _padding(new_offset, 4)
+            length_offset = new_offset
+            new_offset += 4
+        if uses_member:
+            for idx, field in enumerate(struct_def.fields):
+                fid = field.annotations.get("id", idx + 1)
+                value = msg.get(field.name)
+                if value is None:
+                    if "optional" in field.annotations:
+                        continue
+                    if field.annotations.get("default") is not None:
+                        value = field.annotations["default"]
+                    else:
+                        field_info = self.cache.build_field_info(field, fid)
+                        value = self.cache.get_field_default(field_info)
+                data_start = new_offset + 4
+                data_end = self._field_size(field, value, data_start)
+                field_size = data_end - data_start
+                write_member_header(buffer, new_offset, fid, field_size, self._fmt_prefix)
+                new_offset = self._write_field(field, value, buffer, new_offset + 4)
+            new_offset = write_sentinel_header(buffer, new_offset, self._fmt_prefix)
+        else:
+            for field in struct_def.fields:
+                value = msg.get(field.name)
+                if value is None:
+                    if "optional" in field.annotations:
+                        continue
+                    if field.annotations.get("default") is not None:
+                        value = field.annotations["default"]
+                    else:
+                        field_info = self.cache.build_field_info(field)
+                        value = self.cache.get_field_default(field_info)
+                new_offset = self._write_field(field, value, buffer, new_offset)
+        if length_offset is not None:
+            length = new_offset - (length_offset + 4)
+            write_delimiter_header(buffer, length_offset, length, self._fmt_prefix)
         return new_offset
 
     def _write_field(self, field: Field, value: Any, buffer: bytearray, offset: int) -> int:
@@ -302,7 +406,7 @@ class MessageWriter:
                     if struct_def is not None:
                         for msg in arr:
                             msg_dict = msg if isinstance(msg, dict) else {}
-                            offset = self._write(struct_def.fields, msg_dict, buffer, offset)
+                            offset = self._write_struct(struct_def, msg_dict, buffer, offset)
                     else:
                         union_def = _find_union(self.definitions, t)
                         if union_def is None:
@@ -337,7 +441,7 @@ class MessageWriter:
                     struct_def = _find_struct(self.definitions, t)
                     if struct_def is not None:
                         msg_dict = value if isinstance(value, dict) else {}
-                        offset = self._write(struct_def.fields, msg_dict, buffer, offset)
+                        offset = self._write_struct(struct_def, msg_dict, buffer, offset)
                     else:
                         union_def = _find_union(self.definitions, t)
                         if union_def is None:
@@ -391,7 +495,7 @@ class MessageWriter:
             if struct_def is not None:
                 for i in range(length):
                     msg = arr[i] if i < arr_len and isinstance(arr[i], dict) else {}
-                    offset = self._write(struct_def.fields, msg, buffer, offset)
+                    offset = self._write_struct(struct_def, msg, buffer, offset)
             else:
                 union_def = _find_union(self.definitions, t)
                 if union_def is None:
@@ -402,36 +506,83 @@ class MessageWriter:
         return offset
 
     def _byte_size_union(self, union_def: IDLUnion, message: Dict[str, Any], offset: int) -> int:
+        uses_delim, uses_member = _get_header_needs(union_def)
+        new_offset = offset
+        if uses_delim:
+            new_offset += _padding(new_offset, 4)
+            new_offset += 4
         disc_field = Field(name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=union_def.switch_type)
         disc = message.get(UNION_DISCRIMINATOR_PROPERTY_KEY)
-        offset = self._field_size(disc_field, disc, offset)
-        case_field = _union_case_field(union_def, disc)
-        if case_field is None:
-            raise ValueError(
-                f"No matching case for union {union_def.name} discriminator {disc}"
-            )
-        value = message.get(case_field.name)
-        offset = self._field_size(case_field, value, offset)
-        return offset
+        if uses_member:
+            new_offset += 4
+            new_offset = self._field_size(disc_field, disc, new_offset)
+            case_field = _union_case_field(union_def, disc)
+            if case_field is None:
+                raise ValueError(
+                    f"No matching case for union {union_def.name} discriminator {disc}"
+                )
+            value = message.get(case_field.name)
+            new_offset += 4
+            new_offset = self._field_size(case_field, value, new_offset)
+            new_offset += 4
+        else:
+            new_offset = self._field_size(disc_field, disc, new_offset)
+            case_field = _union_case_field(union_def, disc)
+            if case_field is None:
+                raise ValueError(
+                    f"No matching case for union {union_def.name} discriminator {disc}"
+                )
+            value = message.get(case_field.name)
+            new_offset = self._field_size(case_field, value, new_offset)
+        return new_offset
 
     def _write_union(
         self, union_def: IDLUnion, message: Dict[str, Any], buffer: bytearray, offset: int
     ) -> int:
+        uses_delim, uses_member = _get_header_needs(union_def)
+        new_offset = offset
+        length_offset = None
+        if uses_delim:
+            new_offset += _padding(new_offset, 4)
+            length_offset = new_offset
+            new_offset += 4
         disc_field = Field(name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=union_def.switch_type)
         disc = message.get(UNION_DISCRIMINATOR_PROPERTY_KEY)
         if disc is None:
             raise ValueError(
                 f"Union {union_def.name} requires '{UNION_DISCRIMINATOR_PROPERTY_KEY}' discriminator"
             )
-        offset = self._write_field(disc_field, disc, buffer, offset)
-        case_field = _union_case_field(union_def, disc)
-        if case_field is None:
-            raise ValueError(
-                f"No matching case for union {union_def.name} discriminator {disc}"
-            )
-        value = message.get(case_field.name)
-        offset = self._write_field(case_field, value, buffer, offset)
-        return offset
+        if uses_member:
+            data_start = new_offset + 4
+            data_end = self._field_size(disc_field, disc, data_start)
+            field_size = data_end - data_start
+            write_member_header(buffer, new_offset, 1, field_size, self._fmt_prefix)
+            new_offset = self._write_field(disc_field, disc, buffer, new_offset + 4)
+            case_field = _union_case_field(union_def, disc)
+            if case_field is None:
+                raise ValueError(
+                    f"No matching case for union {union_def.name} discriminator {disc}"
+                )
+            value = message.get(case_field.name)
+            data_start = new_offset + 4
+            data_end = self._field_size(case_field, value, data_start)
+            field_size = data_end - data_start
+            write_member_header(buffer, new_offset, 2, field_size, self._fmt_prefix)
+            new_offset = self._write_field(case_field, value, buffer, new_offset + 4)
+            new_offset = write_sentinel_header(buffer, new_offset, self._fmt_prefix)
+        else:
+            new_offset = self._write_field(disc_field, disc, buffer, new_offset)
+            case_field = _union_case_field(union_def, disc)
+            if case_field is None:
+                raise ValueError(
+                    f"No matching case for union {union_def.name} discriminator {disc}"
+                )
+            value = message.get(case_field.name)
+            new_offset = self._write_field(case_field, value, buffer, new_offset)
+        if length_offset is not None:
+            length = new_offset - (length_offset + 4)
+            write_delimiter_header(buffer, length_offset, length, self._fmt_prefix)
+        return new_offset
 
 
 def _padding(offset: int, byte_width: int) -> int:

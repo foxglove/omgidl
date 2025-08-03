@@ -197,6 +197,41 @@ class TestMessageWriter(unittest.TestCase):
         with self.assertRaises(ValueError):
             writer.calculate_byte_size(over)
 
+    def test_appendable_struct_delimiter(self) -> None:
+        schema = """
+        @appendable
+        struct A {
+            int32 num;
+        };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs)
+        msg = {"num": 5}
+        written = writer.write_message(msg)
+        expected = bytes([0, 1, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0])
+        self.assertEqual(written, expected)
+
+    def test_mutable_optional_field_skipped(self) -> None:
+        schema = """
+        @mutable
+        struct A {
+            @id(1) int32 num;
+            @id(2) @optional @default(3) int32 opt;
+        };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs)
+        msg = {"num": 5}
+        written = writer.write_message(msg)
+        expected = bytes([
+            0, 1, 0, 0,
+            12, 0, 0, 0,
+            1, 0, 4, 0,
+            5, 0, 0, 0,
+            0, 0, 0, 0,
+        ])
+        self.assertEqual(written, expected)
+
 
 if __name__ == "__main__":
     unittest.main()

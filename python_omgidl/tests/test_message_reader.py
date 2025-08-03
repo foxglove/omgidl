@@ -177,6 +177,37 @@ class TestMessageReader(unittest.TestCase):
         decoded = reader.read_message(buf)
         self.assertEqual(decoded, msg)
 
+    def test_appendable_delimiter_roundtrip(self) -> None:
+        schema = """
+        @appendable
+        struct A {
+            int32 num;
+        };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs)
+        reader = MessageReader("A", defs)
+        msg = {"num": 5}
+        buf = writer.write_message(msg)
+        decoded = reader.read_message(buf)
+        self.assertEqual(decoded, msg)
+
+    def test_optional_field_default(self) -> None:
+        schema = """
+        @mutable
+        struct A {
+            @id(1) int32 num;
+            @id(2) @optional @default(3) int32 opt;
+        };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs)
+        reader = MessageReader("A", defs)
+        msg = {"num": 5}
+        buf = writer.write_message(msg)
+        decoded = reader.read_message(buf)
+        self.assertEqual(decoded, {"num": 5, "opt": 3})
+
     def test_roundtrip_sequence_of_structs(self) -> None:
         inner = Struct(name="Inner", fields=[Field(name="num", type="int32")])
         outer = Struct(name="Outer", fields=[Field(name="inners", type="Inner", is_sequence=True)])

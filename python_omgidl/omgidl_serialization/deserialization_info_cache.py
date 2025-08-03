@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional, Union
 
 from omgidl_parser.parse import Field, Module, Struct, Union as IDLUnion
 
-from .message_writer import _find_struct, _find_union, _union_case_field
 from .constants import UNION_DISCRIMINATOR_PROPERTY_KEY
 
 DEFAULT_BOOLEAN_VALUE = False
@@ -43,6 +42,7 @@ class FieldDeserializationInfo:
     string_upper_bound: Optional[int]
     sequence_bound: Optional[int]
     default_value: Any | None = None
+    id: int | None = None
 
 
 @dataclass
@@ -88,7 +88,7 @@ class DeserializationInfoCache:
                 uses_member_header=uses_member,
             )
         else:
-            fields = [self.build_field_info(f) for f in definition.fields]
+            fields = [self.build_field_info(f, i + 1) for i, f in enumerate(definition.fields)]
             info = StructDeserializationInfo(
                 type="struct",
                 fields=fields,
@@ -99,7 +99,7 @@ class DeserializationInfoCache:
         self._complex_cache[definition.name] = info
         return info
 
-    def build_field_info(self, field: Field) -> FieldDeserializationInfo:
+    def build_field_info(self, field: Field, field_id: int | None = None) -> FieldDeserializationInfo:
         type_info: Optional[ComplexDeserializationInfo] = None
         struct_def = _find_struct(self._definitions, field.type)
         if struct_def is not None:
@@ -118,6 +118,8 @@ class DeserializationInfoCache:
             is_optional="optional" in field.annotations,
             string_upper_bound=field.string_upper_bound,
             sequence_bound=field.sequence_bound,
+            default_value=field.annotations.get("default"),
+            id=field.annotations.get("id", field_id),
         )
 
     def get_field_default(self, info: FieldDeserializationInfo) -> Any:
@@ -149,7 +151,7 @@ class DeserializationInfoCache:
         if isinstance(info, StructDeserializationInfo):
             msg: Dict[str, Any] = {}
             for field in info.fields:
-                if not field.is_optional:
+                if not field.is_optional or field.default_value is not None:
                     msg[field.name] = self.get_field_default(field)
             info.default_value = msg
         else:
@@ -194,8 +196,44 @@ def make_nested_array(get_value: Any, array_lengths: List[int], depth: int) -> L
 
 def _get_header_needs(definition: Struct | IDLUnion) -> tuple[bool, bool]:
     annotations = getattr(definition, "annotations", {}) or {}
-    if "final" in annotations:
-        return (False, False)
     if "mutable" in annotations:
         return (True, True)
-    return (True, False)
+    if "appendable" in annotations:
+        return (True, False)
+    return (False, False)
+
+
+def _find_struct(defs: List[Struct | Module], name: str) -> Optional[Struct]:
+    for d in defs:
+        if isinstance(d, Struct) and d.name == name:
+            return d
+        if isinstance(d, Module):
+            found = _find_struct(d.definitions, name)
+            if found is not None:
+                return found
+    return None
+
+
+def _find_union(defs: List[Struct | Module | IDLUnion], name: str) -> Optional[IDLUnion]:
+    for d in defs:
+        if isinstance(d, IDLUnion) and d.name == name:
+            return d
+        if isinstance(d, Module):
+            found = _find_union(d.definitions, name)  # type: ignore[arg-type]
+            if found is not None:
+                return found
+    return None
+
+
+def _union_case_field(union_def: IDLUnion, discriminator: Any) -> Optional[Field]:
+    for case in union_def.cases:
+        predicates = getattr(case, "predicates", None)
+        if predicates is not None:
+            if discriminator in predicates:
+                return case.field
+        value = getattr(case, "value", None)
+        if value == discriminator:
+            return case.field
+    if union_def.default is not None:
+        return union_def.default
+    return None

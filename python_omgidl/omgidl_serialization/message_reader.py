@@ -25,6 +25,7 @@ from .deserialization_info_cache import (
     StructDeserializationInfo,
     UnionDeserializationInfo,
 )
+from .headers import read_delimiter_header, read_member_header
 
 
 class MessageReader:
@@ -63,9 +64,30 @@ class MessageReader:
     ) -> Tuple[Dict[str, Any], int]:
         msg: Dict[str, Any] = self.cache.get_complex_default(info)
         new_offset = offset
+        end = None
+        if info.uses_delimiter_header:
+            new_offset += _padding(new_offset, 4)
+            length, new_offset = read_delimiter_header(view, new_offset, self._fmt_prefix)
+            end = new_offset + length
+        if info.uses_member_header:
+            while True:
+                field_id, size, new_offset = read_member_header(view, new_offset, self._fmt_prefix)
+                if field_id == 0:
+                    break
+                field = next((f for f in info.fields if f.id == field_id), None)
+                if field is None:
+                    new_offset += size
+                    continue
+                value, new_offset = self._read_field(field, view, new_offset)
+                msg[field.name] = value
+            if end is not None:
+                new_offset = end
+            return msg, new_offset
         for field in info.fields:
             value, new_offset = self._read_field(field, view, new_offset)
             msg[field.name] = value
+        if end is not None and new_offset < end:
+            new_offset = end
         return msg, new_offset
 
     def _read_field(
@@ -210,15 +232,53 @@ class MessageReader:
     def _read_union(
         self, info: UnionDeserializationInfo, view: memoryview, offset: int
     ) -> Tuple[Dict[str, Any], int]:
+        new_offset = offset
+        end = None
+        if info.uses_delimiter_header:
+            new_offset += _padding(new_offset, 4)
+            length, new_offset = read_delimiter_header(view, new_offset, self._fmt_prefix)
+            end = new_offset + length
+        if info.uses_member_header:
+            msg: Dict[str, Any] = {}
+            while True:
+                field_id, size, new_offset = read_member_header(view, new_offset, self._fmt_prefix)
+                if field_id == 0:
+                    break
+                if field_id == 1:
+                    disc_field = Field(
+                        name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=info.definition.switch_type
+                    )
+                    disc_info = self.cache.build_field_info(disc_field, 1)
+                    disc, new_offset = self._read_field(disc_info, view, new_offset)
+                    msg[UNION_DISCRIMINATOR_PROPERTY_KEY] = disc
+                else:
+                    disc = msg.get(UNION_DISCRIMINATOR_PROPERTY_KEY)
+                    if disc is None:
+                        new_offset += size
+                        continue
+                    case_field = _union_case_field(info.definition, disc)
+                    if case_field is None:
+                        new_offset += size
+                        continue
+                    case_info = self.cache.build_field_info(case_field, field_id)
+                    value, new_offset = self._read_field(case_info, view, new_offset)
+                    msg[case_field.name] = value
+            if end is not None:
+                new_offset = end
+            return msg, new_offset
         disc_field = Field(name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=info.definition.switch_type)
         disc_info = self.cache.build_field_info(disc_field)
-        disc, offset = self._read_field(disc_info, view, offset)
-        msg: Dict[str, Any] = {UNION_DISCRIMINATOR_PROPERTY_KEY: disc}
+        disc, new_offset = self._read_field(disc_info, view, new_offset)
+        msg = {UNION_DISCRIMINATOR_PROPERTY_KEY: disc}
         case_field = _union_case_field(info.definition, disc)
         if case_field is None:
-            return msg, offset
+            if end is not None:
+                new_offset = end
+            return msg, new_offset
         case_info = self.cache.build_field_info(case_field)
-        value, offset = self._read_field(case_info, view, offset)
+        value, new_offset = self._read_field(case_info, view, new_offset)
         msg[case_field.name] = value
-        return msg, offset
+        if end is not None and new_offset < end:
+            new_offset = end
+        return msg, new_offset
 
