@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
 from lark import Lark, Transformer
 
@@ -10,12 +10,12 @@ from lark import Lark, Transformer
 IDL_GRAMMAR = r"""
 start: definition+
 
-definition: module
+definition: annotations? (module
           | struct
           | constant
           | enum
           | typedef
-          | union
+          | union)
           | import_stmt
           | include_stmt
 
@@ -25,7 +25,7 @@ struct: "struct" NAME "{" field* "}" semicolon?
 
 enum: "enum" NAME "{" enumerator ("," enumerator)* "}" semicolon?
 
-enumerator: NAME enum_value?
+enumerator: annotations? NAME enum_value?
 enum_value: "@value" "(" INT ")"
 
 constant: "const" type NAME "=" const_value semicolon
@@ -45,7 +45,7 @@ union: "union" NAME "switch" "(" type ")" "{" union_case+ union_default? "}" sem
 union_case: "case" const_value ":" field
 union_default: "default" ":" field
 
-field: type NAME array? semicolon
+field: annotations? type NAME array? semicolon
 
 import_stmt: "import" STRING semicolon
 
@@ -84,6 +84,9 @@ BOOL.2: /(?i)true|false/
 COMMENT: /\/\/[^\n]*|\/\*[\s\S]*?\*\//
 %ignore WS
 %ignore COMMENT
+
+annotation: "@" NAME ("(" const_value ")")?
+annotations: annotation+
 """
 
 @dataclass
@@ -94,6 +97,7 @@ class Field:
     is_sequence: bool = False
     sequence_bound: Optional[int] = None
     string_upper_bound: Optional[int] = None
+    annotations: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -101,17 +105,20 @@ class Constant:
     name: str
     type: str
     value: Union[int, float, bool, str]
+    annotations: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class Enum:
     name: str
     enumerators: List[Constant] = field(default_factory=list)
+    annotations: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class Struct:
     name: str
     fields: List[Field] = field(default_factory=list)
+    annotations: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class Typedef:
@@ -120,6 +127,7 @@ class Typedef:
     array_length: Optional[int] = None
     is_sequence: bool = False
     sequence_bound: Optional[int] = None
+    annotations: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class UnionCase:
@@ -132,6 +140,7 @@ class Union:
     switch_type: str
     cases: List[UnionCase] = field(default_factory=list)
     default: Optional[Field] = None
+    annotations: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class Module:
@@ -139,6 +148,7 @@ class Module:
     definitions: List[Struct | Module | Constant | Enum | Typedef | Union] = field(
         default_factory=list
     )
+    annotations: dict[str, Any] = field(default_factory=dict)
 
 class _Transformer(Transformer):
     _NORMALIZATION = {
@@ -182,7 +192,14 @@ class _Transformer(Transformer):
         return [item for item in items if item is not None]
 
     def definition(self, items):
-        return items[0]
+        if len(items) == 1:
+            return items[0]
+        annotations, decl = items
+        if decl is None:
+            return None
+        if isinstance(annotations, dict) and hasattr(decl, "annotations"):
+            decl.annotations = annotations
+        return decl
     def NAME(self, token):
         return str(token)
 
@@ -242,8 +259,21 @@ class _Transformer(Transformer):
     def include_stmt(self, _items):
         return None
 
+    def annotation(self, items):
+        name = items[0]
+        value = items[1] if len(items) > 1 else True
+        return (name, value)
+
+    def annotations(self, items):
+        return dict(items)
+
     def field(self, items):
-        type_, name, *rest = items
+        idx = 0
+        annotations = {}
+        if items and isinstance(items[0], dict):
+            annotations = items[0]
+            idx = 1
+        type_, name, *rest = items[idx:]
         array_length = None
         for itm in rest:
             if isinstance(itm, int):
@@ -269,6 +299,7 @@ class _Transformer(Transformer):
             is_sequence=is_sequence,
             sequence_bound=sequence_bound,
             string_upper_bound=string_upper_bound,
+            annotations=annotations,
         )
 
     def const_string(self, items):
@@ -357,8 +388,11 @@ class _Transformer(Transformer):
         return val
 
     def enumerator(self, items):
-        name = items[0]
-        value = items[1] if len(items) > 1 else None
+        idx = 0
+        if items and isinstance(items[0], dict):
+            idx = 1
+        name = items[idx]
+        value = items[idx + 1] if len(items) > idx + 1 else None
         return (name, value)
 
     def enum(self, items):

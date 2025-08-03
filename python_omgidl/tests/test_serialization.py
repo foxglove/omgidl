@@ -20,6 +20,21 @@ class TestMessageWriter(unittest.TestCase):
         self.assertEqual(written, expected)
         self.assertEqual(writer.calculate_byte_size(msg), len(expected))
 
+    def test_default_annotation_used(self) -> None:
+        schema = """
+        struct A {
+            @default(5) int32 num;
+            uint8 flag;
+        };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs)
+        msg = {"flag": 7}
+        written = writer.write_message(msg)
+        expected = bytes([0, 1, 0, 0, 5, 0, 0, 0, 7])
+        self.assertEqual(written, expected)
+        self.assertEqual(writer.calculate_byte_size(msg), len(expected))
+
     def test_uint8_array(self) -> None:
         schema = """
         struct A {

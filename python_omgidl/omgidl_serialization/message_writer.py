@@ -119,6 +119,8 @@ class MessageWriter:
         new_offset = offset
         for field in definition:
             value = msg.get(field.name)
+            if value is None and field.annotations.get("default") is not None:
+                value = field.annotations["default"]
             new_offset = self._field_size(field, value, new_offset)
         return new_offset
 
@@ -209,6 +211,8 @@ class MessageWriter:
         new_offset = offset
         for field in definition:
             value = msg.get(field.name)
+            if value is None and field.annotations.get("default") is not None:
+                value = field.annotations["default"]
             new_offset = self._write_field(field, value, buffer, new_offset)
         return new_offset
 

@@ -22,6 +22,32 @@ class TestParseIDL(unittest.TestCase):
         result = parse_idl(schema)
         self.assertEqual(result, [Struct(name="A", fields=[Field(name="num", type="int32", array_length=None)])])
 
+    def test_annotations(self):
+        schema = """
+        @topic
+        struct A {
+            @default(5) int32 num;
+        };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [
+                Struct(
+                    name="A",
+                    fields=[
+                        Field(
+                            name="num",
+                            type="int32",
+                            array_length=None,
+                            annotations={"default": 5},
+                        )
+                    ],
+                    annotations={"topic": True},
+                )
+            ],
+        )
+
     def test_module_with_struct(self):
         schema = """
         module outer {
