@@ -41,9 +41,10 @@ const_sum: const_atom ("+" const_atom)*
 
 typedef: "typedef" type NAME array? semicolon
 
-union: "union" NAME "switch" "(" type ")" "{" union_case+ union_default? "}" semicolon?
-union_case: "case" const_value ":" field
-union_default: "default" ":" field
+union: "union" NAME "switch" "(" type ")" "{" union_case+ "}" semicolon?
+union_case: "case" case_predicates ":" field
+          | "default" ":" field
+case_predicates: const_value ("," const_value)*
 
 field: annotations? type NAME array? semicolon
 
@@ -131,7 +132,7 @@ class Typedef:
 
 @dataclass
 class UnionCase:
-    value: int | str
+    predicates: List[int | str]
     field: Field
 
 @dataclass
@@ -363,12 +364,16 @@ class _Transformer(Transformer):
             sequence_bound=sequence_bound,
         )
 
-    def union_case(self, items):
-        value, field = items
-        return UnionCase(value=value, field=field)
+    def case_predicates(self, items):
+        return items
 
-    def union_default(self, items):
-        return items[-1]
+    def union_case(self, items):
+        if len(items) == 1:
+            (field,) = items
+            predicates: List[int | str] = []
+        else:
+            predicates, field = items
+        return UnionCase(predicates=predicates, field=field)
 
     def union(self, items):
         name = items[0]
@@ -377,9 +382,10 @@ class _Transformer(Transformer):
         default: Optional[Field] = None
         for itm in items[2:]:
             if isinstance(itm, UnionCase):
-                cases.append(itm)
-            elif isinstance(itm, Field):
-                default = itm
+                if itm.predicates:
+                    cases.append(itm)
+                else:
+                    default = itm.field
         return Union(name=name, switch_type=switch_type, cases=cases, default=default)
 
     def enum_value(self, items):

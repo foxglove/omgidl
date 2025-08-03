@@ -316,8 +316,8 @@ class TestParseIDL(unittest.TestCase):
     def test_union(self):
         schema = """
         union MyUnion switch (uint8) {
-            case 0: int32 a;
-            case 1: string b;
+            case 0, 1: int32 a;
+            case 2: string b;
             default: float c;
         };
         """
@@ -329,8 +329,8 @@ class TestParseIDL(unittest.TestCase):
                     name="MyUnion",
                     switch_type="uint8",
                     cases=[
-                        UnionCase(value=0, field=Field(name="a", type="int32")),
-                        UnionCase(value=1, field=Field(name="b", type="string")),
+                        UnionCase(predicates=[0, 1], field=Field(name="a", type="int32")),
+                        UnionCase(predicates=[2], field=Field(name="b", type="string")),
                     ],
                     default=Field(name="c", type="float32"),
                 )
