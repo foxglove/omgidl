@@ -9,6 +9,17 @@ from .parse import (
     Union,
     UnionCase,
 )
+from .process import (
+    IDLMessageDefinitionField,
+    IDLStructDefinition,
+    IDLModuleDefinition,
+    IDLUnionDefinition,
+    Case,
+    IDLMessageDefinition,
+    build_map,
+    to_idl_message_definitions,
+    parse_idl_message_definitions,
+)
 
 __all__ = [
     "parse_idl",
@@ -20,4 +31,13 @@ __all__ = [
     "Typedef",
     "Union",
     "UnionCase",
+    "IDLMessageDefinitionField",
+    "IDLStructDefinition",
+    "IDLModuleDefinition",
+    "IDLUnionDefinition",
+    "Case",
+    "IDLMessageDefinition",
+    "build_map",
+    "to_idl_message_definitions",
+    "parse_idl_message_definitions",
 ]
