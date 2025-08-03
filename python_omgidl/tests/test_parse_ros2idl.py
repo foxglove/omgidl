@@ -122,6 +122,52 @@ class TestParseRos2idl(unittest.TestCase):
             ],
         )
 
+    def test_typedef_resolution(self):
+        schema = """
+        typedef long MyLong;
+        struct Holder { MyLong data; };
+        """
+        types = parse_ros2idl(schema)
+        self.assertEqual(
+            types,
+            [
+                MessageDefinition(
+                    name="Holder",
+                    definitions=[MessageDefinitionField(type="int32", name="data")],
+                )
+            ],
+        )
+
+    def test_union_definition(self):
+        schema = """
+        typedef long MyLong;
+        union MyUnion switch (uint8) {
+          case 0: MyLong as_long;
+          case 1: string as_string;
+        };
+        struct Container { MyUnion value; };
+        """
+        types = parse_ros2idl(schema)
+        self.assertEqual(
+            types,
+            [
+                MessageDefinition(
+                    name="MyUnion",
+                    definitions=[
+                        MessageDefinitionField(type="uint8", name="_d"),
+                        MessageDefinitionField(type="int32", name="as_long"),
+                        MessageDefinitionField(type="string", name="as_string"),
+                    ],
+                ),
+                MessageDefinition(
+                    name="Container",
+                    definitions=[
+                        MessageDefinitionField(type="MyUnion", name="value")
+                    ],
+                ),
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

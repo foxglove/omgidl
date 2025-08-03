@@ -5,7 +5,8 @@ from typing import List, Optional, Union
 
 from lark import Lark, Transformer
 
-# A slightly larger subset grammar supporting modules, structs, constants and enums
+# A slightly larger subset grammar supporting modules, structs, constants, enums,
+# typedefs and unions
 IDL_GRAMMAR = r"""
 start: definition+
 
@@ -13,6 +14,8 @@ definition: module
           | struct
           | constant
           | enum
+          | typedef
+          | union
 
 module: "module" NAME "{" definition* "}" semicolon?
 
@@ -29,6 +32,12 @@ const_value: STRING -> const_string
 
 ?const_atom: SIGNED_INT
           | scoped_name
+
+typedef: "typedef" type NAME array? semicolon
+
+union: "union" NAME "switch" "(" type ")" "{" union_case+ union_default? "}" semicolon?
+union_case: "case" const_value ":" field
+union_default: "default" ":" field
 
 field: type NAME array? semicolon
 
@@ -81,9 +90,31 @@ class Struct:
     fields: List[Field] = field(default_factory=list)
 
 @dataclass
+class Typedef:
+    name: str
+    type: str
+    array_length: Optional[int] = None
+    is_sequence: bool = False
+    sequence_bound: Optional[int] = None
+
+@dataclass
+class UnionCase:
+    value: int | str
+    field: Field
+
+@dataclass
+class Union:
+    name: str
+    switch_type: str
+    cases: List[UnionCase] = field(default_factory=list)
+    default: Optional[Field] = None
+
+@dataclass
 class Module:
     name: str
-    definitions: List[Struct | Module | Constant | Enum] = field(default_factory=list)
+    definitions: List[Struct | Module | Constant | Enum | Typedef | Union] = field(
+        default_factory=list
+    )
 
 class _Transformer(Transformer):
     _NORMALIZATION = {
@@ -213,6 +244,45 @@ class _Transformer(Transformer):
         self._constants[name] = value
         return const
 
+    def typedef(self, items):
+        type_, name, *rest = items
+        array_length = None
+        for itm in rest:
+            if isinstance(itm, int):
+                array_length = itm
+        is_sequence = False
+        sequence_bound = None
+        if isinstance(type_, tuple) and type_[0] == "sequence":
+            is_sequence = True
+            sequence_bound = type_[2]
+            type_ = type_[1]
+        return Typedef(
+            name=name,
+            type=type_,
+            array_length=array_length,
+            is_sequence=is_sequence,
+            sequence_bound=sequence_bound,
+        )
+
+    def union_case(self, items):
+        value, field = items
+        return UnionCase(value=value, field=field)
+
+    def union_default(self, items):
+        return items[-1]
+
+    def union(self, items):
+        name = items[0]
+        switch_type = items[1]
+        cases: List[UnionCase] = []
+        default: Optional[Field] = None
+        for itm in items[2:]:
+            if isinstance(itm, UnionCase):
+                cases.append(itm)
+            elif isinstance(itm, Field):
+                default = itm
+        return Union(name=name, switch_type=switch_type, cases=cases, default=default)
+
     def enum_value(self, items):
         (_, _, val, _) = items
         return val
@@ -248,45 +318,83 @@ class _Transformer(Transformer):
         definitions = [item for item in items[1:] if item is not None]
         return Module(name=name, definitions=definitions)
 
-    def resolve_types(self, definitions: List[Struct | Module | Constant | Enum]):
-        struct_names: set[str] = set()
+    def resolve_types(
+        self, definitions: List[Struct | Module | Constant | Enum | Typedef | Union]
+    ):
+        named_types: set[str] = set()
 
-        def collect(defs: List[Struct | Module | Constant | Enum], scope: List[str]):
+        def collect(
+            defs: List[Struct | Module | Constant | Enum | Typedef | Union],
+            scope: List[str],
+        ):
             for d in defs:
-                if isinstance(d, Struct):
+                if isinstance(d, (Struct, Union, Typedef)):
                     full = "::".join([*scope, d.name])
-                    struct_names.add(full)
-                elif isinstance(d, Module):
+                    named_types.add(full)
+                if isinstance(d, Module):
                     collect(d.definitions, [*scope, d.name])
 
         collect(definitions, [])
 
-        def resolve(defs: List[Struct | Module | Constant | Enum], scope: List[str]):
+        def resolve_field(f: Field, scope: List[str]):
+            if f.type in self._BUILTIN_TYPES:
+                return
+            if f.type.startswith("::"):
+                f.type = f.type[2:]
+                return
+            if "::" in f.type:
+                return
+            resolved = None
+            for i in range(len(scope), -1, -1):
+                candidate = "::".join([*scope[:i], f.type])
+                if candidate in named_types:
+                    resolved = candidate
+                    break
+            if resolved:
+                f.type = resolved
+
+        def resolve(
+            defs: List[Struct | Module | Constant | Enum | Typedef | Union],
+            scope: List[str],
+        ):
             for d in defs:
                 if isinstance(d, Struct):
                     for f in d.fields:
-                        if f.type in self._BUILTIN_TYPES:
-                            continue
-                        if f.type.startswith("::"):
-                            f.type = f.type[2:]
-                            continue
-                        if "::" in f.type:
-                            continue
-                        resolved = None
+                        resolve_field(f, scope)
+                elif isinstance(d, Union):
+                    d.switch_type = self._NORMALIZATION.get(d.switch_type, d.switch_type)
+                    if (
+                        d.switch_type not in self._BUILTIN_TYPES
+                        and not d.switch_type.startswith("::")
+                        and "::" not in d.switch_type
+                    ):
                         for i in range(len(scope), -1, -1):
-                            candidate = "::".join([*scope[:i], f.type])
-                            if candidate in struct_names:
-                                resolved = candidate
+                            candidate = "::".join([*scope[:i], d.switch_type])
+                            if candidate in named_types:
+                                d.switch_type = candidate
                                 break
-                        if resolved:
-                            f.type = resolved
+                    for case in d.cases:
+                        resolve_field(case.field, scope)
+                    if d.default:
+                        resolve_field(d.default, scope)
+                elif isinstance(d, Typedef):
+                    if (
+                        d.type not in self._BUILTIN_TYPES
+                        and not d.type.startswith("::")
+                        and "::" not in d.type
+                    ):
+                        for i in range(len(scope), -1, -1):
+                            candidate = "::".join([*scope[:i], d.type])
+                            if candidate in named_types:
+                                d.type = candidate
+                                break
                 elif isinstance(d, Module):
                     resolve(d.definitions, [*scope, d.name])
 
         resolve(definitions, [])
 
 
-def parse_idl(source: str) -> List[Struct | Module | Constant | Enum]:
+def parse_idl(source: str) -> List[Struct | Module | Constant | Enum | Typedef | Union]:
     parser = Lark(IDL_GRAMMAR, start="start")
     tree = parser.parse(source)
     transformer = _Transformer()

@@ -1,6 +1,16 @@
 import unittest
 
-from omgidl_parser.parse import parse_idl, Struct, Field, Module, Constant, Enum
+from omgidl_parser.parse import (
+    parse_idl,
+    Struct,
+    Field,
+    Module,
+    Constant,
+    Enum,
+    Typedef,
+    Union,
+    UnionCase,
+)
 
 class TestParseIDL(unittest.TestCase):
     def test_parse_struct(self):
@@ -203,6 +213,44 @@ class TestParseIDL(unittest.TestCase):
                 ),
                 Constant(name="FOO", type="int16", value=3),
                 Constant(name="BAR", type="int16", value=2),
+            ],
+        )
+
+    def test_typedef(self):
+        schema = """
+        typedef long MyLong;
+        struct Holder { MyLong value; };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [
+                Typedef(name="MyLong", type="int32"),
+                Struct(name="Holder", fields=[Field(name="value", type="MyLong")]),
+            ],
+        )
+
+    def test_union(self):
+        schema = """
+        union MyUnion switch (uint8) {
+            case 0: int32 a;
+            case 1: string b;
+            default: float c;
+        };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [
+                Union(
+                    name="MyUnion",
+                    switch_type="uint8",
+                    cases=[
+                        UnionCase(value=0, field=Field(name="a", type="int32")),
+                        UnionCase(value=1, field=Field(name="b", type="string")),
+                    ],
+                    default=Field(name="c", type="float32"),
+                )
             ],
         )
 
