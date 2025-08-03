@@ -24,9 +24,11 @@ enumerator: NAME enum_value?
 enum_value: "@value" "(" INT ")"
 
 constant: "const" type NAME "=" const_value semicolon
-const_value: SIGNED_INT
-           | STRING
-           | NAME
+const_value: STRING -> const_string
+           | const_atom ("+" const_atom)*
+
+?const_atom: SIGNED_INT
+          | scoped_name
 
 field: type NAME array? semicolon
 
@@ -116,6 +118,11 @@ class _Transformer(Transformer):
         "boolean",
     }
 
+    def __init__(self):
+        super().__init__()
+        # Map identifiers (constants and enum values) to their evaluated numeric values
+        self._constants: dict[str, int | str] = {}
+
     def start(self, items):
         return list(items)
 
@@ -178,14 +185,33 @@ class _Transformer(Transformer):
             sequence_bound=sequence_bound,
         )
 
-    def const_value(self, items):
+    def const_string(self, items):
         (value,) = items
         return value
+
+    def const_value(self, items):
+        total = 0
+        for idx, item in enumerate(items):
+            if isinstance(item, int):
+                val = item
+            else:
+                if item not in self._constants:
+                    raise ValueError(f"Unknown identifier '{item}'")
+                val = self._constants[item]
+                if not isinstance(val, int):
+                    raise ValueError(f"Identifier '{item}' does not evaluate to an integer")
+            if idx == 0:
+                total = val
+            else:
+                total += val
+        return total
 
     def constant(self, items):
         # items: TYPE, NAME, value, None
         type_, name, value, _ = items
-        return Constant(name=name, type=type_, value=value)
+        const = Constant(name=name, type=type_, value=value)
+        self._constants[name] = value
+        return const
 
     def enum_value(self, items):
         (_, _, val, _) = items
@@ -207,6 +233,9 @@ class _Transformer(Transformer):
             else:
                 current += 1
             constants.append(Constant(name=enum_name, type="uint32", value=current))
+            # Register enumerator both as unscoped and scoped (EnumName::Enumerator)
+            self._constants[enum_name] = current
+            self._constants[f"{name}::{enum_name}"] = current
         return Enum(name=name, enumerators=constants)
 
     def struct(self, items):

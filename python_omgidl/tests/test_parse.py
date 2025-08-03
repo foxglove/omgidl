@@ -165,5 +165,46 @@ class TestParseIDL(unittest.TestCase):
             ],
         )
 
+    def test_constant_expression(self):
+        schema = """\
+        const long A = 1;
+        const long B = A + 1;
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [
+                Constant(name="A", type="int32", value=1),
+                Constant(name="B", type="int32", value=2),
+            ],
+        )
+
+    def test_constant_enum_reference(self):
+        schema = """\
+        enum COLORS {
+            RED,
+            GREEN,
+            BLUE
+        };
+        const short FOO = COLORS::GREEN + 2;
+        const short BAR = BLUE;
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [
+                Enum(
+                    name="COLORS",
+                    enumerators=[
+                        Constant(name="RED", type="uint32", value=0),
+                        Constant(name="GREEN", type="uint32", value=1),
+                        Constant(name="BLUE", type="uint32", value=2),
+                    ],
+                ),
+                Constant(name="FOO", type="int16", value=3),
+                Constant(name="BAR", type="int16", value=2),
+            ],
+        )
+
 if __name__ == "__main__":
     unittest.main()
