@@ -63,6 +63,20 @@ class TestMessageReader(unittest.TestCase):
         decoded = reader.read_message(buf)
         self.assertEqual(decoded, msg)
 
+    def test_roundtrip_multidimensional_uint8_array(self) -> None:
+        schema = """
+        struct A {
+            uint8 data[2][3];
+        };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs)
+        reader = MessageReader("A", defs)
+        msg = {"data": [[1, 2, 3], [4, 5, 6]]}
+        buf = writer.write_message(msg)
+        decoded = reader.read_message(buf)
+        self.assertEqual(decoded, msg)
+
     def test_roundtrip_string_field(self) -> None:
         schema = """
         struct A {

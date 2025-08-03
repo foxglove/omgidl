@@ -57,45 +57,8 @@ class MessageReader:
 
     def _read_field(self, field: Field, view: memoryview, offset: int) -> Tuple[Any, int]:
         t = field.type
-        if field.array_length is not None:
-            # Fixed-length array
-            if t in ("string", "wstring"):
-                arr: List[str] = []
-                for _ in range(field.array_length):
-                    offset += _padding(offset, 4)
-                    length = struct.unpack_from(self._fmt_prefix + "I", view, offset)[0]
-                    offset += 4
-                    term = 1 if t == "string" else 2
-                    data = bytes(view[offset : offset + length - term])
-                    offset += length
-                    s = data.decode("utf-8" if t == "string" else "utf-16-le")
-                    if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
-                        raise ValueError(
-                            f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
-                        )
-                    arr.append(s)
-                return arr, offset
-            elif t in PRIMITIVE_SIZES:
-                size = _primitive_size(t)
-                fmt = self._fmt_prefix + PRIMITIVE_FORMATS[t]
-                arr: List[Any] = []
-                offset += _padding(offset, size)
-                for _ in range(field.array_length):
-                    val = struct.unpack_from(fmt, view, offset)[0]
-                    offset += size
-                    if t == "bool":
-                        val = bool(val)
-                    arr.append(val)
-                return arr, offset
-            else:
-                struct_def = _find_struct(self.definitions, t)
-                if struct_def is None:
-                    raise ValueError(f"Unrecognized struct type {t}")
-                arr: List[Any] = []
-                for _ in range(field.array_length):
-                    msg, offset = self._read(struct_def.fields, view, offset)
-                    arr.append(msg)
-                return arr, offset
+        if field.array_lengths:
+            return self._read_array(field, view, offset, field.array_lengths)
         else:
             if field.is_sequence:
                 # Variable-length sequence
@@ -164,3 +127,52 @@ class MessageReader:
                         raise ValueError(f"Unrecognized struct type {t}")
                     msg, offset = self._read(struct_def.fields, view, offset)
                     return msg, offset
+
+    def _read_array(
+        self, field: Field, view: memoryview, offset: int, lengths: List[int]
+    ) -> Tuple[Any, int]:
+        t = field.type
+        length = lengths[0]
+        if len(lengths) > 1:
+            arr: List[Any] = []
+            for _ in range(length):
+                sub, offset = self._read_array(field, view, offset, lengths[1:])
+                arr.append(sub)
+            return arr, offset
+        if t in ("string", "wstring"):
+            arr: List[str] = []
+            for _ in range(length):
+                offset += _padding(offset, 4)
+                slen = struct.unpack_from(self._fmt_prefix + "I", view, offset)[0]
+                offset += 4
+                term = 1 if t == "string" else 2
+                data = bytes(view[offset : offset + slen - term])
+                offset += slen
+                s = data.decode("utf-8" if t == "string" else "utf-16-le")
+                if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                    raise ValueError(
+                        f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                    )
+                arr.append(s)
+            return arr, offset
+        elif t in PRIMITIVE_SIZES:
+            size = _primitive_size(t)
+            fmt = self._fmt_prefix + PRIMITIVE_FORMATS[t]
+            arr: List[Any] = []
+            offset += _padding(offset, size)
+            for _ in range(length):
+                val = struct.unpack_from(fmt, view, offset)[0]
+                offset += size
+                if t == "bool":
+                    val = bool(val)
+                arr.append(val)
+            return arr, offset
+        else:
+            struct_def = _find_struct(self.definitions, t)
+            if struct_def is None:
+                raise ValueError(f"Unrecognized struct type {t}")
+            arr: List[Any] = []
+            for _ in range(length):
+                msg, offset = self._read(struct_def.fields, view, offset)
+                arr.append(msg)
+            return arr, offset

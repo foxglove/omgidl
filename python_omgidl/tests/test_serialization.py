@@ -49,6 +49,20 @@ class TestMessageWriter(unittest.TestCase):
         self.assertEqual(written, expected)
         self.assertEqual(writer.calculate_byte_size(msg), len(expected))
 
+    def test_multidimensional_uint8_array(self) -> None:
+        schema = """
+        struct A {
+            uint8 data[2][3];
+        };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs)
+        msg = {"data": [[1, 2, 3], [4, 5, 6]]}
+        written = writer.write_message(msg)
+        expected = bytes([0, 1, 0, 0, 1, 2, 3, 4, 5, 6])
+        self.assertEqual(written, expected)
+        self.assertEqual(writer.calculate_byte_size(msg), len(expected))
+
     def test_string_field(self) -> None:
         schema = """
         struct A {

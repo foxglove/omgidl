@@ -20,7 +20,7 @@ class TestParseIDL(unittest.TestCase):
         };
         """
         result = parse_idl(schema)
-        self.assertEqual(result, [Struct(name="A", fields=[Field(name="num", type="int32", array_length=None)])])
+        self.assertEqual(result, [Struct(name="A", fields=[Field(name="num", type="int32")])])
 
     def test_annotations(self):
         schema = """
@@ -39,7 +39,6 @@ class TestParseIDL(unittest.TestCase):
                         Field(
                             name="num",
                             type="int32",
-                            array_length=None,
                             annotations={"default": 5},
                         )
                     ],
@@ -58,7 +57,7 @@ class TestParseIDL(unittest.TestCase):
         """
         result = parse_idl(schema)
         self.assertEqual(result, [
-            Module(name="outer", definitions=[Struct(name="B", fields=[Field(name="val", type="uint8", array_length=None)])])
+            Module(name="outer", definitions=[Struct(name="B", fields=[Field(name="val", type="uint8")])])
         ])
 
     def test_fixed_array_field(self):
@@ -70,7 +69,19 @@ class TestParseIDL(unittest.TestCase):
         result = parse_idl(schema)
         self.assertEqual(
             result,
-            [Struct(name="A", fields=[Field(name="nums", type="int32", array_length=3)])],
+            [Struct(name="A", fields=[Field(name="nums", type="int32", array_lengths=[3])])],
+        )
+
+    def test_multidimensional_array_field(self):
+        schema = """
+        struct A {
+            int32 nums[2][3];
+        };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [Struct(name="A", fields=[Field(name="nums", type="int32", array_lengths=[2, 3])])],
         )
 
     def test_constant_in_module(self):
@@ -97,7 +108,7 @@ class TestParseIDL(unittest.TestCase):
                 Struct(
                     name="A",
                     fields=[
-                        Field(name="nums", type="int32", array_length=None, is_sequence=True)
+                        Field(name="nums", type="int32", is_sequence=True)
                     ],
                 )
             ],
@@ -119,7 +130,6 @@ class TestParseIDL(unittest.TestCase):
                         Field(
                             name="nums",
                             type="int32",
-                            array_length=None,
                             is_sequence=True,
                             sequence_bound=5,
                         )
@@ -144,7 +154,6 @@ class TestParseIDL(unittest.TestCase):
                         Field(
                             name="name",
                             type="string",
-                            array_length=None,
                             is_sequence=False,
                             sequence_bound=None,
                             string_upper_bound=5,
@@ -192,8 +201,8 @@ class TestParseIDL(unittest.TestCase):
                 Module(
                     name="outer",
                     definitions=[
-                        Struct(name="A", fields=[Field(name="num", type="int32", array_length=None)]),
-                        Struct(name="B", fields=[Field(name="a", type="outer::A", array_length=None)]),
+                        Struct(name="A", fields=[Field(name="num", type="int32")]),
+                        Struct(name="B", fields=[Field(name="a", type="outer::A")]),
                     ],
                 )
             ],
@@ -215,11 +224,11 @@ class TestParseIDL(unittest.TestCase):
                 Module(
                     name="outer",
                     definitions=[
-                        Struct(name="A", fields=[Field(name="num", type="int32", array_length=None)]),
+                        Struct(name="A", fields=[Field(name="num", type="int32")]),
                         Module(
                             name="inner",
                             definitions=[
-                                Struct(name="B", fields=[Field(name="a", type="outer::A", array_length=None)])
+                                Struct(name="B", fields=[Field(name="a", type="outer::A")])
                             ],
                         ),
                     ],
@@ -337,7 +346,7 @@ class TestParseIDL(unittest.TestCase):
         result = parse_idl(schema)
         self.assertEqual(
             result,
-            [Struct(name="A", fields=[Field(name="x", type="int32", array_length=None)])],
+            [Struct(name="A", fields=[Field(name="x", type="int32")])],
         )
 
     def test_ignore_comments(self):
@@ -352,7 +361,7 @@ class TestParseIDL(unittest.TestCase):
         result = parse_idl(schema)
         self.assertEqual(
             result,
-            [Struct(name="A", fields=[Field(name="x", type="int32", array_length=None)])],
+            [Struct(name="A", fields=[Field(name="x", type="int32")])],
         )
 
 if __name__ == "__main__":
