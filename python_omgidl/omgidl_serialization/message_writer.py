@@ -39,8 +39,8 @@ class MessageWriter:
     """Serialize Python dictionaries to CDR-encoded bytes.
 
     This is a minimal Python port of the TypeScript MessageWriter. It supports
-    primitive fields and fixed-length arrays as produced by the simplified
-    ``parse_idl`` parser.
+    primitive fields, fixed-length arrays, and variable-length sequences as
+    produced by the simplified ``parse_idl`` parser.
     """
 
     def __init__(self, root_definition_name: str, definitions: List[Struct | Module]) -> None:
@@ -97,9 +97,9 @@ class MessageWriter:
                     offset = self._byte_size(struct_def.fields, msg, offset)
         else:
             # Single field or dynamic sequence
-            if isinstance(value, (list, tuple)):
+            if field.is_sequence or isinstance(value, (list, tuple)):
                 # Variable-length sequence
-                arr = value
+                arr = value if isinstance(value, (list, tuple)) else []
                 length = len(arr)
                 offset += _padding(offset, 4)
                 offset += 4
@@ -179,9 +179,9 @@ class MessageWriter:
                     msg = arr[i] if i < len(arr) and isinstance(arr[i], dict) else {}
                     offset = self._write(struct_def.fields, msg, buffer, offset)
         else:
-            if isinstance(value, (list, tuple)):
+            if field.is_sequence or isinstance(value, (list, tuple)):
                 # Variable-length sequence
-                arr = value
+                arr = value if isinstance(value, (list, tuple)) else []
                 length = len(arr)
                 offset += _padding(offset, 4)
                 struct.pack_into("<I", buffer, offset, length)

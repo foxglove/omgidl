@@ -30,8 +30,11 @@ const_value: SIGNED_INT
 
 field: type NAME array? semicolon
 
-type: BUILTIN_TYPE
+type: sequence_type
+    | BUILTIN_TYPE
     | scoped_name
+
+sequence_type: "sequence" "<" type ("," INT)? ">"
 
 scoped_name: NAME ("::" NAME)*
 
@@ -54,6 +57,7 @@ class Field:
     name: str
     type: str
     array_length: Optional[int] = None
+    is_sequence: bool = False
 
 
 @dataclass
@@ -124,10 +128,17 @@ class _Transformer(Transformer):
 
     def type(self, items):
         (t,) = items
+        if isinstance(t, tuple) and t[0] == "sequence":
+            inner = t[1]
+            return ("sequence", self._NORMALIZATION.get(inner, inner))
         if isinstance(t, str):
             return self._NORMALIZATION.get(t, t)
         token = str(t)
         return self._NORMALIZATION.get(token, token)
+
+    def sequence_type(self, items):
+        inner = items[0]
+        return ("sequence", inner)
 
     def INT(self, token):
         return int(token)
@@ -151,7 +162,11 @@ class _Transformer(Transformer):
         for itm in rest:
             if isinstance(itm, int):
                 array_length = itm
-        return Field(name=name, type=type_, array_length=array_length)
+        is_sequence = False
+        if isinstance(type_, tuple) and type_[0] == "sequence":
+            is_sequence = True
+            type_ = type_[1]
+        return Field(name=name, type=type_, array_length=array_length, is_sequence=is_sequence)
 
     def const_value(self, items):
         (value,) = items

@@ -60,7 +60,7 @@ class TestMessageWriter(unittest.TestCase):
         self.assertEqual(writer.calculate_byte_size(msg), len(expected))
 
     def test_variable_length_sequence(self) -> None:
-        defs = [Struct(name="A", fields=[Field(name="data", type="int32")])]
+        defs = [Struct(name="A", fields=[Field(name="data", type="int32", is_sequence=True)])]
         writer = MessageWriter("A", defs)
         msg = {"data": [3, 7]}
         written = writer.write_message(msg)
@@ -75,7 +75,7 @@ class TestMessageWriter(unittest.TestCase):
 
     def test_sequence_of_structs(self) -> None:
         inner = Struct(name="Inner", fields=[Field(name="num", type="int32")])
-        outer = Struct(name="Outer", fields=[Field(name="inners", type="Inner")])
+        outer = Struct(name="Outer", fields=[Field(name="inners", type="Inner", is_sequence=True)])
         defs = [inner, outer]
         writer = MessageWriter("Outer", defs)
         msg = {"inners": [{"num": 1}, {"num": 2}]}

@@ -86,7 +86,7 @@ def _convert_field(field: IDLField) -> MessageDefinitionField:
     return MessageDefinitionField(
         type=field.type,
         name=field.name,
-        isArray=field.array_length is not None,
+        isArray=field.array_length is not None or field.is_sequence,
         arrayLength=field.array_length,
     )
 

@@ -25,6 +25,18 @@ class TestParseIDL(unittest.TestCase):
             Module(name="outer", definitions=[Struct(name="B", fields=[Field(name="val", type="uint8", array_length=None)])])
         ])
 
+    def test_fixed_array_field(self):
+        schema = """
+        struct A {
+            int32 nums[3];
+        };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [Struct(name="A", fields=[Field(name="nums", type="int32", array_length=3)])],
+        )
+
     def test_constant_in_module(self):
         schema = """
         module outer {
@@ -35,6 +47,25 @@ class TestParseIDL(unittest.TestCase):
         self.assertEqual(result, [
             Module(name="outer", definitions=[Constant(name="A", type="int16", value=-1)])
         ])
+
+    def test_sequence_field(self):
+        schema = """
+        struct A {
+            sequence<int32> nums;
+        };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [
+                Struct(
+                    name="A",
+                    fields=[
+                        Field(name="nums", type="int32", array_length=None, is_sequence=True)
+                    ],
+                )
+            ],
+        )
 
     def test_enum(self):
         schema = """

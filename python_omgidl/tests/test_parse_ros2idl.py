@@ -71,6 +71,29 @@ class TestParseRos2idl(unittest.TestCase):
             ],
         )
 
+    def test_sequence_field(self):
+        schema = """
+        module pkg {
+          module msg {
+            struct Seq {
+              sequence<int32> data;
+            };
+          };
+        };
+        """
+        types = parse_ros2idl(schema)
+        self.assertEqual(
+            types,
+            [
+                MessageDefinition(
+                    name="pkg/msg/Seq",
+                    definitions=[
+                        MessageDefinitionField(type="int32", name="data", isArray=True)
+                    ],
+                )
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
