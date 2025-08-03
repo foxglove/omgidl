@@ -242,6 +242,28 @@ class TestParseIDL(unittest.TestCase):
             ],
         )
 
+    def test_constant_types_and_references(self):
+        schema = """\
+        const float PI = 3.14;
+        const boolean FLAG = true;
+        const string GREETING = "hello";
+        const string GREETING2 = GREETING;
+        const float PI2 = PI;
+        const boolean FLAG2 = FLAG;
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [
+                Constant(name="PI", type="float32", value=3.14),
+                Constant(name="FLAG", type="boolean", value=True),
+                Constant(name="GREETING", type="string", value="hello"),
+                Constant(name="GREETING2", type="string", value="hello"),
+                Constant(name="PI2", type="float32", value=3.14),
+                Constant(name="FLAG2", type="boolean", value=True),
+            ],
+        )
+
     def test_typedef(self):
         schema = """
         typedef long MyLong;

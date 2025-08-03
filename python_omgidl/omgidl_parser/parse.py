@@ -30,9 +30,13 @@ enum_value: "@value" "(" INT ")"
 
 constant: "const" type NAME "=" const_value semicolon
 const_value: STRING -> const_string
-           | const_atom ("+" const_atom)*
+           | BOOL -> const_bool
+           | const_sum
 
-?const_atom: SIGNED_INT
+const_sum: const_atom ("+" const_atom)*
+
+?const_atom: SIGNED_INT -> const_int
+          | SIGNED_FLOAT -> const_float
           | scoped_name
 
 typedef: "typedef" type NAME array? semicolon
@@ -71,7 +75,9 @@ array: "[" INT "]"
 semicolon: ";"
 
 %import common.INT
+BOOL.2: /(?i)true|false/
 %import common.SIGNED_INT
+%import common.SIGNED_FLOAT
 %import common.ESCAPED_STRING -> STRING
 %import common.WS
 
@@ -94,7 +100,7 @@ class Field:
 class Constant:
     name: str
     type: str
-    value: Union[int, str]
+    value: Union[int, float, bool, str]
 
 
 @dataclass
@@ -170,7 +176,7 @@ class _Transformer(Transformer):
     def __init__(self):
         super().__init__()
         # Map identifiers (constants and enum values) to their evaluated numeric values
-        self._constants: dict[str, int | str] = {}
+        self._constants: dict[str, int | float | bool | str] = {}
 
     def start(self, items):
         return [item for item in items if item is not None]
@@ -215,11 +221,13 @@ class _Transformer(Transformer):
     def INT(self, token):
         return int(token)
 
-    def SIGNED_INT(self, token):
+    def const_int(self, items):
+        (token,) = items
         return int(token)
 
     def STRING(self, token):
         return str(token)[1:-1]
+
 
     def array(self, items):
         (length,) = items
@@ -267,22 +275,36 @@ class _Transformer(Transformer):
         (value,) = items
         return value
 
-    def const_value(self, items):
-        total = 0
+    def const_bool(self, items):
+        (token,) = items
+        return str(token).lower() == "true"
+
+    def const_float(self, items):
+        (token,) = items
+        return float(token)
+
+    def const_sum(self, items):
+        total = None
         for idx, item in enumerate(items):
-            if isinstance(item, int):
-                val = item
-            else:
+            if isinstance(item, str):
                 if item not in self._constants:
                     raise ValueError(f"Unknown identifier '{item}'")
                 val = self._constants[item]
-                if not isinstance(val, int):
-                    raise ValueError(f"Identifier '{item}' does not evaluate to an integer")
+            else:
+                val = item
             if idx == 0:
                 total = val
             else:
+                if not isinstance(total, (int, float)) or not isinstance(val, (int, float)):
+                    raise ValueError(
+                        "Addition only allowed on numeric constants"
+                    )
                 total += val
         return total
+
+    def const_value(self, items):
+        (value,) = items
+        return value
 
     def constant(self, items):
         # items: TYPE, NAME, value, None
