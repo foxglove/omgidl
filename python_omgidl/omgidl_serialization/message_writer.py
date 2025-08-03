@@ -46,8 +46,11 @@ class MessageWriter:
     def __init__(self, root_definition_name: str, definitions: List[Struct | Module]) -> None:
         root = _find_struct(definitions, root_definition_name)
         if root is None:
-            raise ValueError(f'Root definition name "{root_definition_name}" not found in schema definitions.')
+            raise ValueError(
+                f'Root definition name "{root_definition_name}" not found in schema definitions.'
+            )
         self.root = root
+        self.definitions = definitions
 
     # public API -------------------------------------------------------------
     def calculate_byte_size(self, message: Dict[str, Any]) -> int:
@@ -73,25 +76,64 @@ class MessageWriter:
     def _field_size(self, field: Field, value: Any, offset: int) -> int:
         t = field.type
         if field.array_length is not None:
+            # Fixed-length array
             if t == "string":
                 arr = value if isinstance(value, (list, tuple)) else []
                 for i in range(field.array_length):
                     s = arr[i] if i < len(arr) and isinstance(arr[i], str) else ""
                     offset += _padding(offset, 4)
                     offset += 4 + len(s.encode("utf-8")) + 1
-            else:
+            elif t in PRIMITIVE_SIZES:
                 size = _primitive_size(t)
                 offset += _padding(offset, size)
                 offset += size * field.array_length
-        else:
-            if t == "string":
-                s = value if isinstance(value, str) else ""
-                offset += _padding(offset, 4)
-                offset += 4 + len(s.encode("utf-8")) + 1
             else:
-                size = _primitive_size(t)
-                offset += _padding(offset, size)
-                offset += size
+                struct_def = _find_struct(self.definitions, t)
+                if struct_def is None:
+                    raise ValueError(f"Unrecognized struct type {t}")
+                arr = value if isinstance(value, (list, tuple)) else []
+                for i in range(field.array_length):
+                    msg = arr[i] if i < len(arr) and isinstance(arr[i], dict) else {}
+                    offset = self._byte_size(struct_def.fields, msg, offset)
+        else:
+            # Single field or dynamic sequence
+            if isinstance(value, (list, tuple)):
+                # Variable-length sequence
+                arr = value
+                length = len(arr)
+                offset += _padding(offset, 4)
+                offset += 4
+                if t == "string":
+                    for s in arr:
+                        s = s if isinstance(s, str) else ""
+                        offset += _padding(offset, 4)
+                        offset += 4 + len(s.encode("utf-8")) + 1
+                elif t in PRIMITIVE_SIZES:
+                    size = _primitive_size(t)
+                    offset += _padding(offset, size)
+                    offset += size * length
+                else:
+                    struct_def = _find_struct(self.definitions, t)
+                    if struct_def is None:
+                        raise ValueError(f"Unrecognized struct type {t}")
+                    for msg in arr:
+                        msg_dict = msg if isinstance(msg, dict) else {}
+                        offset = self._byte_size(struct_def.fields, msg_dict, offset)
+            else:
+                if t == "string":
+                    s = value if isinstance(value, str) else ""
+                    offset += _padding(offset, 4)
+                    offset += 4 + len(s.encode("utf-8")) + 1
+                elif t in PRIMITIVE_SIZES:
+                    size = _primitive_size(t)
+                    offset += _padding(offset, size)
+                    offset += size
+                else:
+                    struct_def = _find_struct(self.definitions, t)
+                    if struct_def is None:
+                        raise ValueError(f"Unrecognized struct type {t}")
+                    msg_dict = value if isinstance(value, dict) else {}
+                    offset = self._byte_size(struct_def.fields, msg_dict, offset)
         return offset
 
     def _write(self, definition: List[Field], message: Dict[str, Any], buffer: bytearray, offset: int) -> int:
@@ -105,6 +147,7 @@ class MessageWriter:
     def _write_field(self, field: Field, value: Any, buffer: bytearray, offset: int) -> int:
         t = field.type
         if field.array_length is not None:
+            # Fixed-length array
             if t == "string":
                 arr = value if isinstance(value, (list, tuple)) else []
                 for i in range(field.array_length):
@@ -114,11 +157,11 @@ class MessageWriter:
                     length = len(encoded) + 1
                     struct.pack_into("<I", buffer, offset, length)
                     offset += 4
-                    buffer[offset:offset+len(encoded)] = encoded
+                    buffer[offset:offset + len(encoded)] = encoded
                     offset += len(encoded)
                     buffer[offset] = 0
                     offset += 1
-            else:
+            elif t in PRIMITIVE_SIZES:
                 size = _primitive_size(t)
                 fmt = "<" + PRIMITIVE_FORMATS[t]
                 arr = value if isinstance(value, (list, tuple)) else []
@@ -127,25 +170,74 @@ class MessageWriter:
                     v = arr[i] if i < len(arr) else 0
                     struct.pack_into(fmt, buffer, offset, v)
                     offset += size
+            else:
+                struct_def = _find_struct(self.definitions, t)
+                if struct_def is None:
+                    raise ValueError(f"Unrecognized struct type {t}")
+                arr = value if isinstance(value, (list, tuple)) else []
+                for i in range(field.array_length):
+                    msg = arr[i] if i < len(arr) and isinstance(arr[i], dict) else {}
+                    offset = self._write(struct_def.fields, msg, buffer, offset)
         else:
-            if t == "string":
-                s = value if isinstance(value, str) else ""
+            if isinstance(value, (list, tuple)):
+                # Variable-length sequence
+                arr = value
+                length = len(arr)
                 offset += _padding(offset, 4)
-                encoded = s.encode("utf-8")
-                length = len(encoded) + 1
                 struct.pack_into("<I", buffer, offset, length)
                 offset += 4
-                buffer[offset:offset+len(encoded)] = encoded
-                offset += len(encoded)
-                buffer[offset] = 0
-                offset += 1
+                if t == "string":
+                    for s in arr:
+                        s = s if isinstance(s, str) else ""
+                        offset += _padding(offset, 4)
+                        encoded = s.encode("utf-8")
+                        length_s = len(encoded) + 1
+                        struct.pack_into("<I", buffer, offset, length_s)
+                        offset += 4
+                        buffer[offset:offset + len(encoded)] = encoded
+                        offset += len(encoded)
+                        buffer[offset] = 0
+                        offset += 1
+                elif t in PRIMITIVE_SIZES:
+                    size = _primitive_size(t)
+                    fmt = "<" + PRIMITIVE_FORMATS[t]
+                    offset += _padding(offset, size)
+                    for v in arr:
+                        v = v if v is not None else 0
+                        struct.pack_into(fmt, buffer, offset, v)
+                        offset += size
+                else:
+                    struct_def = _find_struct(self.definitions, t)
+                    if struct_def is None:
+                        raise ValueError(f"Unrecognized struct type {t}")
+                    for msg in arr:
+                        msg_dict = msg if isinstance(msg, dict) else {}
+                        offset = self._write(struct_def.fields, msg_dict, buffer, offset)
             else:
-                size = _primitive_size(t)
-                fmt = "<" + PRIMITIVE_FORMATS[t]
-                offset += _padding(offset, size)
-                v = value if value is not None else 0
-                struct.pack_into(fmt, buffer, offset, v)
-                offset += size
+                if t == "string":
+                    s = value if isinstance(value, str) else ""
+                    offset += _padding(offset, 4)
+                    encoded = s.encode("utf-8")
+                    length = len(encoded) + 1
+                    struct.pack_into("<I", buffer, offset, length)
+                    offset += 4
+                    buffer[offset:offset + len(encoded)] = encoded
+                    offset += len(encoded)
+                    buffer[offset] = 0
+                    offset += 1
+                elif t in PRIMITIVE_SIZES:
+                    size = _primitive_size(t)
+                    fmt = "<" + PRIMITIVE_FORMATS[t]
+                    offset += _padding(offset, size)
+                    v = value if value is not None else 0
+                    struct.pack_into(fmt, buffer, offset, v)
+                    offset += size
+                else:
+                    struct_def = _find_struct(self.definitions, t)
+                    if struct_def is None:
+                        raise ValueError(f"Unrecognized struct type {t}")
+                    msg_dict = value if isinstance(value, dict) else {}
+                    offset = self._write(struct_def.fields, msg_dict, buffer, offset)
         return offset
 
 
