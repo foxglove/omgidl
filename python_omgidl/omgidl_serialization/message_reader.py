@@ -11,10 +11,15 @@ from .message_writer import (
     EncapsulationKind,
     _LITTLE_ENDIAN_KINDS,
     _find_struct,
-    _find_union,
     _union_case_field,
     _padding,
     _primitive_size,
+)
+from .deserialization_info_cache import (
+    DeserializationInfoCache,
+    FieldDeserializationInfo,
+    StructDeserializationInfo,
+    UnionDeserializationInfo,
 )
 
 
@@ -32,8 +37,8 @@ class MessageReader:
             raise ValueError(
                 f'Root definition name "{root_definition_name}" not found in schema definitions.'
             )
-        self.root = root
-        self.definitions = definitions
+        self.cache = DeserializationInfoCache(definitions)
+        self.root_info = self.cache.get_complex_deser_info(root)
         self._fmt_prefix = "<"
         self.encapsulation_kind = EncapsulationKind.CDR_LE
 
@@ -45,104 +50,102 @@ class MessageReader:
         little = kind in _LITTLE_ENDIAN_KINDS
         self._fmt_prefix = "<" if little else ">"
         offset = 4
-        msg, _ = self._read(self.root.fields, view, offset)
+        msg, _ = self._read_struct(self.root_info, view, offset)
         return msg
 
     # internal helpers ------------------------------------------------------
-    def _read(self, definition: List[Field], view: memoryview, offset: int) -> Tuple[Dict[str, Any], int]:
-        msg: Dict[str, Any] = {}
+    def _read_struct(
+        self, info: StructDeserializationInfo, view: memoryview, offset: int
+    ) -> Tuple[Dict[str, Any], int]:
+        msg: Dict[str, Any] = self.cache.get_complex_default(info)
         new_offset = offset
-        for field in definition:
+        for field in info.fields:
             value, new_offset = self._read_field(field, view, new_offset)
             msg[field.name] = value
         return msg, new_offset
 
-    def _read_field(self, field: Field, view: memoryview, offset: int) -> Tuple[Any, int]:
+    def _read_field(
+        self, field: FieldDeserializationInfo, view: memoryview, offset: int
+    ) -> Tuple[Any, int]:
         t = field.type
-        if field.array_lengths:
-            return self._read_array(field, view, offset, field.array_lengths)
-        else:
-            if field.is_sequence:
-                # Variable-length sequence
-                offset += _padding(offset, 4)
-                length = struct.unpack_from(self._fmt_prefix + "I", view, offset)[0]
-                offset += 4
-                arr: List[Any] = []
-                if t in ("string", "wstring"):
-                    for _ in range(length):
-                        offset += _padding(offset, 4)
-                        slen = struct.unpack_from(self._fmt_prefix + "I", view, offset)[0]
-                        offset += 4
-                        term = 1 if t == "string" else 2
-                        data = bytes(view[offset : offset + slen - term])
-                        offset += slen
-                        s = data.decode("utf-8" if t == "string" else "utf-16-le")
-                        if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
-                            raise ValueError(
-                                f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
-                            )
-                        arr.append(s)
-                elif t in PRIMITIVE_SIZES:
-                    size = _primitive_size(t)
-                    fmt = self._fmt_prefix + PRIMITIVE_FORMATS[t]
-                    offset += _padding(offset, size)
-                    for _ in range(length):
-                        val = struct.unpack_from(fmt, view, offset)[0]
-                        offset += size
-                        if t == "bool":
-                            val = bool(val)
-                        arr.append(val)
-                else:
-                    struct_def = _find_struct(self.definitions, t)
-                    if struct_def is not None:
-                        for _ in range(length):
-                            msg, offset = self._read(struct_def.fields, view, offset)
-                            arr.append(msg)
-                    else:
-                        union_def = _find_union(self.definitions, t)
-                        if union_def is None:
-                            raise ValueError(f"Unrecognized struct or union type {t}")
-                        for _ in range(length):
-                            msg, offset = self._read_union(union_def, view, offset)
-                            arr.append(msg)
-                return arr, offset
-            else:
-                if t in ("string", "wstring"):
+        if field.is_array:
+            lengths = field.array_lengths or []
+            return self._read_array(field, view, offset, lengths)
+        if field.is_sequence:
+            offset += _padding(offset, 4)
+            length = struct.unpack_from(self._fmt_prefix + "I", view, offset)[0]
+            offset += 4
+            arr: List[Any] = []
+            if t in ("string", "wstring"):
+                for _ in range(length):
                     offset += _padding(offset, 4)
-                    length = struct.unpack_from(self._fmt_prefix + "I", view, offset)[0]
+                    slen = struct.unpack_from(self._fmt_prefix + "I", view, offset)[0]
                     offset += 4
                     term = 1 if t == "string" else 2
-                    data = bytes(view[offset : offset + length - term])
-                    offset += length
+                    data = bytes(view[offset : offset + slen - term])
+                    offset += slen
                     s = data.decode("utf-8" if t == "string" else "utf-16-le")
                     if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
                         raise ValueError(
                             f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
                         )
-                    return s, offset
-                elif t in PRIMITIVE_SIZES:
-                    size = _primitive_size(t)
-                    fmt = self._fmt_prefix + PRIMITIVE_FORMATS[t]
-                    offset += _padding(offset, size)
+                    arr.append(s)
+            elif t in PRIMITIVE_SIZES:
+                size = _primitive_size(t)
+                fmt = self._fmt_prefix + PRIMITIVE_FORMATS[t]
+                offset += _padding(offset, size)
+                for _ in range(length):
                     val = struct.unpack_from(fmt, view, offset)[0]
                     offset += size
                     if t == "bool":
                         val = bool(val)
-                    return val, offset
-                else:
-                    struct_def = _find_struct(self.definitions, t)
-                    if struct_def is not None:
-                        msg, offset = self._read(struct_def.fields, view, offset)
-                        return msg, offset
+                    arr.append(val)
+            else:
+                if field.type_info is None:
+                    raise ValueError(f"Unrecognized struct or union type {t}")
+                for _ in range(length):
+                    if isinstance(field.type_info, StructDeserializationInfo):
+                        msg, offset = self._read_struct(field.type_info, view, offset)
                     else:
-                        union_def = _find_union(self.definitions, t)
-                        if union_def is None:
-                            raise ValueError(f"Unrecognized struct or union type {t}")
-                        msg, offset = self._read_union(union_def, view, offset)
-                        return msg, offset
+                        msg, offset = self._read_union(field.type_info, view, offset)
+                    arr.append(msg)
+            return arr, offset
+
+        if t in ("string", "wstring"):
+            offset += _padding(offset, 4)
+            length = struct.unpack_from(self._fmt_prefix + "I", view, offset)[0]
+            offset += 4
+            term = 1 if t == "string" else 2
+            data = bytes(view[offset : offset + length - term])
+            offset += length
+            s = data.decode("utf-8" if t == "string" else "utf-16-le")
+            if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                raise ValueError(
+                    f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                )
+            return s, offset
+        if t in PRIMITIVE_SIZES:
+            size = _primitive_size(t)
+            fmt = self._fmt_prefix + PRIMITIVE_FORMATS[t]
+            offset += _padding(offset, size)
+            val = struct.unpack_from(fmt, view, offset)[0]
+            offset += size
+            if t == "bool":
+                val = bool(val)
+            return val, offset
+
+        if field.type_info is None:
+            raise ValueError(f"Unrecognized struct or union type {t}")
+        if isinstance(field.type_info, StructDeserializationInfo):
+            return self._read_struct(field.type_info, view, offset)
+        return self._read_union(field.type_info, view, offset)
 
     def _read_array(
-        self, field: Field, view: memoryview, offset: int, lengths: List[int]
+        self,
+        field: FieldDeserializationInfo,
+        view: memoryview,
+        offset: int,
+        lengths: List[int],
     ) -> Tuple[Any, int]:
         t = field.type
         length = lengths[0]
@@ -152,6 +155,7 @@ class MessageReader:
                 sub, offset = self._read_array(field, view, offset, lengths[1:])
                 arr.append(sub)
             return arr, offset
+
         if t in ("string", "wstring"):
             arr: List[str] = []
             for _ in range(length):
@@ -168,7 +172,8 @@ class MessageReader:
                     )
                 arr.append(s)
             return arr, offset
-        elif t in PRIMITIVE_SIZES:
+
+        if t in PRIMITIVE_SIZES:
             size = _primitive_size(t)
             fmt = self._fmt_prefix + PRIMITIVE_FORMATS[t]
             arr: List[Any] = []
@@ -180,29 +185,30 @@ class MessageReader:
                     val = bool(val)
                 arr.append(val)
             return arr, offset
-        else:
-            struct_def = _find_struct(self.definitions, t)
-            arr: List[Any] = []
-            if struct_def is not None:
-                for _ in range(length):
-                    msg, offset = self._read(struct_def.fields, view, offset)
-                    arr.append(msg)
-            else:
-                union_def = _find_union(self.definitions, t)
-                if union_def is None:
-                    raise ValueError(f"Unrecognized struct or union type {t}")
-                for _ in range(length):
-                    msg, offset = self._read_union(union_def, view, offset)
-                    arr.append(msg)
-            return arr, offset
 
-    def _read_union(self, union_def: IDLUnion, view: memoryview, offset: int) -> Tuple[Dict[str, Any], int]:
-        disc_field = Field(name="_d", type=union_def.switch_type)
-        disc, offset = self._read_field(disc_field, view, offset)
+        if field.type_info is None:
+            raise ValueError(f"Unrecognized struct or union type {t}")
+        arr: List[Any] = []
+        for _ in range(length):
+            if isinstance(field.type_info, StructDeserializationInfo):
+                msg, offset = self._read_struct(field.type_info, view, offset)
+            else:
+                msg, offset = self._read_union(field.type_info, view, offset)
+            arr.append(msg)
+        return arr, offset
+
+    def _read_union(
+        self, info: UnionDeserializationInfo, view: memoryview, offset: int
+    ) -> Tuple[Dict[str, Any], int]:
+        disc_field = Field(name="_d", type=info.definition.switch_type)
+        disc_info = self.cache.build_field_info(disc_field)
+        disc, offset = self._read_field(disc_info, view, offset)
         msg: Dict[str, Any] = {"_d": disc}
-        case_field = _union_case_field(union_def, disc)
+        case_field = _union_case_field(info.definition, disc)
         if case_field is None:
             return msg, offset
-        value, offset = self._read_field(case_field, view, offset)
+        case_info = self.cache.build_field_info(case_field)
+        value, offset = self._read_field(case_info, view, offset)
         msg[case_field.name] = value
         return msg, offset
+

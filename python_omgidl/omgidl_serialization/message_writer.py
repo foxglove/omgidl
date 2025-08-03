@@ -450,9 +450,25 @@ def _find_union(defs: List[Struct | Module | IDLUnion], name: str) -> Optional[I
 
 
 def _union_case_field(union_def: IDLUnion, discriminator: Any) -> Optional[Field]:
+    """Return the field matching ``discriminator`` for ``union_def``.
+
+    The ``UnionCase`` objects produced by the parser changed from exposing a
+    ``value`` attribute to a ``predicates`` list. Support both styles so that
+    union handling works with either representation.
+    """
+
     for case in union_def.cases:
-        if case.value == discriminator:
+        # Newer parser versions provide ``predicates`` with possible values.
+        predicates = getattr(case, "predicates", None)
+        if predicates is not None:
+            if discriminator in predicates:
+                return case.field
+
+        # Older parser versions exposed a single ``value`` attribute.
+        value = getattr(case, "value", None)
+        if value == discriminator:
             return case.field
+
     if union_def.default is not None:
         return union_def.default
     return None
