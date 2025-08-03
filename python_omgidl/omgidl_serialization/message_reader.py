@@ -3,7 +3,7 @@ from __future__ import annotations
 import struct
 from typing import Any, Dict, List, Tuple
 
-from omgidl_parser.parse import Struct, Field, Module
+from omgidl_parser.parse import Struct, Field, Module, Union as IDLUnion
 
 from .message_writer import (
     PRIMITIVE_FORMATS,
@@ -11,6 +11,8 @@ from .message_writer import (
     EncapsulationKind,
     _LITTLE_ENDIAN_KINDS,
     _find_struct,
+    _find_union,
+    _union_case_field,
     _padding,
     _primitive_size,
 )
@@ -24,7 +26,7 @@ class MessageReader:
     produced by the simplified ``parse_idl`` parser.
     """
 
-    def __init__(self, root_definition_name: str, definitions: List[Struct | Module]) -> None:
+    def __init__(self, root_definition_name: str, definitions: List[Struct | Module | IDLUnion]) -> None:
         root = _find_struct(definitions, root_definition_name)
         if root is None:
             raise ValueError(
@@ -92,11 +94,17 @@ class MessageReader:
                         arr.append(val)
                 else:
                     struct_def = _find_struct(self.definitions, t)
-                    if struct_def is None:
-                        raise ValueError(f"Unrecognized struct type {t}")
-                    for _ in range(length):
-                        msg, offset = self._read(struct_def.fields, view, offset)
-                        arr.append(msg)
+                    if struct_def is not None:
+                        for _ in range(length):
+                            msg, offset = self._read(struct_def.fields, view, offset)
+                            arr.append(msg)
+                    else:
+                        union_def = _find_union(self.definitions, t)
+                        if union_def is None:
+                            raise ValueError(f"Unrecognized struct or union type {t}")
+                        for _ in range(length):
+                            msg, offset = self._read_union(union_def, view, offset)
+                            arr.append(msg)
                 return arr, offset
             else:
                 if t in ("string", "wstring"):
@@ -123,10 +131,15 @@ class MessageReader:
                     return val, offset
                 else:
                     struct_def = _find_struct(self.definitions, t)
-                    if struct_def is None:
-                        raise ValueError(f"Unrecognized struct type {t}")
-                    msg, offset = self._read(struct_def.fields, view, offset)
-                    return msg, offset
+                    if struct_def is not None:
+                        msg, offset = self._read(struct_def.fields, view, offset)
+                        return msg, offset
+                    else:
+                        union_def = _find_union(self.definitions, t)
+                        if union_def is None:
+                            raise ValueError(f"Unrecognized struct or union type {t}")
+                        msg, offset = self._read_union(union_def, view, offset)
+                        return msg, offset
 
     def _read_array(
         self, field: Field, view: memoryview, offset: int, lengths: List[int]
@@ -169,10 +182,27 @@ class MessageReader:
             return arr, offset
         else:
             struct_def = _find_struct(self.definitions, t)
-            if struct_def is None:
-                raise ValueError(f"Unrecognized struct type {t}")
             arr: List[Any] = []
-            for _ in range(length):
-                msg, offset = self._read(struct_def.fields, view, offset)
-                arr.append(msg)
+            if struct_def is not None:
+                for _ in range(length):
+                    msg, offset = self._read(struct_def.fields, view, offset)
+                    arr.append(msg)
+            else:
+                union_def = _find_union(self.definitions, t)
+                if union_def is None:
+                    raise ValueError(f"Unrecognized struct or union type {t}")
+                for _ in range(length):
+                    msg, offset = self._read_union(union_def, view, offset)
+                    arr.append(msg)
             return arr, offset
+
+    def _read_union(self, union_def: IDLUnion, view: memoryview, offset: int) -> Tuple[Dict[str, Any], int]:
+        disc_field = Field(name="_d", type=union_def.switch_type)
+        disc, offset = self._read_field(disc_field, view, offset)
+        msg: Dict[str, Any] = {"_d": disc}
+        case_field = _union_case_field(union_def, disc)
+        if case_field is None:
+            return msg, offset
+        value, offset = self._read_field(case_field, view, offset)
+        msg[case_field.name] = value
+        return msg, offset

@@ -96,6 +96,42 @@ class TestMessageWriter(unittest.TestCase):
         with self.assertRaises(ValueError):
             writer.calculate_byte_size(over)
 
+    def test_union_field(self) -> None:
+        schema = """
+        union U switch (uint8) {
+            case 0:
+                uint8 a;
+            case 1:
+                uint8 b;
+        };
+        struct A { U u; };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs)
+        msg = {"u": {"_d": 1, "b": 42}}
+        written = writer.write_message(msg)
+        expected = bytes([0, 1, 0, 0, 1, 42])
+        self.assertEqual(written, expected)
+        self.assertEqual(writer.calculate_byte_size(msg), len(expected))
+
+    def test_union_invalid_discriminator(self) -> None:
+        schema = """
+        union U switch (uint8) {
+            case 0:
+                uint8 a;
+            case 1:
+                uint8 b;
+        };
+        struct A { U u; };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs)
+        bad = {"u": {"_d": 5}}
+        with self.assertRaises(ValueError):
+            writer.write_message(bad)
+        with self.assertRaises(ValueError):
+            writer.calculate_byte_size(bad)
+
     def test_nested_struct(self) -> None:
         inner = Struct(name="Inner", fields=[Field(name="num", type="int32")])
         outer = Struct(name="Outer", fields=[Field(name="inner", type="Inner")])

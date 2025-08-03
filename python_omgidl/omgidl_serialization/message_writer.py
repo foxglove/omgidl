@@ -4,7 +4,7 @@ import struct
 from enum import IntEnum
 from typing import List, Dict, Any, Optional
 
-from omgidl_parser.parse import Struct, Field, Module
+from omgidl_parser.parse import Struct, Field, Module, Union as IDLUnion
 
 
 PRIMITIVE_SIZES: Dict[str, int] = {
@@ -88,7 +88,7 @@ class MessageWriter:
     def __init__(
         self,
         root_definition_name: str,
-        definitions: List[Struct | Module],
+        definitions: List[Struct | Module | IDLUnion],
         encapsulation_kind: EncapsulationKind = EncapsulationKind.CDR_LE,
     ) -> None:
         root = _find_struct(definitions, root_definition_name)
@@ -155,11 +155,17 @@ class MessageWriter:
                 offset += size * length
             else:
                 struct_def = _find_struct(self.definitions, t)
-                if struct_def is None:
-                    raise ValueError(f"Unrecognized struct type {t}")
-                for msg in arr:
-                    msg_dict = msg if isinstance(msg, dict) else {}
-                    offset = self._byte_size(struct_def.fields, msg_dict, offset)
+                if struct_def is not None:
+                    for msg in arr:
+                        msg_dict = msg if isinstance(msg, dict) else {}
+                        offset = self._byte_size(struct_def.fields, msg_dict, offset)
+                else:
+                    union_def = _find_union(self.definitions, t)
+                    if union_def is None:
+                        raise ValueError(f"Unrecognized struct or union type {t}")
+                    for msg in arr:
+                        msg_dict = msg if isinstance(msg, dict) else {}
+                        offset = self._byte_size_union(union_def, msg_dict, offset)
         else:
             if t in ("string", "wstring"):
                 s = value if isinstance(value, str) else ""
@@ -176,10 +182,15 @@ class MessageWriter:
                 offset += size
             else:
                 struct_def = _find_struct(self.definitions, t)
-                if struct_def is None:
-                    raise ValueError(f"Unrecognized struct type {t}")
-                msg_dict = value if isinstance(value, dict) else {}
-                offset = self._byte_size(struct_def.fields, msg_dict, offset)
+                if struct_def is not None:
+                    msg_dict = value if isinstance(value, dict) else {}
+                    offset = self._byte_size(struct_def.fields, msg_dict, offset)
+                else:
+                    union_def = _find_union(self.definitions, t)
+                    if union_def is None:
+                        raise ValueError(f"Unrecognized struct or union type {t}")
+                    msg_dict = value if isinstance(value, dict) else {}
+                    offset = self._byte_size_union(union_def, msg_dict, offset)
         return offset
 
     def _byte_size_array(
@@ -209,11 +220,17 @@ class MessageWriter:
             offset += size * length
         else:
             struct_def = _find_struct(self.definitions, t)
-            if struct_def is None:
-                raise ValueError(f"Unrecognized struct type {t}")
-            for i in range(length):
-                msg = arr[i] if i < len(arr) and isinstance(arr[i], dict) else {}
-                offset = self._byte_size(struct_def.fields, msg, offset)
+            if struct_def is not None:
+                for i in range(length):
+                    msg = arr[i] if i < len(arr) and isinstance(arr[i], dict) else {}
+                    offset = self._byte_size(struct_def.fields, msg, offset)
+            else:
+                union_def = _find_union(self.definitions, t)
+                if union_def is None:
+                    raise ValueError(f"Unrecognized struct or union type {t}")
+                for i in range(length):
+                    msg = arr[i] if i < len(arr) and isinstance(arr[i], dict) else {}
+                    offset = self._byte_size_union(union_def, msg, offset)
         return offset
 
     def _write(self, definition: List[Field], message: Dict[str, Any], buffer: bytearray, offset: int) -> int:
@@ -268,11 +285,17 @@ class MessageWriter:
                         offset += size
                 else:
                     struct_def = _find_struct(self.definitions, t)
-                    if struct_def is None:
-                        raise ValueError(f"Unrecognized struct type {t}")
-                    for msg in arr:
-                        msg_dict = msg if isinstance(msg, dict) else {}
-                        offset = self._write(struct_def.fields, msg_dict, buffer, offset)
+                    if struct_def is not None:
+                        for msg in arr:
+                            msg_dict = msg if isinstance(msg, dict) else {}
+                            offset = self._write(struct_def.fields, msg_dict, buffer, offset)
+                    else:
+                        union_def = _find_union(self.definitions, t)
+                        if union_def is None:
+                            raise ValueError(f"Unrecognized struct or union type {t}")
+                        for msg in arr:
+                            msg_dict = msg if isinstance(msg, dict) else {}
+                            offset = self._write_union(union_def, msg_dict, buffer, offset)
             else:
                 if t in ("string", "wstring"):
                     s = value if isinstance(value, str) else ""
@@ -298,10 +321,15 @@ class MessageWriter:
                     offset += size
                 else:
                     struct_def = _find_struct(self.definitions, t)
-                    if struct_def is None:
-                        raise ValueError(f"Unrecognized struct type {t}")
-                    msg_dict = value if isinstance(value, dict) else {}
-                    offset = self._write(struct_def.fields, msg_dict, buffer, offset)
+                    if struct_def is not None:
+                        msg_dict = value if isinstance(value, dict) else {}
+                        offset = self._write(struct_def.fields, msg_dict, buffer, offset)
+                    else:
+                        union_def = _find_union(self.definitions, t)
+                        if union_def is None:
+                            raise ValueError(f"Unrecognized struct or union type {t}")
+                        msg_dict = value if isinstance(value, dict) else {}
+                        offset = self._write_union(union_def, msg_dict, buffer, offset)
         return offset
 
     def _write_array(
@@ -343,11 +371,47 @@ class MessageWriter:
                 offset += size
         else:
             struct_def = _find_struct(self.definitions, t)
-            if struct_def is None:
-                raise ValueError(f"Unrecognized struct type {t}")
-            for i in range(length):
-                msg = arr[i] if i < len(arr) and isinstance(arr[i], dict) else {}
-                offset = self._write(struct_def.fields, msg, buffer, offset)
+            if struct_def is not None:
+                for i in range(length):
+                    msg = arr[i] if i < len(arr) and isinstance(arr[i], dict) else {}
+                    offset = self._write(struct_def.fields, msg, buffer, offset)
+            else:
+                union_def = _find_union(self.definitions, t)
+                if union_def is None:
+                    raise ValueError(f"Unrecognized struct or union type {t}")
+                for i in range(length):
+                    msg = arr[i] if i < len(arr) and isinstance(arr[i], dict) else {}
+                    offset = self._write_union(union_def, msg, buffer, offset)
+        return offset
+
+    def _byte_size_union(self, union_def: IDLUnion, message: Dict[str, Any], offset: int) -> int:
+        disc_field = Field(name="_d", type=union_def.switch_type)
+        disc = message.get("_d")
+        offset = self._field_size(disc_field, disc, offset)
+        case_field = _union_case_field(union_def, disc)
+        if case_field is None:
+            raise ValueError(
+                f"No matching case for union {union_def.name} discriminator {disc}"
+            )
+        value = message.get(case_field.name)
+        offset = self._field_size(case_field, value, offset)
+        return offset
+
+    def _write_union(
+        self, union_def: IDLUnion, message: Dict[str, Any], buffer: bytearray, offset: int
+    ) -> int:
+        disc_field = Field(name="_d", type=union_def.switch_type)
+        disc = message.get("_d")
+        if disc is None:
+            raise ValueError(f"Union {union_def.name} requires '_d' discriminator")
+        offset = self._write_field(disc_field, disc, buffer, offset)
+        case_field = _union_case_field(union_def, disc)
+        if case_field is None:
+            raise ValueError(
+                f"No matching case for union {union_def.name} discriminator {disc}"
+            )
+        value = message.get(case_field.name)
+        offset = self._write_field(case_field, value, buffer, offset)
         return offset
 
 
@@ -371,4 +435,24 @@ def _find_struct(defs: List[Struct | Module], name: str) -> Optional[Struct]:
             found = _find_struct(d.definitions, name)
             if found is not None:
                 return found
+    return None
+
+
+def _find_union(defs: List[Struct | Module | IDLUnion], name: str) -> Optional[IDLUnion]:
+    for d in defs:
+        if isinstance(d, IDLUnion) and d.name == name:
+            return d
+        if isinstance(d, Module):
+            found = _find_union(d.definitions, name)  # type: ignore[arg-type]
+            if found is not None:
+                return found
+    return None
+
+
+def _union_case_field(union_def: IDLUnion, discriminator: Any) -> Optional[Field]:
+    for case in union_def.cases:
+        if case.value == discriminator:
+            return case.field
+    if union_def.default is not None:
+        return union_def.default
     return None

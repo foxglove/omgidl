@@ -20,6 +20,24 @@ class TestMessageReader(unittest.TestCase):
         decoded = reader.read_message(buf)
         self.assertEqual(decoded, msg)
 
+    def test_roundtrip_union(self) -> None:
+        schema = """
+        union U switch (uint8) {
+            case 0:
+                uint8 a;
+            case 1:
+                uint8 b;
+        };
+        struct A { U u; };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs)
+        reader = MessageReader("A", defs)
+        msg = {"u": {"_d": 0, "a": 7}}
+        buf = writer.write_message(msg)
+        decoded = reader.read_message(buf)
+        self.assertEqual(decoded, msg)
+
     def test_big_endian_roundtrip(self) -> None:
         schema = """
         struct A {
