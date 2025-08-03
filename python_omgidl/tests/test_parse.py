@@ -254,5 +254,32 @@ class TestParseIDL(unittest.TestCase):
             ],
         )
 
+    def test_skip_import_and_include(self):
+        schema = """
+        import "foo.idl";
+        #include "bar.idl"
+        struct A { int32 x; };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [Struct(name="A", fields=[Field(name="x", type="int32", array_length=None)])],
+        )
+
+    def test_ignore_comments(self):
+        schema = """
+        // line comment
+        /* block
+           comment */
+        struct A {
+            int32 x; // trailing comment
+        };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [Struct(name="A", fields=[Field(name="x", type="int32", array_length=None)])],
+        )
+
 if __name__ == "__main__":
     unittest.main()

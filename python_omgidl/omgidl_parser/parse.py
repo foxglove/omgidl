@@ -16,6 +16,8 @@ definition: module
           | enum
           | typedef
           | union
+          | import_stmt
+          | include_stmt
 
 module: "module" NAME "{" definition* "}" semicolon?
 
@@ -41,6 +43,10 @@ union_default: "default" ":" field
 
 field: type NAME array? semicolon
 
+import_stmt: "import" STRING semicolon
+
+include_stmt: "#include" (STRING | "<" /[^>]+/ ">")
+
 type: sequence_type
     | BUILTIN_TYPE
     | scoped_name
@@ -60,7 +66,10 @@ semicolon: ";"
 %import common.SIGNED_INT
 %import common.ESCAPED_STRING -> STRING
 %import common.WS
+
+COMMENT: /\/\/[^\n]*|\/\*[\s\S]*?\*\//
 %ignore WS
+%ignore COMMENT
 """
 
 @dataclass
@@ -155,7 +164,7 @@ class _Transformer(Transformer):
         self._constants: dict[str, int | str] = {}
 
     def start(self, items):
-        return list(items)
+        return [item for item in items if item is not None]
 
     def definition(self, items):
         return items[0]
@@ -194,6 +203,12 @@ class _Transformer(Transformer):
         return length
 
     def semicolon(self, _):
+        return None
+
+    def import_stmt(self, _items):
+        return None
+
+    def include_stmt(self, _items):
         return None
 
     def field(self, items):
