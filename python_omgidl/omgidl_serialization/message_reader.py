@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Tuple
 
 from omgidl_parser.parse import Struct, Field, Module, Union as IDLUnion
 
+from .constants import UNION_DISCRIMINATOR_PROPERTY_KEY
+
 from .message_writer import (
     PRIMITIVE_FORMATS,
     PRIMITIVE_SIZES,
@@ -208,10 +210,10 @@ class MessageReader:
     def _read_union(
         self, info: UnionDeserializationInfo, view: memoryview, offset: int
     ) -> Tuple[Dict[str, Any], int]:
-        disc_field = Field(name="_d", type=info.definition.switch_type)
+        disc_field = Field(name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=info.definition.switch_type)
         disc_info = self.cache.build_field_info(disc_field)
         disc, offset = self._read_field(disc_info, view, offset)
-        msg: Dict[str, Any] = {"_d": disc}
+        msg: Dict[str, Any] = {UNION_DISCRIMINATOR_PROPERTY_KEY: disc}
         case_field = _union_case_field(info.definition, disc)
         if case_field is None:
             return msg, offset

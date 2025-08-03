@@ -15,6 +15,8 @@ from omgidl_parser.parse import (
     Union as IDLUnion,
 )
 
+from omgidl_serialization.constants import UNION_DISCRIMINATOR_PROPERTY_KEY
+
 
 @dataclass
 class MessageDefinitionField:
@@ -75,7 +77,11 @@ def _process_definition(
         results.append(MessageDefinition(name="/".join([*scope, defn.name]), definitions=fields))
     elif isinstance(defn, IDLUnion):
         switch_type = _resolve_type(defn.switch_type, typedefs)
-        fields = [MessageDefinitionField(type=switch_type, name="_d")]
+        fields = [
+            MessageDefinitionField(
+                type=switch_type, name=UNION_DISCRIMINATOR_PROPERTY_KEY
+            )
+        ]
         for case in defn.cases:
             fields.append(_convert_field(case.field, typedefs))
         if defn.default:

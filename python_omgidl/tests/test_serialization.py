@@ -1,7 +1,7 @@
 import unittest
 
 from omgidl_parser.parse import parse_idl, Struct, Field
-from omgidl_serialization import MessageWriter
+from omgidl_serialization import MessageWriter, UNION_DISCRIMINATOR_PROPERTY_KEY
 
 
 class TestMessageWriter(unittest.TestCase):
@@ -108,7 +108,7 @@ class TestMessageWriter(unittest.TestCase):
         """
         defs = parse_idl(schema)
         writer = MessageWriter("A", defs)
-        msg = {"u": {"_d": 1, "b": 42}}
+        msg = {"u": {UNION_DISCRIMINATOR_PROPERTY_KEY: 1, "b": 42}}
         written = writer.write_message(msg)
         expected = bytes([0, 1, 0, 0, 1, 42])
         self.assertEqual(written, expected)
@@ -126,7 +126,7 @@ class TestMessageWriter(unittest.TestCase):
         """
         defs = parse_idl(schema)
         writer = MessageWriter("A", defs)
-        bad = {"u": {"_d": 5}}
+        bad = {"u": {UNION_DISCRIMINATOR_PROPERTY_KEY: 5}}
         with self.assertRaises(ValueError):
             writer.write_message(bad)
         with self.assertRaises(ValueError):

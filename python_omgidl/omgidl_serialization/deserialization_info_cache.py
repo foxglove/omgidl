@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 from omgidl_parser.parse import Field, Module, Struct, Union as IDLUnion
 
 from .message_writer import _find_struct, _find_union, _union_case_field
+from .constants import UNION_DISCRIMINATOR_PROPERTY_KEY
 
 DEFAULT_BOOLEAN_VALUE = False
 DEFAULT_NUMERICAL_VALUE = 0
@@ -156,18 +157,20 @@ class DeserializationInfoCache:
             if union_def.default is not None:
                 default_field_info = self.build_field_info(union_def.default)
                 msg = {
-                    "_d": None,
+                    UNION_DISCRIMINATOR_PROPERTY_KEY: None,
                     default_field_info.name: self.get_field_default(default_field_info),
                 }
             else:
-                disc_field_info = self.build_field_info(Field(name="_d", type=union_def.switch_type))
+                disc_field_info = self.build_field_info(
+                    Field(name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=union_def.switch_type)
+                )
                 switch_val = self.get_field_default(disc_field_info)
                 case_field = _union_case_field(union_def, switch_val)
                 if case_field is None:
                     raise ValueError(f"Failed to find default case for union {union_def.name}")
                 case_info = self.build_field_info(case_field)
                 msg = {
-                    "_d": switch_val,
+                    UNION_DISCRIMINATOR_PROPERTY_KEY: switch_val,
                     case_info.name: self.get_field_default(case_info),
                 }
             info.default_value = msg

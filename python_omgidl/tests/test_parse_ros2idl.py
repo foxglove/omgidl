@@ -1,6 +1,7 @@
 import unittest
 
 from ros2idl_parser import parse_ros2idl, MessageDefinition, MessageDefinitionField
+from omgidl_serialization import UNION_DISCRIMINATOR_PROPERTY_KEY
 
 
 class TestParseRos2idl(unittest.TestCase):
@@ -154,7 +155,9 @@ class TestParseRos2idl(unittest.TestCase):
                 MessageDefinition(
                     name="MyUnion",
                     definitions=[
-                        MessageDefinitionField(type="uint8", name="_d"),
+                        MessageDefinitionField(
+                            type="uint8", name=UNION_DISCRIMINATOR_PROPERTY_KEY
+                        ),
                         MessageDefinitionField(type="int32", name="as_long"),
                         MessageDefinitionField(type="string", name="as_string"),
                     ],

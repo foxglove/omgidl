@@ -7,6 +7,8 @@ from typing import List, Dict, Any, Optional
 
 from omgidl_parser.parse import Struct, Field, Module, Union as IDLUnion
 
+from .constants import UNION_DISCRIMINATOR_PROPERTY_KEY
+
 
 PRIMITIVE_SIZES: Dict[str, int] = {
     "bool": 1,
@@ -400,8 +402,8 @@ class MessageWriter:
         return offset
 
     def _byte_size_union(self, union_def: IDLUnion, message: Dict[str, Any], offset: int) -> int:
-        disc_field = Field(name="_d", type=union_def.switch_type)
-        disc = message.get("_d")
+        disc_field = Field(name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=union_def.switch_type)
+        disc = message.get(UNION_DISCRIMINATOR_PROPERTY_KEY)
         offset = self._field_size(disc_field, disc, offset)
         case_field = _union_case_field(union_def, disc)
         if case_field is None:
@@ -415,10 +417,12 @@ class MessageWriter:
     def _write_union(
         self, union_def: IDLUnion, message: Dict[str, Any], buffer: bytearray, offset: int
     ) -> int:
-        disc_field = Field(name="_d", type=union_def.switch_type)
-        disc = message.get("_d")
+        disc_field = Field(name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=union_def.switch_type)
+        disc = message.get(UNION_DISCRIMINATOR_PROPERTY_KEY)
         if disc is None:
-            raise ValueError(f"Union {union_def.name} requires '_d' discriminator")
+            raise ValueError(
+                f"Union {union_def.name} requires '{UNION_DISCRIMINATOR_PROPERTY_KEY}' discriminator"
+            )
         offset = self._write_field(disc_field, disc, buffer, offset)
         case_field = _union_case_field(union_def, disc)
         if case_field is None:
