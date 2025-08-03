@@ -48,14 +48,22 @@ import_stmt: "import" STRING semicolon
 include_stmt: "#include" (STRING | "<" /[^>]+/ ">")
 
 type: sequence_type
+    | string_type
     | BUILTIN_TYPE
     | scoped_name
 
 sequence_type: "sequence" "<" type ("," INT)? ">"
 
+string_type: STRING_KW string_bound?
+           | WSTRING_KW string_bound?
+
+string_bound: "<" INT ">"
+
 scoped_name: NAME ("::" NAME)*
 
-BUILTIN_TYPE: /(unsigned\s+(short|long(\s+long)?)|long\s+double|double|float|short|long\s+long|long|int8|uint8|int16|uint16|int32|uint32|int64|uint64|byte|octet|wchar|char|string|wstring|boolean)/
+BUILTIN_TYPE: /(unsigned\s+(short|long(\s+long)?)|long\s+double|double|float|short|long\s+long|long|int8|uint8|int16|uint16|int32|uint32|int64|uint64|byte|octet|wchar|char|boolean)/
+STRING_KW: "string"
+WSTRING_KW: "wstring"
 NAME: /[A-Za-z_][A-Za-z0-9_]*/
 
 array: "[" INT "]"
@@ -79,6 +87,7 @@ class Field:
     array_length: Optional[int] = None
     is_sequence: bool = False
     sequence_bound: Optional[int] = None
+    string_upper_bound: Optional[int] = None
 
 
 @dataclass
@@ -176,9 +185,12 @@ class _Transformer(Transformer):
 
     def type(self, items):
         (t,) = items
-        if isinstance(t, tuple) and t[0] == "sequence":
-            inner, bound = t[1], t[2]
-            return ("sequence", self._NORMALIZATION.get(inner, inner), bound)
+        if isinstance(t, tuple):
+            if t[0] == "sequence":
+                inner, bound = t[1], t[2]
+                return ("sequence", self._NORMALIZATION.get(inner, inner), bound)
+            base, bound = t
+            return (self._NORMALIZATION.get(base, base), bound)
         if isinstance(t, str):
             return self._NORMALIZATION.get(t, t)
         token = str(t)
@@ -188,6 +200,17 @@ class _Transformer(Transformer):
         inner = items[0]
         bound = items[1] if len(items) > 1 else None
         return ("sequence", inner, bound)
+
+    def string_type(self, items):
+        base = str(items[0])
+        bound = items[1] if len(items) > 1 else None
+        if bound is not None:
+            return (base, bound)
+        return base
+
+    def string_bound(self, items):
+        (value,) = items
+        return value
 
     def INT(self, token):
         return int(token)
@@ -219,16 +242,25 @@ class _Transformer(Transformer):
                 array_length = itm
         is_sequence = False
         sequence_bound = None
-        if isinstance(type_, tuple) and type_[0] == "sequence":
-            is_sequence = True
-            sequence_bound = type_[2]
-            type_ = type_[1]
+        string_upper_bound = None
+        if isinstance(type_, tuple):
+            if type_[0] == "sequence":
+                is_sequence = True
+                sequence_bound = type_[2]
+                type_ = type_[1]
+                if isinstance(type_, tuple):
+                    string_upper_bound = type_[1]
+                    type_ = type_[0]
+            else:
+                string_upper_bound = type_[1]
+                type_ = type_[0]
         return Field(
             name=name,
             type=type_,
             array_length=array_length,
             is_sequence=is_sequence,
             sequence_bound=sequence_bound,
+            string_upper_bound=string_upper_bound,
         )
 
     def const_string(self, items):

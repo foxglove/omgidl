@@ -77,12 +77,17 @@ class MessageWriter:
         t = field.type
         if field.array_length is not None:
             # Fixed-length array
-            if t == "string":
+            if t in ("string", "wstring"):
                 arr = value if isinstance(value, (list, tuple)) else []
                 for i in range(field.array_length):
                     s = arr[i] if i < len(arr) and isinstance(arr[i], str) else ""
+                    if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                        raise ValueError(
+                            f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                        )
                     offset += _padding(offset, 4)
-                    offset += 4 + len(s.encode("utf-8")) + 1
+                    encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
+                    offset += 4 + len(encoded) + (1 if t == "string" else 2)
             elif t in PRIMITIVE_SIZES:
                 size = _primitive_size(t)
                 offset += _padding(offset, size)
@@ -107,11 +112,16 @@ class MessageWriter:
                     )
                 offset += _padding(offset, 4)
                 offset += 4
-                if t == "string":
+                if t in ("string", "wstring"):
                     for s in arr:
                         s = s if isinstance(s, str) else ""
+                        if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                            raise ValueError(
+                                f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                            )
                         offset += _padding(offset, 4)
-                        offset += 4 + len(s.encode("utf-8")) + 1
+                        encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
+                        offset += 4 + len(encoded) + (1 if t == "string" else 2)
                 elif t in PRIMITIVE_SIZES:
                     size = _primitive_size(t)
                     offset += _padding(offset, size)
@@ -124,10 +134,15 @@ class MessageWriter:
                         msg_dict = msg if isinstance(msg, dict) else {}
                         offset = self._byte_size(struct_def.fields, msg_dict, offset)
             else:
-                if t == "string":
+                if t in ("string", "wstring"):
                     s = value if isinstance(value, str) else ""
+                    if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                        raise ValueError(
+                            f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                        )
                     offset += _padding(offset, 4)
-                    offset += 4 + len(s.encode("utf-8")) + 1
+                    encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
+                    offset += 4 + len(encoded) + (1 if t == "string" else 2)
                 elif t in PRIMITIVE_SIZES:
                     size = _primitive_size(t)
                     offset += _padding(offset, size)
@@ -152,19 +167,23 @@ class MessageWriter:
         t = field.type
         if field.array_length is not None:
             # Fixed-length array
-            if t == "string":
+            if t in ("string", "wstring"):
                 arr = value if isinstance(value, (list, tuple)) else []
                 for i in range(field.array_length):
                     s = arr[i] if i < len(arr) and isinstance(arr[i], str) else ""
+                    if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                        raise ValueError(
+                            f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                        )
                     offset += _padding(offset, 4)
-                    encoded = s.encode("utf-8")
-                    length = len(encoded) + 1
+                    encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
+                    length = len(encoded) + (1 if t == "string" else 2)
                     struct.pack_into("<I", buffer, offset, length)
                     offset += 4
                     buffer[offset:offset + len(encoded)] = encoded
                     offset += len(encoded)
-                    buffer[offset] = 0
-                    offset += 1
+                    buffer[offset:offset + (1 if t == "string" else 2)] = b"\x00" * (1 if t == "string" else 2)
+                    offset += 1 if t == "string" else 2
             elif t in PRIMITIVE_SIZES:
                 size = _primitive_size(t)
                 fmt = "<" + PRIMITIVE_FORMATS[t]
@@ -194,18 +213,22 @@ class MessageWriter:
                 offset += _padding(offset, 4)
                 struct.pack_into("<I", buffer, offset, length)
                 offset += 4
-                if t == "string":
+                if t in ("string", "wstring"):
                     for s in arr:
                         s = s if isinstance(s, str) else ""
+                        if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                            raise ValueError(
+                                f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                            )
                         offset += _padding(offset, 4)
-                        encoded = s.encode("utf-8")
-                        length_s = len(encoded) + 1
+                        encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
+                        length_s = len(encoded) + (1 if t == "string" else 2)
                         struct.pack_into("<I", buffer, offset, length_s)
                         offset += 4
                         buffer[offset:offset + len(encoded)] = encoded
                         offset += len(encoded)
-                        buffer[offset] = 0
-                        offset += 1
+                        buffer[offset:offset + (1 if t == "string" else 2)] = b"\x00" * (1 if t == "string" else 2)
+                        offset += 1 if t == "string" else 2
                 elif t in PRIMITIVE_SIZES:
                     size = _primitive_size(t)
                     fmt = "<" + PRIMITIVE_FORMATS[t]
@@ -222,17 +245,21 @@ class MessageWriter:
                         msg_dict = msg if isinstance(msg, dict) else {}
                         offset = self._write(struct_def.fields, msg_dict, buffer, offset)
             else:
-                if t == "string":
+                if t in ("string", "wstring"):
                     s = value if isinstance(value, str) else ""
+                    if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                        raise ValueError(
+                            f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                        )
                     offset += _padding(offset, 4)
-                    encoded = s.encode("utf-8")
-                    length = len(encoded) + 1
+                    encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
+                    length = len(encoded) + (1 if t == "string" else 2)
                     struct.pack_into("<I", buffer, offset, length)
                     offset += 4
                     buffer[offset:offset + len(encoded)] = encoded
                     offset += len(encoded)
-                    buffer[offset] = 0
-                    offset += 1
+                    buffer[offset:offset + (1 if t == "string" else 2)] = b"\x00" * (1 if t == "string" else 2)
+                    offset += 1 if t == "string" else 2
                 elif t in PRIMITIVE_SIZES:
                     size = _primitive_size(t)
                     fmt = "<" + PRIMITIVE_FORMATS[t]

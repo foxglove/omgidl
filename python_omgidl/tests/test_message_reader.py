@@ -48,6 +48,39 @@ class TestMessageReader(unittest.TestCase):
         decoded = reader.read_message(buf)
         self.assertEqual(decoded, msg)
 
+    def test_roundtrip_bounded_string_field(self) -> None:
+        schema = """
+        struct A {
+            string<5> name;
+        };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs)
+        reader = MessageReader("A", defs)
+        msg = {"name": "hello"}
+        buf = writer.write_message(msg)
+        decoded = reader.read_message(buf)
+        self.assertEqual(decoded, msg)
+
+    def test_reader_bounded_string_enforced(self) -> None:
+        schema_unbounded = """
+        struct A {
+            string name;
+        };
+        """
+        defs_unbounded = parse_idl(schema_unbounded)
+        writer = MessageWriter("A", defs_unbounded)
+        buf = writer.write_message({"name": "toolong"})
+        schema_bounded = """
+        struct A {
+            string<5> name;
+        };
+        """
+        defs_bounded = parse_idl(schema_bounded)
+        reader = MessageReader("A", defs_bounded)
+        with self.assertRaises(ValueError):
+            reader.read_message(buf)
+
     def test_roundtrip_nested_struct(self) -> None:
         inner = Struct(name="Inner", fields=[Field(name="num", type="int32")])
         outer = Struct(name="Outer", fields=[Field(name="inner", type="Inner")])

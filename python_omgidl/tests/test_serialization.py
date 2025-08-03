@@ -48,6 +48,25 @@ class TestMessageWriter(unittest.TestCase):
         self.assertEqual(written, expected)
         self.assertEqual(writer.calculate_byte_size(msg), len(expected))
 
+    def test_bounded_string_enforced(self) -> None:
+        schema = """
+        struct A {
+            string<5> name;
+        };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs)
+        ok = {"name": "hello"}
+        expected = bytes([0, 1, 0, 0, 6, 0, 0, 0, 104, 101, 108, 108, 111, 0])
+        written = writer.write_message(ok)
+        self.assertEqual(written, expected)
+        self.assertEqual(writer.calculate_byte_size(ok), len(expected))
+        over = {"name": "toolong"}
+        with self.assertRaises(ValueError):
+            writer.write_message(over)
+        with self.assertRaises(ValueError):
+            writer.calculate_byte_size(over)
+
     def test_nested_struct(self) -> None:
         inner = Struct(name="Inner", fields=[Field(name="num", type="int32")])
         outer = Struct(name="Outer", fields=[Field(name="inner", type="Inner")])

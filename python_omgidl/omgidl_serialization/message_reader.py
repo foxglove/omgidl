@@ -52,15 +52,21 @@ class MessageReader:
         t = field.type
         if field.array_length is not None:
             # Fixed-length array
-            if t == "string":
+            if t in ("string", "wstring"):
                 arr: List[str] = []
                 for _ in range(field.array_length):
                     offset += _padding(offset, 4)
                     length = struct.unpack_from("<I", view, offset)[0]
                     offset += 4
-                    data = bytes(view[offset : offset + length - 1])
+                    term = 1 if t == "string" else 2
+                    data = bytes(view[offset : offset + length - term])
                     offset += length
-                    arr.append(data.decode("utf-8"))
+                    s = data.decode("utf-8" if t == "string" else "utf-16-le")
+                    if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                        raise ValueError(
+                            f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                        )
+                    arr.append(s)
                 return arr, offset
             elif t in PRIMITIVE_SIZES:
                 size = _primitive_size(t)
@@ -90,14 +96,20 @@ class MessageReader:
                 length = struct.unpack_from("<I", view, offset)[0]
                 offset += 4
                 arr: List[Any] = []
-                if t == "string":
+                if t in ("string", "wstring"):
                     for _ in range(length):
                         offset += _padding(offset, 4)
                         slen = struct.unpack_from("<I", view, offset)[0]
                         offset += 4
-                        data = bytes(view[offset : offset + slen - 1])
+                        term = 1 if t == "string" else 2
+                        data = bytes(view[offset : offset + slen - term])
                         offset += slen
-                        arr.append(data.decode("utf-8"))
+                        s = data.decode("utf-8" if t == "string" else "utf-16-le")
+                        if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                            raise ValueError(
+                                f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                            )
+                        arr.append(s)
                 elif t in PRIMITIVE_SIZES:
                     size = _primitive_size(t)
                     fmt = "<" + PRIMITIVE_FORMATS[t]
@@ -117,13 +129,19 @@ class MessageReader:
                         arr.append(msg)
                 return arr, offset
             else:
-                if t == "string":
+                if t in ("string", "wstring"):
                     offset += _padding(offset, 4)
                     length = struct.unpack_from("<I", view, offset)[0]
                     offset += 4
-                    data = bytes(view[offset : offset + length - 1])
+                    term = 1 if t == "string" else 2
+                    data = bytes(view[offset : offset + length - term])
                     offset += length
-                    return data.decode("utf-8"), offset
+                    s = data.decode("utf-8" if t == "string" else "utf-16-le")
+                    if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                        raise ValueError(
+                            f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                        )
+                    return s, offset
                 elif t in PRIMITIVE_SIZES:
                     size = _primitive_size(t)
                     fmt = "<" + PRIMITIVE_FORMATS[t]
