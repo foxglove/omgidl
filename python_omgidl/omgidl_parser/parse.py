@@ -23,14 +23,19 @@ enum: "enum" NAME "{" enumerator ("," enumerator)* "}" semicolon?
 enumerator: NAME enum_value?
 enum_value: "@value" "(" INT ")"
 
-constant: "const" TYPE NAME "=" const_value semicolon
+constant: "const" type NAME "=" const_value semicolon
 const_value: SIGNED_INT
            | STRING
            | NAME
 
-field: TYPE NAME array? semicolon
+field: type NAME array? semicolon
 
-TYPE: /(unsigned\s+(short|long(\s+long)?)|long\s+double|double|float|short|long\s+long|long|int8|uint8|int16|uint16|int32|uint32|int64|uint64|byte|octet|wchar|char|string|wstring|boolean)/
+type: BUILTIN_TYPE
+    | scoped_name
+
+scoped_name: NAME ("::" NAME)*
+
+BUILTIN_TYPE: /(unsigned\s+(short|long(\s+long)?)|long\s+double|double|float|short|long\s+long|long|int8|uint8|int16|uint16|int32|uint32|int64|uint64|byte|octet|wchar|char|string|wstring|boolean)/
 NAME: /[A-Za-z_][A-Za-z0-9_]*/
 
 array: "[" INT "]"
@@ -74,6 +79,38 @@ class Module:
     definitions: List[Struct | Module | Constant | Enum] = field(default_factory=list)
 
 class _Transformer(Transformer):
+    _NORMALIZATION = {
+        "long double": "float64",
+        "double": "float64",
+        "float": "float32",
+        "short": "int16",
+        "unsigned short": "uint16",
+        "unsigned long long": "uint64",
+        "unsigned long": "uint32",
+        "long long": "int64",
+        "long": "int32",
+    }
+
+    _BUILTIN_TYPES = {
+        "float64",
+        "float32",
+        "int16",
+        "uint16",
+        "uint64",
+        "uint32",
+        "int64",
+        "int32",
+        "int8",
+        "uint8",
+        "byte",
+        "octet",
+        "wchar",
+        "char",
+        "string",
+        "wstring",
+        "boolean",
+    }
+
     def start(self, items):
         return list(items)
 
@@ -82,20 +119,15 @@ class _Transformer(Transformer):
     def NAME(self, token):
         return str(token)
 
-    def TYPE(self, token):
-        # normalize type names
-        t = str(token)
-        return {
-            "long double": "float64",
-            "double": "float64",
-            "float": "float32",
-            "short": "int16",
-            "unsigned short": "uint16",
-            "unsigned long long": "uint64",
-            "unsigned long": "uint32",
-            "long long": "int64",
-            "long": "int32",
-        }.get(t, t)
+    def scoped_name(self, items):
+        return "::".join(items)
+
+    def type(self, items):
+        (t,) = items
+        if isinstance(t, str):
+            return self._NORMALIZATION.get(t, t)
+        token = str(t)
+        return self._NORMALIZATION.get(token, token)
 
     def INT(self, token):
         return int(token)
@@ -162,9 +194,49 @@ class _Transformer(Transformer):
         definitions = [item for item in items[1:] if item is not None]
         return Module(name=name, definitions=definitions)
 
+    def resolve_types(self, definitions: List[Struct | Module | Constant | Enum]):
+        struct_names: set[str] = set()
+
+        def collect(defs: List[Struct | Module | Constant | Enum], scope: List[str]):
+            for d in defs:
+                if isinstance(d, Struct):
+                    full = "::".join([*scope, d.name])
+                    struct_names.add(full)
+                elif isinstance(d, Module):
+                    collect(d.definitions, [*scope, d.name])
+
+        collect(definitions, [])
+
+        def resolve(defs: List[Struct | Module | Constant | Enum], scope: List[str]):
+            for d in defs:
+                if isinstance(d, Struct):
+                    for f in d.fields:
+                        if f.type in self._BUILTIN_TYPES:
+                            continue
+                        if f.type.startswith("::"):
+                            f.type = f.type[2:]
+                            continue
+                        if "::" in f.type:
+                            continue
+                        resolved = None
+                        for i in range(len(scope), -1, -1):
+                            candidate = "::".join([*scope[:i], f.type])
+                            if candidate in struct_names:
+                                resolved = candidate
+                                break
+                        if resolved:
+                            f.type = resolved
+                elif isinstance(d, Module):
+                    resolve(d.definitions, [*scope, d.name])
+
+        resolve(definitions, [])
+
 
 def parse_idl(source: str) -> List[Struct | Module | Constant | Enum]:
     parser = Lark(IDL_GRAMMAR, start="start")
     tree = parser.parse(source)
-    return _Transformer().transform(tree)
+    transformer = _Transformer()
+    result = transformer.transform(tree)
+    transformer.resolve_types(result)
+    return result
 

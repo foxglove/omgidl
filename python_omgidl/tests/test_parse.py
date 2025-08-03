@@ -56,5 +56,58 @@ class TestParseIDL(unittest.TestCase):
             )
         ])
 
+    def test_user_defined_type_reference(self):
+        schema = """
+        module outer {
+            struct A {
+                int32 num;
+            };
+            struct B {
+                A a;
+            };
+        };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [
+                Module(
+                    name="outer",
+                    definitions=[
+                        Struct(name="A", fields=[Field(name="num", type="int32", array_length=None)]),
+                        Struct(name="B", fields=[Field(name="a", type="outer::A", array_length=None)]),
+                    ],
+                )
+            ],
+        )
+
+    def test_nested_module_resolution(self):
+        schema = """
+        module outer {
+            struct A { int32 num; };
+            module inner {
+                struct B { A a; };
+            };
+        };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [
+                Module(
+                    name="outer",
+                    definitions=[
+                        Struct(name="A", fields=[Field(name="num", type="int32", array_length=None)]),
+                        Module(
+                            name="inner",
+                            definitions=[
+                                Struct(name="B", fields=[Field(name="a", type="outer::A", array_length=None)])
+                            ],
+                        ),
+                    ],
+                )
+            ],
+        )
+
 if __name__ == "__main__":
     unittest.main()
