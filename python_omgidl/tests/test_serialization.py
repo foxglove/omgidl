@@ -89,6 +89,30 @@ class TestMessageWriter(unittest.TestCase):
         self.assertEqual(written, expected)
         self.assertEqual(writer.calculate_byte_size(msg), len(expected))
 
+    def test_bounded_sequence_enforced(self) -> None:
+        schema = """
+        struct A {
+            sequence<int32, 2> data;
+        };
+        """
+        defs = parse_idl(schema)
+        writer = MessageWriter("A", defs)
+        msg = {"data": [3, 7]}
+        written = writer.write_message(msg)
+        expected = bytes([
+            0, 1, 0, 0,
+            2, 0, 0, 0,
+            3, 0, 0, 0,
+            7, 0, 0, 0,
+        ])
+        self.assertEqual(written, expected)
+        self.assertEqual(writer.calculate_byte_size(msg), len(expected))
+        over = {"data": [1, 2, 3]}
+        with self.assertRaises(ValueError):
+            writer.write_message(over)
+        with self.assertRaises(ValueError):
+            writer.calculate_byte_size(over)
+
 
 if __name__ == "__main__":
     unittest.main()

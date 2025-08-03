@@ -67,6 +67,31 @@ class TestParseIDL(unittest.TestCase):
             ],
         )
 
+    def test_bounded_sequence_field(self):
+        schema = """
+        struct A {
+            sequence<int32, 5> nums;
+        };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [
+                Struct(
+                    name="A",
+                    fields=[
+                        Field(
+                            name="nums",
+                            type="int32",
+                            array_length=None,
+                            is_sequence=True,
+                            sequence_bound=5,
+                        )
+                    ],
+                )
+            ],
+        )
+
     def test_enum(self):
         schema = """
         enum COLORS {

@@ -58,6 +58,7 @@ class Field:
     type: str
     array_length: Optional[int] = None
     is_sequence: bool = False
+    sequence_bound: Optional[int] = None
 
 
 @dataclass
@@ -129,8 +130,8 @@ class _Transformer(Transformer):
     def type(self, items):
         (t,) = items
         if isinstance(t, tuple) and t[0] == "sequence":
-            inner = t[1]
-            return ("sequence", self._NORMALIZATION.get(inner, inner))
+            inner, bound = t[1], t[2]
+            return ("sequence", self._NORMALIZATION.get(inner, inner), bound)
         if isinstance(t, str):
             return self._NORMALIZATION.get(t, t)
         token = str(t)
@@ -138,7 +139,8 @@ class _Transformer(Transformer):
 
     def sequence_type(self, items):
         inner = items[0]
-        return ("sequence", inner)
+        bound = items[1] if len(items) > 1 else None
+        return ("sequence", inner, bound)
 
     def INT(self, token):
         return int(token)
@@ -163,10 +165,18 @@ class _Transformer(Transformer):
             if isinstance(itm, int):
                 array_length = itm
         is_sequence = False
+        sequence_bound = None
         if isinstance(type_, tuple) and type_[0] == "sequence":
             is_sequence = True
+            sequence_bound = type_[2]
             type_ = type_[1]
-        return Field(name=name, type=type_, array_length=array_length, is_sequence=is_sequence)
+        return Field(
+            name=name,
+            type=type_,
+            array_length=array_length,
+            is_sequence=is_sequence,
+            sequence_bound=sequence_bound,
+        )
 
     def const_value(self, items):
         (value,) = items

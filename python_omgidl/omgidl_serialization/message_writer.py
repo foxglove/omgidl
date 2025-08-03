@@ -101,6 +101,10 @@ class MessageWriter:
                 # Variable-length sequence
                 arr = value if isinstance(value, (list, tuple)) else []
                 length = len(arr)
+                if field.sequence_bound is not None and length > field.sequence_bound:
+                    raise ValueError(
+                        f"Field '{field.name}' sequence length {length} exceeds bound {field.sequence_bound}"
+                    )
                 offset += _padding(offset, 4)
                 offset += 4
                 if t == "string":
@@ -183,6 +187,10 @@ class MessageWriter:
                 # Variable-length sequence
                 arr = value if isinstance(value, (list, tuple)) else []
                 length = len(arr)
+                if field.sequence_bound is not None and length > field.sequence_bound:
+                    raise ValueError(
+                        f"Field '{field.name}' sequence length {length} exceeds bound {field.sequence_bound}"
+                    )
                 offset += _padding(offset, 4)
                 struct.pack_into("<I", buffer, offset, length)
                 offset += 4
