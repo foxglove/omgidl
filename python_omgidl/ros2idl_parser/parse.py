@@ -14,8 +14,7 @@ from omgidl_parser.parse import (
     Typedef as IDLTypedef,
     Union as IDLUnion,
 )
-
-from omgidl_serialization.constants import UNION_DISCRIMINATOR_PROPERTY_KEY
+from omgidl_parser.process import build_map
 
 
 @dataclass
@@ -48,15 +47,18 @@ def parse_ros2idl(message_definition: str) -> List[MessageDefinition]:
     idl_conformed = ROS2IDL_HEADER.sub("", message_definition)
     parsed = parse_idl(idl_conformed)
     typedefs = _collect_typedefs(parsed, [])
+    idl_map = build_map(parsed)
     message_defs: List[MessageDefinition] = []
     for definition in parsed:
-        message_defs.extend(_process_definition(definition, [], typedefs))
+        message_defs.extend(_process_definition(definition, [], typedefs, idl_map))
 
     for msg in message_defs:
         if msg.name is not None:
             msg.name = _normalize_name(msg.name)
         for field in msg.definitions:
             field.type = _normalize_name(field.type)
+            if field.enumType:
+                field.enumType = _normalize_name(field.enumType)
 
         if msg.name in ("builtin_interfaces/msg/Time", "builtin_interfaces/msg/Duration"):
             for field in msg.definitions:
@@ -70,23 +72,14 @@ def _process_definition(
     defn: IDLStruct | IDLModule | IDLConstant | IDLEnum | IDLUnion | IDLTypedef,
     scope: List[str],
     typedefs: dict[str, IDLTypedef],
+    idl_map,
 ) -> List[MessageDefinition]:
     results: List[MessageDefinition] = []
     if isinstance(defn, IDLStruct):
-        fields = [_convert_field(f, typedefs) for f in defn.fields]
+        fields = [_convert_field(f, typedefs, idl_map, scope) for f in defn.fields]
         results.append(MessageDefinition(name="/".join([*scope, defn.name]), definitions=fields))
     elif isinstance(defn, IDLUnion):
-        switch_type = _resolve_type(defn.switch_type, typedefs)
-        fields = [
-            MessageDefinitionField(
-                type=switch_type, name=UNION_DISCRIMINATOR_PROPERTY_KEY
-            )
-        ]
-        for case in defn.cases:
-            fields.append(_convert_field(case.field, typedefs))
-        if defn.default:
-            fields.append(_convert_field(defn.default, typedefs))
-        results.append(MessageDefinition(name="/".join([*scope, defn.name]), definitions=fields))
+        raise ValueError("Unions are not supported in MessageDefinition type")
     elif isinstance(defn, IDLModule):
         const_fields = [
             _convert_constant(c, typedefs)
@@ -98,37 +91,71 @@ def _process_definition(
                 MessageDefinition(name="/".join([*scope, defn.name]), definitions=const_fields)
             )
         for sub in defn.definitions:
-            if isinstance(sub, (IDLModule, IDLStruct, IDLUnion)):
-                results.extend(_process_definition(sub, [*scope, defn.name], typedefs))
+            if isinstance(sub, (IDLModule, IDLStruct, IDLUnion, IDLEnum)):
+                results.extend(
+                    _process_definition(sub, [*scope, defn.name], typedefs, idl_map)
+                )
+    elif isinstance(defn, IDLEnum):
+        fields = [_convert_constant(e, typedefs) for e in defn.enumerators]
+        results.append(
+            MessageDefinition(name="/".join([*scope, defn.name]), definitions=fields)
+        )
     elif isinstance(defn, IDLConstant):
         results.append(
             MessageDefinition(
                 name="/".join(scope), definitions=[_convert_constant(defn, typedefs)]
             )
         )
-    # IDLEnum and IDLTypedef do not directly produce MessageDefinitions here
+    # IDLTypedef does not directly produce MessageDefinitions here
     return results
 
 
-def _convert_field(field: IDLField, typedefs: dict[str, IDLTypedef]) -> MessageDefinitionField:
+def _convert_field(
+    field: IDLField,
+    typedefs: dict[str, IDLTypedef],
+    idl_map,
+    scope: List[str],
+) -> MessageDefinitionField:
     t = field.type
     array_lengths = list(field.array_lengths)
     is_sequence = field.is_sequence
     seq_bound = field.sequence_bound
     visited: set[str] = set()
-    while t in typedefs and t not in visited:
-        visited.add(t)
-        td = typedefs[t]
+    while True:
+        key = t if t in typedefs else "::".join([*scope, t])
+        if key in visited or key not in typedefs:
+            break
+        visited.add(key)
+        td = typedefs[key]
         t = td.type
-        if td.array_lengths and not array_lengths and not is_sequence:
-            array_lengths = list(td.array_lengths)
+        if td.array_lengths:
+            array_lengths.extend(td.array_lengths)
         if td.is_sequence:
             is_sequence = True
             if td.sequence_bound is not None:
                 seq_bound = td.sequence_bound
+    if len(array_lengths) > 1:
+        raise ValueError(
+            "Multi-dimensional arrays are not supported in MessageDefinition type"
+        )
+    enum_type: Optional[str] = None
+    is_complex = False
+    ref = idl_map.get(t)
+    if ref is None and "::" not in t:
+        scoped = "::".join([*scope, t])
+        ref = idl_map.get(scoped)
+        if ref is not None:
+            t = scoped
+    if isinstance(ref, IDLEnum):
+        enum_type = _normalize_name(t)
+        t = "uint32"
+    elif isinstance(ref, (IDLStruct, IDLUnion)):
+        is_complex = True
     return MessageDefinitionField(
         type=t,
         name=field.name,
+        isComplex=is_complex,
+        enumType=enum_type,
         isArray=bool(array_lengths) or is_sequence,
         arrayLength=array_lengths[0] if array_lengths else None,
         arrayUpperBound=seq_bound if is_sequence else None,
