@@ -1,3 +1,3 @@
-from .parse import parse_ros2idl, MessageDefinition, MessageDefinitionField
+from .parse import MessageDefinition, MessageDefinitionField, parse_ros2idl
 
 __all__ = ["parse_ros2idl", "MessageDefinition", "MessageDefinitionField"]

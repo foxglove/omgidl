@@ -1,24 +1,24 @@
 from .parse import (
-    parse_idl,
-    Field,
-    Struct,
-    Module,
     Constant,
     Enum,
+    Field,
+    Module,
+    Struct,
     Typedef,
     Union,
     UnionCase,
+    parse_idl,
 )
 from .process import (
-    IDLMessageDefinitionField,
-    IDLStructDefinition,
-    IDLModuleDefinition,
-    IDLUnionDefinition,
     Case,
     IDLMessageDefinition,
+    IDLMessageDefinitionField,
+    IDLModuleDefinition,
+    IDLStructDefinition,
+    IDLUnionDefinition,
     build_map,
-    to_idl_message_definitions,
     parse_idl_message_definitions,
+    to_idl_message_definitions,
 )
 
 __all__ = [

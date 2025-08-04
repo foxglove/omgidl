@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import copy
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
-from omgidl_parser.parse import Field, Module, Struct, Union as IDLUnion
+from omgidl_parser.parse import Field, Module, Struct
+from omgidl_parser.parse import Union as IDLUnion
 
 from .constants import UNION_DISCRIMINATOR_PROPERTY_KEY
 
@@ -74,7 +75,9 @@ class DeserializationInfoCache:
         self._definitions = definitions
         self._complex_cache: Dict[str, ComplexDeserializationInfo] = {}
 
-    def get_complex_deser_info(self, definition: Struct | IDLUnion) -> ComplexDeserializationInfo:
+    def get_complex_deser_info(
+        self, definition: Struct | IDLUnion
+    ) -> ComplexDeserializationInfo:
         cached = self._complex_cache.get(definition.name)
         if cached is not None:
             return cached
@@ -88,7 +91,9 @@ class DeserializationInfoCache:
                 uses_member_header=uses_member,
             )
         else:
-            fields = [self.build_field_info(f, i + 1) for i, f in enumerate(definition.fields)]
+            fields = [
+                self.build_field_info(f, i + 1) for i, f in enumerate(definition.fields)
+            ]
             info = StructDeserializationInfo(
                 type="struct",
                 fields=fields,
@@ -99,7 +104,9 @@ class DeserializationInfoCache:
         self._complex_cache[definition.name] = info
         return info
 
-    def build_field_info(self, field: Field, field_id: int | None = None) -> FieldDeserializationInfo:
+    def build_field_info(
+        self, field: Field, field_id: int | None = None
+    ) -> FieldDeserializationInfo:
         type_info: Optional[ComplexDeserializationInfo] = None
         struct_def = _find_struct(self._definitions, field.type)
         if struct_def is not None:
@@ -128,8 +135,10 @@ class DeserializationInfoCache:
 
         if info.is_array or info.is_sequence:
             if info.array_lengths and not info.is_sequence:
+
                 def getter() -> Any:
                     return self._base_field_default(info)
+
                 info.default_value = make_nested_array(getter, info.array_lengths, 0)
             else:
                 info.default_value = []
@@ -164,12 +173,17 @@ class DeserializationInfoCache:
                 }
             else:
                 disc_field_info = self.build_field_info(
-                    Field(name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=union_def.switch_type)
+                    Field(
+                        name=UNION_DISCRIMINATOR_PROPERTY_KEY,
+                        type=union_def.switch_type,
+                    )
                 )
                 switch_val = self.get_field_default(disc_field_info)
                 case_field = _union_case_field(union_def, switch_val)
                 if case_field is None:
-                    raise ValueError(f"Failed to find default case for union {union_def.name}")
+                    raise ValueError(
+                        f"Failed to find default case for union {union_def.name}"
+                    )
                 case_info = self.build_field_info(case_field)
                 msg = {
                     UNION_DISCRIMINATOR_PROPERTY_KEY: switch_val,
@@ -178,13 +192,17 @@ class DeserializationInfoCache:
             info.default_value = msg
         return copy.deepcopy(info.default_value)
 
-
     def get_complex_default(self, info: ComplexDeserializationInfo) -> Dict[str, Any]:
         return self._get_complex_default(info)
 
-def make_nested_array(get_value: Any, array_lengths: List[int], depth: int) -> List[Any]:
+
+def make_nested_array(
+    get_value: Any, array_lengths: List[int], depth: int
+) -> List[Any]:
     if depth > len(array_lengths) - 1 or depth < 0:
-        raise ValueError(f"Invalid depth {depth} for array of length {len(array_lengths)}")
+        raise ValueError(
+            f"Invalid depth {depth} for array of length {len(array_lengths)}"
+        )
     arr: List[Any] = []
     for _ in range(array_lengths[depth]):
         if depth == len(array_lengths) - 1:
@@ -217,7 +235,9 @@ def _find_struct(defs: List[Struct | Module], name: str) -> Optional[Struct]:
     return None
 
 
-def _find_union(defs: List[Struct | Module | IDLUnion], name: str) -> Optional[IDLUnion]:
+def _find_union(
+    defs: List[Struct | Module | IDLUnion], name: str
+) -> Optional[IDLUnion]:
     for d in defs:
         if isinstance(d, IDLUnion) and d.name == name:
             return d

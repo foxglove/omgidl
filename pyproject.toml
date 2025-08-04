@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omgidl"
+version = "0.1.0"
+description = "OMG IDL tooling"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "lark",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "isort",
+    "flake8",
+    "flake8-pyproject",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 88
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+
+[tool.setuptools.packages.find]
+where = ["python_omgidl"]

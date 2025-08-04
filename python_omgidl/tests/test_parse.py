@@ -1,16 +1,17 @@
 import unittest
 
 from omgidl_parser.parse import (
-    parse_idl,
-    Struct,
-    Field,
-    Module,
     Constant,
     Enum,
+    Field,
+    Module,
+    Struct,
     Typedef,
     Union,
     UnionCase,
+    parse_idl,
 )
+
 
 class TestParseIDL(unittest.TestCase):
     def test_parse_struct(self):
@@ -20,7 +21,9 @@ class TestParseIDL(unittest.TestCase):
         };
         """
         result = parse_idl(schema)
-        self.assertEqual(result, [Struct(name="A", fields=[Field(name="num", type="int32")])])
+        self.assertEqual(
+            result, [Struct(name="A", fields=[Field(name="num", type="int32")])]
+        )
 
     def test_annotations(self):
         schema = """
@@ -56,9 +59,17 @@ class TestParseIDL(unittest.TestCase):
         };
         """
         result = parse_idl(schema)
-        self.assertEqual(result, [
-            Module(name="outer", definitions=[Struct(name="B", fields=[Field(name="val", type="uint8")])])
-        ])
+        self.assertEqual(
+            result,
+            [
+                Module(
+                    name="outer",
+                    definitions=[
+                        Struct(name="B", fields=[Field(name="val", type="uint8")])
+                    ],
+                )
+            ],
+        )
 
     def test_fixed_array_field(self):
         schema = """
@@ -69,7 +80,12 @@ class TestParseIDL(unittest.TestCase):
         result = parse_idl(schema)
         self.assertEqual(
             result,
-            [Struct(name="A", fields=[Field(name="nums", type="int32", array_lengths=[3])])],
+            [
+                Struct(
+                    name="A",
+                    fields=[Field(name="nums", type="int32", array_lengths=[3])],
+                )
+            ],
         )
 
     def test_multidimensional_array_field(self):
@@ -81,7 +97,12 @@ class TestParseIDL(unittest.TestCase):
         result = parse_idl(schema)
         self.assertEqual(
             result,
-            [Struct(name="A", fields=[Field(name="nums", type="int32", array_lengths=[2, 3])])],
+            [
+                Struct(
+                    name="A",
+                    fields=[Field(name="nums", type="int32", array_lengths=[2, 3])],
+                )
+            ],
         )
 
     def test_constant_in_module(self):
@@ -91,9 +112,15 @@ class TestParseIDL(unittest.TestCase):
         };
         """
         result = parse_idl(schema)
-        self.assertEqual(result, [
-            Module(name="outer", definitions=[Constant(name="A", type="int16", value=-1)])
-        ])
+        self.assertEqual(
+            result,
+            [
+                Module(
+                    name="outer",
+                    definitions=[Constant(name="A", type="int16", value=-1)],
+                )
+            ],
+        )
 
     def test_sequence_field(self):
         schema = """
@@ -107,9 +134,7 @@ class TestParseIDL(unittest.TestCase):
             [
                 Struct(
                     name="A",
-                    fields=[
-                        Field(name="nums", type="int32", is_sequence=True)
-                    ],
+                    fields=[Field(name="nums", type="int32", is_sequence=True)],
                 )
             ],
         )
@@ -172,16 +197,19 @@ class TestParseIDL(unittest.TestCase):
         };
         """
         result = parse_idl(schema)
-        self.assertEqual(result, [
-            Enum(
-                name="COLORS",
-                enumerators=[
-                    Constant(name="RED", type="uint32", value=0),
-                    Constant(name="GREEN", type="uint32", value=1),
-                    Constant(name="BLUE", type="uint32", value=2),
-                ],
-            )
-        ])
+        self.assertEqual(
+            result,
+            [
+                Enum(
+                    name="COLORS",
+                    enumerators=[
+                        Constant(name="RED", type="uint32", value=0),
+                        Constant(name="GREEN", type="uint32", value=1),
+                        Constant(name="BLUE", type="uint32", value=2),
+                    ],
+                )
+            ],
+        )
 
     def test_user_defined_type_reference(self):
         schema = """
@@ -228,7 +256,9 @@ class TestParseIDL(unittest.TestCase):
                         Module(
                             name="inner",
                             definitions=[
-                                Struct(name="B", fields=[Field(name="a", type="outer::A")])
+                                Struct(
+                                    name="B", fields=[Field(name="a", type="outer::A")]
+                                )
                             ],
                         ),
                     ],
@@ -329,7 +359,9 @@ class TestParseIDL(unittest.TestCase):
                     name="MyUnion",
                     switch_type="uint8",
                     cases=[
-                        UnionCase(predicates=[0, 1], field=Field(name="a", type="int32")),
+                        UnionCase(
+                            predicates=[0, 1], field=Field(name="a", type="int32")
+                        ),
                         UnionCase(predicates=[2], field=Field(name="b", type="string")),
                     ],
                     default=Field(name="c", type="float32"),
@@ -363,6 +395,7 @@ class TestParseIDL(unittest.TestCase):
             result,
             [Struct(name="A", fields=[Field(name="x", type="int32")])],
         )
+
 
 if __name__ == "__main__":
     unittest.main()

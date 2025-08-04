@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional
+from typing import Union as TypingUnion
 
 from lark import Lark, Transformer
 
@@ -66,7 +67,7 @@ string_bound: "<" INT ">"
 
 scoped_name: NAME ("::" NAME)*
 
-BUILTIN_TYPE: /(unsigned\s+(short|long(\s+long)?)|long\s+double|double|float|short|long\s+long|long|int8|uint8|int16|uint16|int32|uint32|int64|uint64|byte|octet|wchar|char|boolean)/
+BUILTIN_TYPE: /(unsigned\s+(short|long(\s+long)?)|long\s+double|double|float|short|long\s+long|long|int8|uint8|int16|uint16|int32|uint32|int64|uint64|byte|octet|wchar|char|boolean)/  # noqa: E501
 STRING_KW: "string"
 WSTRING_KW: "wstring"
 NAME: /[A-Za-z_][A-Za-z0-9_]*/
@@ -90,6 +91,7 @@ annotation: "@" NAME ("(" const_value ")")?
 annotations: annotation+
 """
 
+
 @dataclass
 class Field:
     name: str
@@ -105,7 +107,7 @@ class Field:
 class Constant:
     name: str
     type: str
-    value: Union[int, float, bool, str]
+    value: TypingUnion[int, float, bool, str]
     annotations: dict[str, Any] = field(default_factory=dict)
 
 
@@ -115,11 +117,13 @@ class Enum:
     enumerators: List[Constant] = field(default_factory=list)
     annotations: dict[str, Any] = field(default_factory=dict)
 
+
 @dataclass
 class Struct:
     name: str
     fields: List[Field] = field(default_factory=list)
     annotations: dict[str, Any] = field(default_factory=dict)
+
 
 @dataclass
 class Typedef:
@@ -130,10 +134,12 @@ class Typedef:
     sequence_bound: Optional[int] = None
     annotations: dict[str, Any] = field(default_factory=dict)
 
+
 @dataclass
 class UnionCase:
     predicates: List[int | str]
     field: Field
+
 
 @dataclass
 class Union:
@@ -143,6 +149,7 @@ class Union:
     default: Optional[Field] = None
     annotations: dict[str, Any] = field(default_factory=dict)
 
+
 @dataclass
 class Module:
     name: str
@@ -150,6 +157,7 @@ class Module:
         default_factory=list
     )
     annotations: dict[str, Any] = field(default_factory=dict)
+
 
 class _Transformer(Transformer):
     _NORMALIZATION = {
@@ -201,6 +209,7 @@ class _Transformer(Transformer):
         if isinstance(annotations, dict) and hasattr(decl, "annotations"):
             decl.annotations = annotations
         return decl
+
     def NAME(self, token):
         return str(token)
 
@@ -245,7 +254,6 @@ class _Transformer(Transformer):
 
     def STRING(self, token):
         return str(token)[1:-1]
-
 
     def array(self, items):
         return [int(itm) for itm in items]
@@ -326,10 +334,10 @@ class _Transformer(Transformer):
             if idx == 0:
                 total = val
             else:
-                if not isinstance(total, (int, float)) or not isinstance(val, (int, float)):
-                    raise ValueError(
-                        "Addition only allowed on numeric constants"
-                    )
+                if not isinstance(total, (int, float)) or not isinstance(
+                    val, (int, float)
+                ):
+                    raise ValueError("Addition only allowed on numeric constants")
                 total += val
         return total
 
@@ -470,7 +478,9 @@ class _Transformer(Transformer):
                     for f in d.fields:
                         resolve_field(f, scope)
                 elif isinstance(d, Union):
-                    d.switch_type = self._NORMALIZATION.get(d.switch_type, d.switch_type)
+                    d.switch_type = self._NORMALIZATION.get(
+                        d.switch_type, d.switch_type
+                    )
                     if (
                         d.switch_type not in self._BUILTIN_TYPES
                         and not d.switch_type.startswith("::")
@@ -509,4 +519,3 @@ def parse_idl(source: str) -> List[Struct | Module | Constant | Enum | Typedef |
     result = transformer.transform(tree)
     transformer.resolve_types(result)
     return result
-

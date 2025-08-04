@@ -1,10 +1,10 @@
 import unittest
 
 from omgidl_parser import (
-    parse_idl_message_definitions,
-    IDLStructDefinition,
     IDLModuleDefinition,
+    IDLStructDefinition,
     IDLUnionDefinition,
+    parse_idl_message_definitions,
 )
 
 
@@ -54,7 +54,9 @@ class TestProcess(unittest.TestCase):
 
         color_mod = by_name["Color"]
         self.assertIsInstance(color_mod, IDLModuleDefinition)
-        self.assertEqual({f.name: f.value for f in color_mod.definitions}, {"RED": 0, "GREEN": 1})
+        self.assertEqual(
+            {f.name: f.value for f in color_mod.definitions}, {"RED": 0, "GREEN": 1}
+        )
 
         holder = by_name["Holder"]
         self.assertIsInstance(holder, IDLStructDefinition)

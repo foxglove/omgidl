@@ -1,7 +1,7 @@
-from .message_writer import MessageWriter, EncapsulationKind
-from .message_reader import MessageReader
-from .deserialization_info_cache import DeserializationInfoCache
 from .constants import UNION_DISCRIMINATOR_PROPERTY_KEY
+from .deserialization_info_cache import DeserializationInfoCache
+from .message_reader import MessageReader
+from .message_writer import EncapsulationKind, MessageWriter
 
 __all__ = [
     "MessageWriter",

@@ -1,6 +1,6 @@
 import unittest
 
-from ros2idl_parser import parse_ros2idl, MessageDefinition, MessageDefinitionField
+from ros2idl_parser import MessageDefinition, MessageDefinitionField, parse_ros2idl
 
 
 class TestParseRos2idl(unittest.TestCase):
@@ -161,7 +161,9 @@ class TestParseRos2idl(unittest.TestCase):
                     name="rosidl_parser/msg/MyMessage",
                     definitions=[
                         MessageDefinitionField(
-                            type="geometry/msg/Point", name="single_point", isComplex=True
+                            type="geometry/msg/Point",
+                            name="single_point",
+                            isComplex=True,
                         )
                     ],
                 ),
@@ -189,13 +191,25 @@ class TestParseRos2idl(unittest.TestCase):
                     name="COLORS",
                     definitions=[
                         MessageDefinitionField(
-                            type="uint32", name="RED", isConstant=True, value=0, valueText="0"
+                            type="uint32",
+                            name="RED",
+                            isConstant=True,
+                            value=0,
+                            valueText="0",
                         ),
                         MessageDefinitionField(
-                            type="uint32", name="GREEN", isConstant=True, value=1, valueText="1"
+                            type="uint32",
+                            name="GREEN",
+                            isConstant=True,
+                            value=1,
+                            valueText="1",
                         ),
                         MessageDefinitionField(
-                            type="uint32", name="BLUE", isConstant=True, value=2, valueText="2"
+                            type="uint32",
+                            name="BLUE",
+                            isConstant=True,
+                            value=2,
+                            valueText="2",
                         ),
                     ],
                 ),
@@ -228,10 +242,18 @@ class TestParseRos2idl(unittest.TestCase):
                     name="colors/Palette",
                     definitions=[
                         MessageDefinitionField(
-                            type="uint32", name="RED", isConstant=True, value=0, valueText="0"
+                            type="uint32",
+                            name="RED",
+                            isConstant=True,
+                            value=0,
+                            valueText="0",
                         ),
                         MessageDefinitionField(
-                            type="uint32", name="GREEN", isConstant=True, value=1, valueText="1"
+                            type="uint32",
+                            name="GREEN",
+                            isConstant=True,
+                            value=1,
+                            valueText="1",
                         ),
                     ],
                 ),

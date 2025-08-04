@@ -5,20 +5,10 @@ import sys
 from array import array
 from typing import Any, Dict, List, Tuple
 
-from omgidl_parser.parse import Struct, Field, Module, Union as IDLUnion
+from omgidl_parser.parse import Field, Module, Struct
+from omgidl_parser.parse import Union as IDLUnion
 
 from .constants import UNION_DISCRIMINATOR_PROPERTY_KEY
-
-from .message_writer import (
-    PRIMITIVE_FORMATS,
-    PRIMITIVE_SIZES,
-    EncapsulationKind,
-    _LITTLE_ENDIAN_KINDS,
-    _find_struct,
-    _union_case_field,
-    _padding,
-    _primitive_size,
-)
 from .deserialization_info_cache import (
     DeserializationInfoCache,
     FieldDeserializationInfo,
@@ -26,6 +16,16 @@ from .deserialization_info_cache import (
     UnionDeserializationInfo,
 )
 from .headers import read_delimiter_header, read_member_header
+from .message_writer import (
+    _LITTLE_ENDIAN_KINDS,
+    PRIMITIVE_FORMATS,
+    PRIMITIVE_SIZES,
+    EncapsulationKind,
+    _find_struct,
+    _padding,
+    _primitive_size,
+    _union_case_field,
+)
 
 
 class MessageReader:
@@ -36,11 +36,14 @@ class MessageReader:
     produced by the simplified ``parse_idl`` parser.
     """
 
-    def __init__(self, root_definition_name: str, definitions: List[Struct | Module | IDLUnion]) -> None:
+    def __init__(
+        self, root_definition_name: str, definitions: List[Struct | Module | IDLUnion]
+    ) -> None:
         root = _find_struct(definitions, root_definition_name)
         if root is None:
             raise ValueError(
-                f'Root definition name "{root_definition_name}" not found in schema definitions.'
+                f'Root definition name "{root_definition_name}" not found '
+                "in schema definitions."
             )
         self.cache = DeserializationInfoCache(definitions)
         self.root_info = self.cache.get_complex_deser_info(root)
@@ -67,11 +70,15 @@ class MessageReader:
         end = None
         if info.uses_delimiter_header:
             new_offset += _padding(new_offset, 4)
-            length, new_offset = read_delimiter_header(view, new_offset, self._fmt_prefix)
+            length, new_offset = read_delimiter_header(
+                view, new_offset, self._fmt_prefix
+            )
             end = new_offset + length
         if info.uses_member_header:
             while True:
-                field_id, size, new_offset = read_member_header(view, new_offset, self._fmt_prefix)
+                field_id, size, new_offset = read_member_header(
+                    view, new_offset, self._fmt_prefix
+                )
                 if field_id == 0:
                     break
                 field = next((f for f in info.fields if f.id == field_id), None)
@@ -111,9 +118,13 @@ class MessageReader:
                     data = bytes(view[offset : offset + slen - term])
                     offset += slen
                     s = data.decode("utf-8" if t == "string" else "utf-16-le")
-                    if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                    if (
+                        field.string_upper_bound is not None
+                        and len(s) > field.string_upper_bound
+                    ):
                         raise ValueError(
-                            f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                            f"Field '{field.name}' string length {len(s)} exceeds "
+                            f"bound {field.string_upper_bound}"
                         )
                     arr.append(s)
             elif t in PRIMITIVE_SIZES:
@@ -149,9 +160,13 @@ class MessageReader:
             data = bytes(view[offset : offset + length - term])
             offset += length
             s = data.decode("utf-8" if t == "string" else "utf-16-le")
-            if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+            if (
+                field.string_upper_bound is not None
+                and len(s) > field.string_upper_bound
+            ):
                 raise ValueError(
-                    f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                    f"Field '{field.name}' string length {len(s)} exceeds "
+                    f"bound {field.string_upper_bound}"
                 )
             return s, offset
         if t in PRIMITIVE_SIZES:
@@ -196,9 +211,13 @@ class MessageReader:
                 data = bytes(view[offset : offset + slen - term])
                 offset += slen
                 s = data.decode("utf-8" if t == "string" else "utf-16-le")
-                if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                if (
+                    field.string_upper_bound is not None
+                    and len(s) > field.string_upper_bound
+                ):
                     raise ValueError(
-                        f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                        f"Field '{field.name}' string length {len(s)} exceeds "
+                        f"bound {field.string_upper_bound}"
                     )
                 arr.append(s)
             return arr, offset
@@ -236,17 +255,22 @@ class MessageReader:
         end = None
         if info.uses_delimiter_header:
             new_offset += _padding(new_offset, 4)
-            length, new_offset = read_delimiter_header(view, new_offset, self._fmt_prefix)
+            length, new_offset = read_delimiter_header(
+                view, new_offset, self._fmt_prefix
+            )
             end = new_offset + length
         if info.uses_member_header:
             msg: Dict[str, Any] = {}
             while True:
-                field_id, size, new_offset = read_member_header(view, new_offset, self._fmt_prefix)
+                field_id, size, new_offset = read_member_header(
+                    view, new_offset, self._fmt_prefix
+                )
                 if field_id == 0:
                     break
                 if field_id == 1:
                     disc_field = Field(
-                        name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=info.definition.switch_type
+                        name=UNION_DISCRIMINATOR_PROPERTY_KEY,
+                        type=info.definition.switch_type,
                     )
                     disc_info = self.cache.build_field_info(disc_field, 1)
                     disc, new_offset = self._read_field(disc_info, view, new_offset)
@@ -266,7 +290,9 @@ class MessageReader:
             if end is not None:
                 new_offset = end
             return msg, new_offset
-        disc_field = Field(name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=info.definition.switch_type)
+        disc_field = Field(
+            name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=info.definition.switch_type
+        )
         disc_info = self.cache.build_field_info(disc_field)
         disc, new_offset = self._read_field(disc_info, view, new_offset)
         msg = {UNION_DISCRIMINATOR_PROPERTY_KEY: disc}
@@ -281,4 +307,3 @@ class MessageReader:
         if end is not None and new_offset < end:
             new_offset = end
         return msg, new_offset
-

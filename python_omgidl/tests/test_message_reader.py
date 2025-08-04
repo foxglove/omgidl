@@ -1,12 +1,12 @@
 import unittest
 from array import array
 
-from omgidl_parser.parse import parse_idl, Struct, Field
+from omgidl_parser.parse import Field, Struct, parse_idl
 from omgidl_serialization import (
-    MessageWriter,
-    MessageReader,
-    EncapsulationKind,
     UNION_DISCRIMINATOR_PROPERTY_KEY,
+    EncapsulationKind,
+    MessageReader,
+    MessageWriter,
 )
 
 
@@ -66,7 +66,9 @@ class TestMessageReader(unittest.TestCase):
         };
         """
         defs = parse_idl(schema)
-        writer = MessageWriter("A", defs, encapsulation_kind=EncapsulationKind.PL_CDR2_LE)
+        writer = MessageWriter(
+            "A", defs, encapsulation_kind=EncapsulationKind.PL_CDR2_LE
+        )
         reader = MessageReader("A", defs)
         msg = {"num": 42}
         buf = writer.write_message(msg)
@@ -82,7 +84,7 @@ class TestMessageReader(unittest.TestCase):
         defs = parse_idl(schema)
         writer = MessageWriter("A", defs)
         reader = MessageReader("A", defs)
-        msg = {"data": array('B', [1, 2, 3, 4])}
+        msg = {"data": array("B", [1, 2, 3, 4])}
         buf = writer.write_message(msg)
         decoded = reader.read_message(buf)
         self.assertEqual(decoded, msg)
@@ -96,7 +98,7 @@ class TestMessageReader(unittest.TestCase):
         defs = parse_idl(schema)
         writer = MessageWriter("A", defs)
         reader = MessageReader("A", defs)
-        msg = {"data": [array('B', [1, 2, 3]), array('B', [4, 5, 6])]}
+        msg = {"data": [array("B", [1, 2, 3]), array("B", [4, 5, 6])]}
         buf = writer.write_message(msg)
         decoded = reader.read_message(buf)
         self.assertEqual(decoded, msg)
@@ -160,19 +162,27 @@ class TestMessageReader(unittest.TestCase):
         self.assertEqual(decoded, msg)
 
     def test_roundtrip_variable_length_sequence(self) -> None:
-        defs = [Struct(name="A", fields=[Field(name="data", type="int32", is_sequence=True)])]
+        defs = [
+            Struct(
+                name="A", fields=[Field(name="data", type="int32", is_sequence=True)]
+            )
+        ]
         writer = MessageWriter("A", defs)
         reader = MessageReader("A", defs)
-        msg = {"data": array('i', [3, 7])}
+        msg = {"data": array("i", [3, 7])}
         buf = writer.write_message(msg)
         decoded = reader.read_message(buf)
         self.assertEqual(decoded, msg)
 
     def test_roundtrip_typed_float_sequence(self) -> None:
-        defs = [Struct(name="A", fields=[Field(name="data", type="float32", is_sequence=True)])]
+        defs = [
+            Struct(
+                name="A", fields=[Field(name="data", type="float32", is_sequence=True)]
+            )
+        ]
         writer = MessageWriter("A", defs)
         reader = MessageReader("A", defs)
-        msg = {"data": array('f', [1.0, 2.0])}
+        msg = {"data": array("f", [1.0, 2.0])}
         buf = writer.write_message(msg)
         decoded = reader.read_message(buf)
         self.assertEqual(decoded, msg)
@@ -210,7 +220,9 @@ class TestMessageReader(unittest.TestCase):
 
     def test_roundtrip_sequence_of_structs(self) -> None:
         inner = Struct(name="Inner", fields=[Field(name="num", type="int32")])
-        outer = Struct(name="Outer", fields=[Field(name="inners", type="Inner", is_sequence=True)])
+        outer = Struct(
+            name="Outer", fields=[Field(name="inners", type="Inner", is_sequence=True)]
+        )
         defs = [inner, outer]
         writer = MessageWriter("Outer", defs)
         reader = MessageReader("Outer", defs)

@@ -3,24 +3,14 @@ from __future__ import annotations
 import struct
 from array import array
 from enum import IntEnum
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from omgidl_parser.parse import Struct, Field, Module, Union as IDLUnion
+from omgidl_parser.parse import Field, Module, Struct
+from omgidl_parser.parse import Union as IDLUnion
 
 from .constants import UNION_DISCRIMINATOR_PROPERTY_KEY
-from .deserialization_info_cache import (
-    DeserializationInfoCache,
-    FieldDeserializationInfo,
-    StructDeserializationInfo,
-    UnionDeserializationInfo,
-    _get_header_needs,
-)
-from .headers import (
-    write_delimiter_header,
-    write_member_header,
-    write_sentinel_header,
-)
-
+from .deserialization_info_cache import DeserializationInfoCache, _get_header_needs
+from .headers import write_delimiter_header, write_member_header, write_sentinel_header
 
 PRIMITIVE_SIZES: Dict[str, int] = {
     "bool": 1,
@@ -111,7 +101,8 @@ class MessageWriter:
         root = _find_struct(definitions, root_definition_name)
         if root is None:
             raise ValueError(
-                f'Root definition name "{root_definition_name}" not found in schema definitions.'
+                f'Root definition name "{root_definition_name}" not found '
+                "in schema definitions."
             )
         self.definitions = definitions
         self.cache = DeserializationInfoCache(definitions)
@@ -133,7 +124,9 @@ class MessageWriter:
         return bytes(buffer)
 
     # internal helpers ------------------------------------------------------
-    def _byte_size_struct(self, struct_def: Struct, message: Dict[str, Any], offset: int) -> int:
+    def _byte_size_struct(
+        self, struct_def: Struct, message: Dict[str, Any], offset: int
+    ) -> int:
         uses_delim, uses_member = _get_header_needs(struct_def)
         msg = message or {}
         new_offset = offset
@@ -211,16 +204,21 @@ class MessageWriter:
                 length = len(arr)
             if field.sequence_bound is not None and length > field.sequence_bound:
                 raise ValueError(
-                    f"Field '{field.name}' sequence length {length} exceeds bound {field.sequence_bound}"
+                    f"Field '{field.name}' sequence length {length} exceeds "
+                    f"bound {field.sequence_bound}"
                 )
             offset += _padding(offset, 4)
             offset += 4
             if t in ("string", "wstring"):
                 for s in arr:
                     s = s if isinstance(s, str) else ""
-                    if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                    if (
+                        field.string_upper_bound is not None
+                        and len(s) > field.string_upper_bound
+                    ):
                         raise ValueError(
-                            f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                            f"Field '{field.name}' string length {len(s)} exceeds "
+                            f"bound {field.string_upper_bound}"
                         )
                     offset += _padding(offset, 4)
                     encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
@@ -245,9 +243,13 @@ class MessageWriter:
         else:
             if t in ("string", "wstring"):
                 s = value if isinstance(value, str) else ""
-                if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                if (
+                    field.string_upper_bound is not None
+                    and len(s) > field.string_upper_bound
+                ):
                     raise ValueError(
-                        f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                        f"Field '{field.name}' string length {len(s)} exceeds "
+                        f"bound {field.string_upper_bound}"
                     )
                 offset += _padding(offset, 4)
                 encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
@@ -276,7 +278,9 @@ class MessageWriter:
         arr = value if isinstance(value, _SEQUENCE_TYPES) else []
         length = lengths[0]
         arr_len = (
-            arr.nbytes // _primitive_size(t) if isinstance(arr, memoryview) and t in PRIMITIVE_SIZES else len(arr)
+            arr.nbytes // _primitive_size(t)
+            if isinstance(arr, memoryview) and t in PRIMITIVE_SIZES
+            else len(arr)
         )
         if len(lengths) > 1:
             for i in range(length):
@@ -286,9 +290,13 @@ class MessageWriter:
         if t in ("string", "wstring"):
             for i in range(length):
                 s = arr[i] if i < arr_len and isinstance(arr[i], str) else ""
-                if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                if (
+                    field.string_upper_bound is not None
+                    and len(s) > field.string_upper_bound
+                ):
                     raise ValueError(
-                        f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                        f"Field '{field.name}' string length {len(s)} exceeds "
+                        f"bound {field.string_upper_bound}"
                     )
                 offset += _padding(offset, 4)
                 encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
@@ -313,7 +321,11 @@ class MessageWriter:
         return offset
 
     def _write_struct(
-        self, struct_def: Struct, message: Dict[str, Any], buffer: bytearray, offset: int
+        self,
+        struct_def: Struct,
+        message: Dict[str, Any],
+        buffer: bytearray,
+        offset: int,
     ) -> int:
         uses_delim, uses_member = _get_header_needs(struct_def)
         msg = message or {}
@@ -338,7 +350,9 @@ class MessageWriter:
                 data_start = new_offset + 4
                 data_end = self._field_size(field, value, data_start)
                 field_size = data_end - data_start
-                write_member_header(buffer, new_offset, fid, field_size, self._fmt_prefix)
+                write_member_header(
+                    buffer, new_offset, fid, field_size, self._fmt_prefix
+                )
                 new_offset = self._write_field(field, value, buffer, new_offset + 4)
             new_offset = write_sentinel_header(buffer, new_offset, self._fmt_prefix)
         else:
@@ -358,7 +372,9 @@ class MessageWriter:
             write_delimiter_header(buffer, length_offset, length, self._fmt_prefix)
         return new_offset
 
-    def _write_field(self, field: Field, value: Any, buffer: bytearray, offset: int) -> int:
+    def _write_field(
+        self, field: Field, value: Any, buffer: bytearray, offset: int
+    ) -> int:
         t = field.type
         if field.array_lengths:
             return self._write_array(field, value, buffer, offset, field.array_lengths)
@@ -372,7 +388,8 @@ class MessageWriter:
                     length = len(arr)
                 if field.sequence_bound is not None and length > field.sequence_bound:
                     raise ValueError(
-                        f"Field '{field.name}' sequence length {length} exceeds bound {field.sequence_bound}"
+                        f"Field '{field.name}' sequence length {length} exceeds "
+                        f"bound {field.sequence_bound}"
                     )
                 offset += _padding(offset, 4)
                 struct.pack_into(self._fmt_prefix + "I", buffer, offset, length)
@@ -380,18 +397,26 @@ class MessageWriter:
                 if t in ("string", "wstring"):
                     for s in arr:
                         s = s if isinstance(s, str) else ""
-                        if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                        if (
+                            field.string_upper_bound is not None
+                            and len(s) > field.string_upper_bound
+                        ):
                             raise ValueError(
-                                f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                                f"Field '{field.name}' string length {len(s)} exceeds "
+                                f"bound {field.string_upper_bound}"
                             )
                         offset += _padding(offset, 4)
                         encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
                         length_s = len(encoded) + (1 if t == "string" else 2)
-                        struct.pack_into(self._fmt_prefix + "I", buffer, offset, length_s)
+                        struct.pack_into(
+                            self._fmt_prefix + "I", buffer, offset, length_s
+                        )
                         offset += 4
-                        buffer[offset:offset + len(encoded)] = encoded
+                        buffer[offset : offset + len(encoded)] = encoded
                         offset += len(encoded)
-                        buffer[offset:offset + (1 if t == "string" else 2)] = b"\x00" * (1 if t == "string" else 2)
+                        buffer[offset : offset + (1 if t == "string" else 2)] = (
+                            b"\x00" * (1 if t == "string" else 2)
+                        )
                         offset += 1 if t == "string" else 2
                 elif t in PRIMITIVE_SIZES:
                     size = _primitive_size(t)
@@ -406,29 +431,39 @@ class MessageWriter:
                     if struct_def is not None:
                         for msg in arr:
                             msg_dict = msg if isinstance(msg, dict) else {}
-                            offset = self._write_struct(struct_def, msg_dict, buffer, offset)
+                            offset = self._write_struct(
+                                struct_def, msg_dict, buffer, offset
+                            )
                     else:
                         union_def = _find_union(self.definitions, t)
                         if union_def is None:
                             raise ValueError(f"Unrecognized struct or union type {t}")
                         for msg in arr:
                             msg_dict = msg if isinstance(msg, dict) else {}
-                            offset = self._write_union(union_def, msg_dict, buffer, offset)
+                            offset = self._write_union(
+                                union_def, msg_dict, buffer, offset
+                            )
             else:
                 if t in ("string", "wstring"):
                     s = value if isinstance(value, str) else ""
-                    if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                    if (
+                        field.string_upper_bound is not None
+                        and len(s) > field.string_upper_bound
+                    ):
                         raise ValueError(
-                            f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                            f"Field '{field.name}' string length {len(s)} exceeds "
+                            f"bound {field.string_upper_bound}"
                         )
                     offset += _padding(offset, 4)
                     encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
                     length = len(encoded) + (1 if t == "string" else 2)
                     struct.pack_into(self._fmt_prefix + "I", buffer, offset, length)
                     offset += 4
-                    buffer[offset:offset + len(encoded)] = encoded
+                    buffer[offset : offset + len(encoded)] = encoded
                     offset += len(encoded)
-                    buffer[offset:offset + (1 if t == "string" else 2)] = b"\x00" * (1 if t == "string" else 2)
+                    buffer[offset : offset + (1 if t == "string" else 2)] = b"\x00" * (
+                        1 if t == "string" else 2
+                    )
                     offset += 1 if t == "string" else 2
                 elif t in PRIMITIVE_SIZES:
                     size = _primitive_size(t)
@@ -441,7 +476,9 @@ class MessageWriter:
                     struct_def = _find_struct(self.definitions, t)
                     if struct_def is not None:
                         msg_dict = value if isinstance(value, dict) else {}
-                        offset = self._write_struct(struct_def, msg_dict, buffer, offset)
+                        offset = self._write_struct(
+                            struct_def, msg_dict, buffer, offset
+                        )
                     else:
                         union_def = _find_union(self.definitions, t)
                         if union_def is None:
@@ -451,13 +488,20 @@ class MessageWriter:
         return offset
 
     def _write_array(
-        self, field: Field, value: Any, buffer: bytearray, offset: int, lengths: List[int]
+        self,
+        field: Field,
+        value: Any,
+        buffer: bytearray,
+        offset: int,
+        lengths: List[int],
     ) -> int:
         t = field.type
         arr = value if isinstance(value, _SEQUENCE_TYPES) else []
         length = lengths[0]
         arr_len = (
-            arr.nbytes // _primitive_size(t) if isinstance(arr, memoryview) and t in PRIMITIVE_SIZES else len(arr)
+            arr.nbytes // _primitive_size(t)
+            if isinstance(arr, memoryview) and t in PRIMITIVE_SIZES
+            else len(arr)
         )
         if len(lengths) > 1:
             for i in range(length):
@@ -467,18 +511,22 @@ class MessageWriter:
         if t in ("string", "wstring"):
             for i in range(length):
                 s = arr[i] if i < arr_len and isinstance(arr[i], str) else ""
-                if field.string_upper_bound is not None and len(s) > field.string_upper_bound:
+                if (
+                    field.string_upper_bound is not None
+                    and len(s) > field.string_upper_bound
+                ):
                     raise ValueError(
-                        f"Field '{field.name}' string length {len(s)} exceeds bound {field.string_upper_bound}"
+                        f"Field '{field.name}' string length {len(s)} exceeds "
+                        f"bound {field.string_upper_bound}"
                     )
                 offset += _padding(offset, 4)
                 encoded = s.encode("utf-8" if t == "string" else "utf-16-le")
                 length_bytes = len(encoded) + (1 if t == "string" else 2)
                 struct.pack_into(self._fmt_prefix + "I", buffer, offset, length_bytes)
                 offset += 4
-                buffer[offset:offset + len(encoded)] = encoded
+                buffer[offset : offset + len(encoded)] = encoded
                 offset += len(encoded)
-                buffer[offset:offset + (1 if t == "string" else 2)] = b"\x00" * (
+                buffer[offset : offset + (1 if t == "string" else 2)] = b"\x00" * (
                     1 if t == "string" else 2
                 )
                 offset += 1 if t == "string" else 2
@@ -505,13 +553,17 @@ class MessageWriter:
                     offset = self._write_union(union_def, msg, buffer, offset)
         return offset
 
-    def _byte_size_union(self, union_def: IDLUnion, message: Dict[str, Any], offset: int) -> int:
+    def _byte_size_union(
+        self, union_def: IDLUnion, message: Dict[str, Any], offset: int
+    ) -> int:
         uses_delim, uses_member = _get_header_needs(union_def)
         new_offset = offset
         if uses_delim:
             new_offset += _padding(new_offset, 4)
             new_offset += 4
-        disc_field = Field(name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=union_def.switch_type)
+        disc_field = Field(
+            name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=union_def.switch_type
+        )
         disc = message.get(UNION_DISCRIMINATOR_PROPERTY_KEY)
         if uses_member:
             new_offset += 4
@@ -537,7 +589,11 @@ class MessageWriter:
         return new_offset
 
     def _write_union(
-        self, union_def: IDLUnion, message: Dict[str, Any], buffer: bytearray, offset: int
+        self,
+        union_def: IDLUnion,
+        message: Dict[str, Any],
+        buffer: bytearray,
+        offset: int,
     ) -> int:
         uses_delim, uses_member = _get_header_needs(union_def)
         new_offset = offset
@@ -546,11 +602,14 @@ class MessageWriter:
             new_offset += _padding(new_offset, 4)
             length_offset = new_offset
             new_offset += 4
-        disc_field = Field(name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=union_def.switch_type)
+        disc_field = Field(
+            name=UNION_DISCRIMINATOR_PROPERTY_KEY, type=union_def.switch_type
+        )
         disc = message.get(UNION_DISCRIMINATOR_PROPERTY_KEY)
         if disc is None:
             raise ValueError(
-                f"Union {union_def.name} requires '{UNION_DISCRIMINATOR_PROPERTY_KEY}' discriminator"
+                f"Union {union_def.name} requires "
+                f"'{UNION_DISCRIMINATOR_PROPERTY_KEY}' discriminator"
             )
         if uses_member:
             data_start = new_offset + 4
@@ -608,7 +667,9 @@ def _find_struct(defs: List[Struct | Module], name: str) -> Optional[Struct]:
     return None
 
 
-def _find_union(defs: List[Struct | Module | IDLUnion], name: str) -> Optional[IDLUnion]:
+def _find_union(
+    defs: List[Struct | Module | IDLUnion], name: str
+) -> Optional[IDLUnion]:
     for d in defs:
         if isinstance(d, IDLUnion) and d.name == name:
             return d

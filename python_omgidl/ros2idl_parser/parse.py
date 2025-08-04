@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import List, Optional, Union, Any
+from dataclasses import dataclass
+from dataclasses import field as dataclass_field
+from typing import Any, List, Optional, Union
 
-from omgidl_parser.parse import (
-    parse_idl,
-    Field as IDLField,
-    Struct as IDLStruct,
-    Module as IDLModule,
-    Constant as IDLConstant,
-    Enum as IDLEnum,
-    Typedef as IDLTypedef,
-    Union as IDLUnion,
-)
+from omgidl_parser.parse import Constant as IDLConstant
+from omgidl_parser.parse import Enum as IDLEnum
+from omgidl_parser.parse import Field as IDLField
+from omgidl_parser.parse import Module as IDLModule
+from omgidl_parser.parse import Struct as IDLStruct
+from omgidl_parser.parse import Typedef as IDLTypedef
+from omgidl_parser.parse import Union as IDLUnion
+from omgidl_parser.parse import parse_idl
 from omgidl_parser.process import build_map
 
 
@@ -36,7 +35,7 @@ class MessageDefinitionField:
 @dataclass
 class MessageDefinition:
     name: Optional[str]
-    definitions: List[MessageDefinitionField] = field(default_factory=list)
+    definitions: List[MessageDefinitionField] = dataclass_field(default_factory=list)
 
 
 ROS2IDL_HEADER = re.compile(r"={80}\nIDL: [a-zA-Z][\w]*(?:\/[a-zA-Z][\w]*)*")
@@ -60,7 +59,10 @@ def parse_ros2idl(message_definition: str) -> List[MessageDefinition]:
             if field.enumType:
                 field.enumType = _normalize_name(field.enumType)
 
-        if msg.name in ("builtin_interfaces/msg/Time", "builtin_interfaces/msg/Duration"):
+        if msg.name in (
+            "builtin_interfaces/msg/Time",
+            "builtin_interfaces/msg/Duration",
+        ):
             for field in msg.definitions:
                 if field.name == "nanosec":
                     field.name = "nsec"
@@ -77,7 +79,9 @@ def _process_definition(
     results: List[MessageDefinition] = []
     if isinstance(defn, IDLStruct):
         fields = [_convert_field(f, typedefs, idl_map, scope) for f in defn.fields]
-        results.append(MessageDefinition(name="/".join([*scope, defn.name]), definitions=fields))
+        results.append(
+            MessageDefinition(name="/".join([*scope, defn.name]), definitions=fields)
+        )
     elif isinstance(defn, IDLUnion):
         raise ValueError("Unions are not supported in MessageDefinition type")
     elif isinstance(defn, IDLModule):
@@ -88,7 +92,9 @@ def _process_definition(
         ]
         if const_fields:
             results.append(
-                MessageDefinition(name="/".join([*scope, defn.name]), definitions=const_fields)
+                MessageDefinition(
+                    name="/".join([*scope, defn.name]), definitions=const_fields
+                )
             )
         for sub in defn.definitions:
             if isinstance(sub, (IDLModule, IDLStruct, IDLUnion, IDLEnum)):
@@ -162,7 +168,9 @@ def _convert_field(
     )
 
 
-def _convert_constant(const: IDLConstant, typedefs: dict[str, IDLTypedef]) -> MessageDefinitionField:
+def _convert_constant(
+    const: IDLConstant, typedefs: dict[str, IDLTypedef]
+) -> MessageDefinitionField:
     t = _resolve_type(const.type, typedefs)
     return MessageDefinitionField(
         type=t,

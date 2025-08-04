@@ -1,19 +1,11 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Union
 
-from .parse import (
-    Constant,
-    Enum,
-    Field,
-    Module,
-    Struct,
-    Typedef,
-    Union as IDLUnion,
-    UnionCase,
-)
+from .parse import Constant, Enum, Field, Module, Struct, Typedef
+from .parse import Union as IDLUnion
 
 # ---------------------------------------------------------------------------
 # Message definition dataclasses -------------------------------------------------
@@ -70,7 +62,9 @@ class IDLUnionDefinition:
     annotations: Optional[Dict[str, Any]] = None
 
 
-IDLMessageDefinition = Union[IDLStructDefinition, IDLModuleDefinition, IDLUnionDefinition]
+IDLMessageDefinition = Union[
+    IDLStructDefinition, IDLModuleDefinition, IDLUnionDefinition
+]
 
 # ---------------------------------------------------------------------------
 # Map building -------------------------------------------------------------------
@@ -141,7 +135,10 @@ def _resolve_typedef(
                 inner_fixed = bool(inner_td.array_lengths) and not inner_td.is_sequence
                 if not (outer_fixed and inner_fixed):
                     raise ValueError(
-                        "We do not support composing variable length arrays with typedefs"
+                        (
+                            "We do not support composing variable length arrays "
+                            "with typedefs"
+                        )
                     )
 
         if isinstance(base_type, tuple):
@@ -193,7 +190,9 @@ def _convert_field(
     typedefs: Dict[str, Typedef],
     idl_map: Dict[str, Definition],
 ) -> IDLMessageDefinitionField:
-    t, td_arrays, td_is_seq, td_seq_bound, td_str_bound = _resolve_typedef(field.type, typedefs)
+    t, td_arrays, td_is_seq, td_seq_bound, td_str_bound = _resolve_typedef(
+        field.type, typedefs
+    )
 
     field_has_array = bool(field.array_lengths) or field.is_sequence
     td_has_array = bool(td_arrays) or td_is_seq
@@ -209,7 +208,11 @@ def _convert_field(
         array_lengths.extend(td_arrays)
     is_sequence = field.is_sequence or td_is_seq
     sequence_bound = field.sequence_bound if field.is_sequence else td_seq_bound
-    upper_bound = field.string_upper_bound if field.string_upper_bound is not None else td_str_bound
+    upper_bound = (
+        field.string_upper_bound
+        if field.string_upper_bound is not None
+        else td_str_bound
+    )
 
     enum_type = None
     is_complex = False
