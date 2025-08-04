@@ -130,6 +130,20 @@ def _resolve_typedef(
         visited.add(t)
         td = typedefs[t]
         base_type = td.type
+
+        # Detect composing variable length arrays within typedef chains.
+        if isinstance(base_type, str) and base_type in typedefs:
+            inner_td = typedefs[base_type]
+            outer_has_array = bool(td.array_lengths) or td.is_sequence
+            inner_has_array = bool(inner_td.array_lengths) or inner_td.is_sequence
+            if outer_has_array and inner_has_array:
+                outer_fixed = bool(td.array_lengths) and not td.is_sequence
+                inner_fixed = bool(inner_td.array_lengths) and not inner_td.is_sequence
+                if not (outer_fixed and inner_fixed):
+                    raise ValueError(
+                        "We do not support composing variable length arrays with typedefs"
+                    )
+
         if isinstance(base_type, tuple):
             if base_type[0] == "sequence":
                 is_sequence = True
@@ -180,6 +194,16 @@ def _convert_field(
     idl_map: Dict[str, Definition],
 ) -> IDLMessageDefinitionField:
     t, td_arrays, td_is_seq, td_seq_bound, td_str_bound = _resolve_typedef(field.type, typedefs)
+
+    field_has_array = bool(field.array_lengths) or field.is_sequence
+    td_has_array = bool(td_arrays) or td_is_seq
+    field_fixed = bool(field.array_lengths) and not field.is_sequence
+    td_fixed = bool(td_arrays) and not td_is_seq
+    if field_has_array and td_has_array and (not field_fixed or not td_fixed):
+        raise ValueError(
+            "We do not support composing variable length arrays with typedefs"
+        )
+
     array_lengths = list(field.array_lengths)
     if td_arrays:
         array_lengths.extend(td_arrays)

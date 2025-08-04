@@ -79,6 +79,36 @@ class TestProcess(unittest.TestCase):
         self.assertEqual(top_module.definitions[0].name, "CONST_TOP")
         self.assertEqual(top_module.definitions[0].value, 42)
 
+    def test_variable_array_composition_with_typedef_chain(self) -> None:
+        schema = """
+        typedef sequence<int32, 10> int32arr;
+        typedef int32arr int32arr2[2];
+        struct ArrStruct {
+            int32arr2 intArray;
+        };
+        """
+        with self.assertRaises(ValueError):
+            parse_idl_message_definitions(schema)
+
+    def test_variable_array_composition_with_field_usage(self) -> None:
+        schema = """
+        typedef sequence<int32, 10> int32arr;
+        struct ArrStruct {
+            int32arr intArray[2];
+        };
+        """
+        with self.assertRaises(ValueError):
+            parse_idl_message_definitions(schema)
+
+        schema2 = """
+        typedef int32 int32arr[2];
+        struct ArrStruct {
+            sequence<int32arr> intArray;
+        };
+        """
+        with self.assertRaises(ValueError):
+            parse_idl_message_definitions(schema2)
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
