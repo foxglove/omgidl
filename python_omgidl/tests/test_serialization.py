@@ -16,7 +16,7 @@ class TestMessageWriter(unittest.TestCase):
         writer = MessageWriter("A", defs)
         msg = {"num": 5, "flag": 7}
         written = writer.write_message(msg)
-        expected = bytes([0, 1, 0, 0, 5, 0, 0, 0, 7])
+        expected = bytes([0, 1, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0, 7])
         self.assertEqual(written, expected)
         self.assertEqual(writer.calculate_byte_size(msg), len(expected))
 
@@ -31,7 +31,7 @@ class TestMessageWriter(unittest.TestCase):
         writer = MessageWriter("A", defs)
         msg = {"flag": 7}
         written = writer.write_message(msg)
-        expected = bytes([0, 1, 0, 0, 5, 0, 0, 0, 7])
+        expected = bytes([0, 1, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0, 7])
         self.assertEqual(written, expected)
         self.assertEqual(writer.calculate_byte_size(msg), len(expected))
 
@@ -45,7 +45,7 @@ class TestMessageWriter(unittest.TestCase):
         writer = MessageWriter("A", defs)
         msg = {"data": [1, 2, 3, 4]}
         written = writer.write_message(msg)
-        expected = bytes([0, 1, 0, 0, 1, 2, 3, 4])
+        expected = bytes([0, 1, 0, 0, 4, 0, 0, 0, 1, 2, 3, 4])
         self.assertEqual(written, expected)
         self.assertEqual(writer.calculate_byte_size(msg), len(expected))
 
@@ -59,7 +59,7 @@ class TestMessageWriter(unittest.TestCase):
         writer = MessageWriter("A", defs)
         msg = {"data": [[1, 2, 3], [4, 5, 6]]}
         written = writer.write_message(msg)
-        expected = bytes([0, 1, 0, 0, 1, 2, 3, 4, 5, 6])
+        expected = bytes([0, 1, 0, 0, 6, 0, 0, 0, 1, 2, 3, 4, 5, 6])
         self.assertEqual(written, expected)
         self.assertEqual(writer.calculate_byte_size(msg), len(expected))
 
@@ -73,7 +73,7 @@ class TestMessageWriter(unittest.TestCase):
         writer = MessageWriter("A", defs)
         msg = {"name": "hi"}
         written = writer.write_message(msg)
-        expected = bytes([0, 1, 0, 0, 3, 0, 0, 0, 104, 105, 0])
+        expected = bytes([0, 1, 0, 0, 7, 0, 0, 0, 3, 0, 0, 0, 104, 105, 0])
         self.assertEqual(written, expected)
         self.assertEqual(writer.calculate_byte_size(msg), len(expected))
 
@@ -86,7 +86,7 @@ class TestMessageWriter(unittest.TestCase):
         defs = parse_idl(schema)
         writer = MessageWriter("A", defs)
         ok = {"name": "hello"}
-        expected = bytes([0, 1, 0, 0, 6, 0, 0, 0, 104, 101, 108, 108, 111, 0])
+        expected = bytes([0, 1, 0, 0, 10, 0, 0, 0, 6, 0, 0, 0, 104, 101, 108, 108, 111, 0])
         written = writer.write_message(ok)
         self.assertEqual(written, expected)
         self.assertEqual(writer.calculate_byte_size(ok), len(expected))
@@ -110,7 +110,7 @@ class TestMessageWriter(unittest.TestCase):
         writer = MessageWriter("A", defs)
         msg = {"u": {UNION_DISCRIMINATOR_PROPERTY_KEY: 1, "b": 42}}
         written = writer.write_message(msg)
-        expected = bytes([0, 1, 0, 0, 1, 42])
+        expected = bytes([0, 1, 0, 0, 6, 0, 0, 0, 2, 0, 0, 0, 1, 42])
         self.assertEqual(written, expected)
         self.assertEqual(writer.calculate_byte_size(msg), len(expected))
 
@@ -139,7 +139,7 @@ class TestMessageWriter(unittest.TestCase):
         writer = MessageWriter("Outer", defs)
         msg = {"inner": {"num": 5}}
         written = writer.write_message(msg)
-        expected = bytes([0, 1, 0, 0, 5, 0, 0, 0])
+        expected = bytes([0, 1, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0])
         self.assertEqual(written, expected)
         self.assertEqual(writer.calculate_byte_size(msg), len(expected))
 
@@ -150,6 +150,7 @@ class TestMessageWriter(unittest.TestCase):
         written = writer.write_message(msg)
         expected = bytes([
             0, 1, 0, 0,
+            12, 0, 0, 0,
             2, 0, 0, 0,
             3, 0, 0, 0,
             7, 0, 0, 0,
@@ -166,8 +167,11 @@ class TestMessageWriter(unittest.TestCase):
         written = writer.write_message(msg)
         expected = bytes([
             0, 1, 0, 0,
+            20, 0, 0, 0,
             2, 0, 0, 0,
+            4, 0, 0, 0,
             1, 0, 0, 0,
+            4, 0, 0, 0,
             2, 0, 0, 0,
         ])
         self.assertEqual(written, expected)
@@ -185,6 +189,7 @@ class TestMessageWriter(unittest.TestCase):
         written = writer.write_message(msg)
         expected = bytes([
             0, 1, 0, 0,
+            12, 0, 0, 0,
             2, 0, 0, 0,
             3, 0, 0, 0,
             7, 0, 0, 0,
@@ -197,9 +202,9 @@ class TestMessageWriter(unittest.TestCase):
         with self.assertRaises(ValueError):
             writer.calculate_byte_size(over)
 
-    def test_appendable_struct_delimiter(self) -> None:
+    def test_final_struct_no_delimiter(self) -> None:
         schema = """
-        @appendable
+        @final
         struct A {
             int32 num;
         };
@@ -208,7 +213,7 @@ class TestMessageWriter(unittest.TestCase):
         writer = MessageWriter("A", defs)
         msg = {"num": 5}
         written = writer.write_message(msg)
-        expected = bytes([0, 1, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0])
+        expected = bytes([0, 1, 0, 0, 5, 0, 0, 0])
         self.assertEqual(written, expected)
 
     def test_mutable_optional_field_skipped(self) -> None:

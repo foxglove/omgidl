@@ -198,9 +198,12 @@ def _get_header_needs(definition: Struct | IDLUnion) -> tuple[bool, bool]:
     annotations = getattr(definition, "annotations", {}) or {}
     if "mutable" in annotations:
         return (True, True)
+    if "final" in annotations:
+        return (False, False)
     if "appendable" in annotations:
         return (True, False)
-    return (False, False)
+    # Default extensibility for structs and unions is appendable
+    return (True, False)
 
 
 def _find_struct(defs: List[Struct | Module], name: str) -> Optional[Struct]:
