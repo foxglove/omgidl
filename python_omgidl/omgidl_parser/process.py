@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Union
 
@@ -56,10 +55,10 @@ IDLMessageDefinition = Union[
 Definition = Union[Struct, Module, Constant, Enum, Typedef, IDLUnion]
 
 
-def build_map(definitions: Iterable[Definition]) -> "OrderedDict[str, Definition]":
+def build_map(definitions: Iterable[Definition]) -> dict[str, Definition]:
     """Traverse parsed nodes and return a map of fully scoped names to nodes."""
 
-    idl_map: "OrderedDict[str, Definition]" = OrderedDict()
+    idl_map: dict[str, Definition] = {}
 
     def traverse(defn: Definition, scope: List[str]) -> None:
         if isinstance(defn, Module):
@@ -263,7 +262,7 @@ def _convert_union(
 
 
 def to_idl_message_definitions(
-    idl_map: "OrderedDict[str, Definition]",
+    idl_map: dict[str, Definition],
 ) -> List[IDLMessageDefinition]:
     """Convert map entries into flattened message definitions."""
 
