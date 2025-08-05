@@ -4,6 +4,8 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Union
 
+from foxglove_message_definition import MessageDefinitionField
+
 from .parse import Constant, Enum, Field, Module, Struct, Typedef
 from .parse import Union as IDLUnion
 
@@ -12,34 +14,15 @@ from .parse import Union as IDLUnion
 
 
 @dataclass
-class IDLMessageDefinitionField:
-    """Flattened field definition used by serialization code."""
-
-    name: str
-    type: str
-    isComplex: bool
-    annotations: Optional[Dict[str, Any]] = None
-    arrayLengths: Optional[List[int]] = None
-    arrayUpperBound: Optional[int] = None
-    upperBound: Optional[int] = None
-    isArray: Optional[bool] = None
-    enumType: Optional[str] = None
-    defaultValue: Optional[Any] = None
-    isConstant: bool = False
-    value: Optional[Any] = None
-    valueText: Optional[str] = None
-
-
-@dataclass
 class Case:
     predicates: List[Union[int, bool]]
-    type: IDLMessageDefinitionField
+    type: MessageDefinitionField
 
 
 @dataclass
 class IDLStructDefinition:
     name: str
-    definitions: List[IDLMessageDefinitionField]
+    definitions: List[MessageDefinitionField]
     aggregatedKind: str = "struct"
     annotations: Optional[Dict[str, Any]] = None
 
@@ -47,7 +30,7 @@ class IDLStructDefinition:
 @dataclass
 class IDLModuleDefinition:
     name: str
-    definitions: List[IDLMessageDefinitionField]
+    definitions: List[MessageDefinitionField]
     aggregatedKind: str = "module"
     annotations: Optional[Dict[str, Any]] = None
 
@@ -58,7 +41,7 @@ class IDLUnionDefinition:
     switchType: str
     cases: List[Case]
     aggregatedKind: str = "union"
-    defaultCase: Optional[IDLMessageDefinitionField] = None
+    defaultCase: Optional[MessageDefinitionField] = None
     annotations: Optional[Dict[str, Any]] = None
 
 
@@ -164,7 +147,7 @@ def _convert_constant(
     const: Constant,
     typedefs: Dict[str, Typedef],
     idl_map: Dict[str, Definition],
-) -> IDLMessageDefinitionField:
+) -> MessageDefinitionField:
     t, _arr, _is_seq, _seq_bound, _str_bound = _resolve_typedef(const.type, typedefs)
     enum_type = None
     is_complex = False
@@ -174,14 +157,14 @@ def _convert_constant(
         t = "uint32"
     elif isinstance(ref, (Struct, IDLUnion)):
         is_complex = True
-    return IDLMessageDefinitionField(
+    return MessageDefinitionField(
         name=const.name,
         type=t,
-        isComplex=is_complex,
+        isComplex=True if is_complex else None,
         enumType=enum_type,
         isConstant=True,
         value=const.value,
-        annotations=const.annotations or None,
+        valueText=str(const.value),
     )
 
 
@@ -189,7 +172,7 @@ def _convert_field(
     field: Field,
     typedefs: Dict[str, Typedef],
     idl_map: Dict[str, Definition],
-) -> IDLMessageDefinitionField:
+) -> MessageDefinitionField:
     t, td_arrays, td_is_seq, td_seq_bound, td_str_bound = _resolve_typedef(
         field.type, typedefs
     )
@@ -230,16 +213,15 @@ def _convert_field(
 
     is_array = bool(array_lengths) or is_sequence
 
-    return IDLMessageDefinitionField(
-        name=field.name,
+    return MessageDefinitionField(
         type=t,
-        isComplex=is_complex,
-        annotations=annotations,
-        arrayLengths=array_lengths or None,
+        name=field.name,
+        isComplex=True if is_complex else None,
+        isArray=True if is_array else None,
+        arrayLength=array_lengths[0] if array_lengths else None,
         arrayUpperBound=sequence_bound if is_sequence else None,
-        upperBound=upper_bound,
-        isArray=is_array if is_array else None,
         enumType=enum_type,
+        upperBound=upper_bound,
         defaultValue=default_value,
     )
 
@@ -290,7 +272,7 @@ def to_idl_message_definitions(
     }
 
     message_definitions: List[IDLMessageDefinition] = []
-    top_level_consts: List[IDLMessageDefinitionField] = []
+    top_level_consts: List[MessageDefinitionField] = []
 
     for scoped_name, node in idl_map.items():
         if isinstance(node, Struct):
@@ -347,7 +329,6 @@ def parse_idl_message_definitions(source: str) -> List[IDLMessageDefinition]:
 
 
 __all__ = [
-    "IDLMessageDefinitionField",
     "IDLStructDefinition",
     "IDLModuleDefinition",
     "IDLUnionDefinition",

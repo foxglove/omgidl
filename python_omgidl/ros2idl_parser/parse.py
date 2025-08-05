@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
-from dataclasses import field as dataclass_field
-from typing import Any, List, Optional, Union
+from typing import List, Optional
 
+from foxglove_message_definition import MessageDefinition, MessageDefinitionField
 from omgidl_parser.parse import Constant as IDLConstant
 from omgidl_parser.parse import Enum as IDLEnum
 from omgidl_parser.parse import Field as IDLField
@@ -14,29 +13,6 @@ from omgidl_parser.parse import Typedef as IDLTypedef
 from omgidl_parser.parse import Union as IDLUnion
 from omgidl_parser.parse import parse_idl
 from omgidl_parser.process import build_map
-
-
-@dataclass
-class MessageDefinitionField:
-    type: str
-    name: str
-    isComplex: bool = False
-    enumType: Optional[str] = None
-    isArray: bool = False
-    arrayLength: Optional[int] = None
-    isConstant: bool = False
-    value: Optional[Union[str, int]] = None
-    valueText: Optional[str] = None
-    upperBound: Optional[int] = None
-    arrayUpperBound: Optional[int] = None
-    defaultValue: Optional[Any] = None
-
-
-@dataclass
-class MessageDefinition:
-    name: Optional[str]
-    definitions: List[MessageDefinitionField] = dataclass_field(default_factory=list)
-
 
 ROS2IDL_HEADER = re.compile(r"={80}\nIDL: [a-zA-Z][\w]*(?:\/[a-zA-Z][\w]*)*")
 
@@ -160,9 +136,9 @@ def _convert_field(
     return MessageDefinitionField(
         type=t,
         name=field.name,
-        isComplex=is_complex,
+        isComplex=True if is_complex else None,
         enumType=enum_type,
-        isArray=bool(array_lengths) or is_sequence,
+        isArray=True if (array_lengths or is_sequence) else None,
         arrayLength=array_lengths[0] if array_lengths else None,
         arrayUpperBound=seq_bound if is_sequence else None,
     )

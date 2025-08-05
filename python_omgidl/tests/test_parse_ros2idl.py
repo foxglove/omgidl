@@ -39,7 +39,6 @@ class TestParseRos2idl(unittest.TestCase):
                         MessageDefinitionField(
                             type="int32",
                             name="input_value",
-                            isArray=False,
                         )
                     ],
                 ),

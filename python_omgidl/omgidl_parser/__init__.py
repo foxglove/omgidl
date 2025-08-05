@@ -1,3 +1,5 @@
+from foxglove_message_definition import MessageDefinitionField
+
 from .parse import (
     Constant,
     Enum,
@@ -12,7 +14,6 @@ from .parse import (
 from .process import (
     Case,
     IDLMessageDefinition,
-    IDLMessageDefinitionField,
     IDLModuleDefinition,
     IDLStructDefinition,
     IDLUnionDefinition,
@@ -31,7 +32,7 @@ __all__ = [
     "Typedef",
     "Union",
     "UnionCase",
-    "IDLMessageDefinitionField",
+    "MessageDefinitionField",
     "IDLStructDefinition",
     "IDLModuleDefinition",
     "IDLUnionDefinition",
