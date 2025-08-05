@@ -25,11 +25,11 @@ class MessageDefinitionField:
 
     type: str
     name: str
-    isComplex: Optional[bool] = None
+    isComplex: bool = False
     enumType: Optional[str] = None
-    isArray: Optional[bool] = None
+    isArray: bool = False
     arrayLength: Optional[int] = None
-    isConstant: Optional[bool] = None
+    isConstant: bool = False
     value: ConstantValue = None
     valueText: Optional[str] = None
     upperBound: Optional[int] = None

@@ -159,7 +159,7 @@ def _convert_constant(
     return MessageDefinitionField(
         name=const.name,
         type=t,
-        isComplex=True if is_complex else None,
+        isComplex=is_complex,
         enumType=enum_type,
         isConstant=True,
         value=const.value,
@@ -215,8 +215,8 @@ def _convert_field(
     return MessageDefinitionField(
         type=t,
         name=field.name,
-        isComplex=True if is_complex else None,
-        isArray=True if is_array else None,
+        isComplex=is_complex,
+        isArray=is_array,
         arrayLength=array_lengths[0] if array_lengths else None,
         arrayUpperBound=sequence_bound if is_sequence else None,
         enumType=enum_type,
