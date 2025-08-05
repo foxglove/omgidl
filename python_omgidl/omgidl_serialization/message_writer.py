@@ -414,9 +414,9 @@ class MessageWriter:
                         offset += 4
                         buffer[offset : offset + len(encoded)] = encoded
                         offset += len(encoded)
-                        buffer[offset : offset + (1 if t == "string" else 2)] = (
-                            b"\x00" * (1 if t == "string" else 2)
-                        )
+                        buffer[
+                            offset : offset + (1 if t == "string" else 2)
+                        ] = b"\x00" * (1 if t == "string" else 2)
                         offset += 1 if t == "string" else 2
                 elif t in PRIMITIVE_SIZES:
                     size = _primitive_size(t)

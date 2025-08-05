@@ -15,10 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "black",
-    "isort",
-    "flake8",
-    "flake8-pyproject",
+    "pre-commit",
 ]
 
 [tool.isort]

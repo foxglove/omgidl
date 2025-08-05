@@ -15,7 +15,5 @@ jobs:
         with:
           python-version: "3.10"
       - run: pip install .[dev]
-      - run: black --check python_omgidl
-      - run: isort --check-only python_omgidl
-      - run: flake8p python_omgidl
+      - run: pre-commit run --files $(git ls-files -- '*.py')
       - run: pytest
