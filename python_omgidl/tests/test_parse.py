@@ -50,6 +50,54 @@ class TestParseIDL(unittest.TestCase):
             ],
         )
 
+    def test_named_annotation_params(self):
+        schema = """
+        @verbatim(language="comment", text="hogehoge")
+        struct A {
+            uint8 val;
+        };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [
+                Struct(
+                    name="A",
+                    fields=[Field(name="val", type="uint8")],
+                    annotations={
+                        "verbatim": {"language": "comment", "text": "hogehoge"}
+                    },
+                )
+            ],
+        )
+
+    def test_multiline_annotation_string_param(self):
+        schema = """
+        @verbatim (language="comment", text=
+          "line1" "\\n"
+          "line2" "\\n"
+          "line3")
+        struct A {
+            uint8 val;
+        };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [
+                Struct(
+                    name="A",
+                    fields=[Field(name="val", type="uint8")],
+                    annotations={
+                        "verbatim": {
+                            "language": "comment",
+                            "text": "line1\\nline2\\nline3",
+                        }
+                    },
+                )
+            ],
+        )
+
     def test_module_with_struct(self):
         schema = """
         module outer {
@@ -327,6 +375,16 @@ class TestParseIDL(unittest.TestCase):
                 Constant(name="PI2", type="float32", value=3.14),
                 Constant(name="FLAG2", type="boolean", value=True),
             ],
+        )
+
+    def test_string_constant_concatenation(self):
+        schema = """\
+        const string COMBINED = "part1 " "part2" " part3";
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [Constant(name="COMBINED", type="string", value="part1 part2 part3")],
         )
 
     def test_typedef(self):
