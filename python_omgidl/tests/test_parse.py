@@ -91,7 +91,34 @@ class TestParseIDL(unittest.TestCase):
                     annotations={
                         "verbatim": {
                             "language": "comment",
-                            "text": "line1\\nline2\\nline3",
+                            "text": """line1
+line2
+line3""",
+                        }
+                    },
+                )
+            ],
+        )
+
+    def test_annotation_single_multiline_string(self):
+        schema = """
+        @verbatim(language="comment", text=
+"line1
+line2
+line3")
+        struct A { uint8 val; };
+        """
+        result = parse_idl(schema)
+        self.assertEqual(
+            result,
+            [
+                Struct(
+                    name="A",
+                    fields=[Field(name="val", type="uint8")],
+                    annotations={
+                        "verbatim": {
+                            "language": "comment",
+                            "text": "line1\nline2\nline3",
                         }
                     },
                 )
