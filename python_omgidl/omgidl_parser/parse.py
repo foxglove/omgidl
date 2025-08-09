@@ -81,7 +81,8 @@ semicolon: ";"
 BOOL.2: /(?i)true|false/
 %import common.SIGNED_INT
 %import common.SIGNED_FLOAT
-STRING: /"(?:[^"\\]|\\.)*"/
+%import common.ESCAPED_STRING
+STRING: ESCAPED_STRING
 %import common.WS
 
 COMMENT: /\/\/[^\n]*|\/\*[\s\S]*?\*\//
@@ -263,7 +264,7 @@ class _Transformer(Transformer):
 
     def STRING(self, token):
         value = str(token)[1:-1]
-        return bytes(value, "utf-8").decode("unicode_escape")
+        return codecs.decode(value, "unicode_escape")
 
     def array(self, items):
         return [int(itm) for itm in items]
