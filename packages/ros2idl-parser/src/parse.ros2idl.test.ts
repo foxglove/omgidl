@@ -503,19 +503,6 @@ module rosidl_parser {
           },
         ],
       },
-      {
-        name: "",
-        definitions: [
-          {
-            name: "UNSIGNED_LONG_CONSTANT",
-            type: "uint32",
-            isConstant: true,
-            isComplex: false,
-            value: 42,
-            valueText: "42",
-          },
-        ],
-      },
     ]);
   });
 
