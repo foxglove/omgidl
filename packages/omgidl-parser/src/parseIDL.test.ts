@@ -862,20 +862,6 @@ module rosidl_parser {
           },
         ],
       },
-      {
-        name: "",
-        aggregatedKind: "module",
-        definitions: [
-          {
-            name: "UNSIGNED_LONG_CONSTANT",
-            type: "uint32",
-            isConstant: true,
-            isComplex: false,
-            value: 42,
-            valueText: "42",
-          },
-        ],
-      },
     ]);
   });
 
@@ -1710,7 +1696,7 @@ module rosidl_parser {
       },
     ]);
   });
-  it("parses enums used as constants", () => {
+  it("parses enums used as constants from both enum and parent module namespaces", () => {
     const msgDef = `
 
     module Test {
@@ -1723,7 +1709,8 @@ module rosidl_parser {
 
     module Scene {
       module DefaultColors {
-        const Test::COLORS red = Test::COLORS::RED;
+        const Test::COLORS red = Test::COLORS::RED; // enum namespace
+        const Test::COLORS red2 = Test::RED; // parent module namespace
       };
       struct Line {
         @default(value=Test::COLORS::GREEN)
@@ -1771,6 +1758,14 @@ module rosidl_parser {
             isComplex: false,
             value: 0,
             valueText: "Test::COLORS::RED",
+          },
+          {
+            isConstant: true,
+            name: "red2",
+            type: "uint32",
+            isComplex: false,
+            value: 0,
+            valueText: "Test::RED",
           },
         ],
       },
@@ -1895,28 +1890,6 @@ module rosidl_parser {
             isArray: true,
             isComplex: false,
             type: "float32",
-          },
-        ],
-      },
-      {
-        name: "",
-        aggregatedKind: "module",
-        definitions: [
-          {
-            name: "rows",
-            isComplex: false,
-            isConstant: true,
-            type: "uint16",
-            value: 4,
-            valueText: "4",
-          },
-          {
-            name: "cols",
-            isComplex: false,
-            isConstant: true,
-            type: "uint16",
-            value: 5,
-            valueText: "5",
           },
         ],
       },
@@ -2052,6 +2025,7 @@ module rosidl_parser {
           { name: "RGB", value: 2, type: "uint32", isConstant: true, isComplex: false },
         ],
       },
+
       {
         name: "Color",
         aggregatedKind: "union",
@@ -2151,7 +2125,7 @@ module rosidl_parser {
       },
     ]);
   });
-  it("can parse union  with multiple predicates declaration", () => {
+  it("can parse union with multiple predicates declaration", () => {
     const msgDef = `
     union MyUnion switch (long) {
         case 1:
@@ -2444,20 +2418,6 @@ module rosidl_parser {
             isComplex: true,
             name: "my_union",
             type: "MyUnion",
-          },
-        ],
-      },
-      {
-        name: "",
-        aggregatedKind: "module",
-        definitions: [
-          {
-            name: "FOUR",
-            isComplex: false,
-            isConstant: true,
-            type: "uint32",
-            value: 4,
-            valueText: "4",
           },
         ],
       },

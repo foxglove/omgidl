@@ -1,4 +1,4 @@
-import { ConstantValue, MessageDefinitionField } from "@foxglove/message-definition";
+import { ConstantValue } from "@foxglove/message-definition";
 
 import {
   ConstantIDLNode,
@@ -23,15 +23,16 @@ export function buildMap(definitions: AnyASTNode[]): Map<string, AnyIDLNode> {
       const namePath = path.map((n) => n.name);
       const scopePath = namePath.slice(0, -1);
 
-      const newNode = makeIDLNode(scopePath, node, idlMap);
-      idlMap.set(newNode.scopedIdentifier, newNode);
+      const newNodes = makeIDLNode(scopePath, node, idlMap);
+
+      idlMap.set(newNodes.scopedIdentifier, newNodes);
       if (node.declarator === "enum") {
         // DDS X-Types spec section 7.3.1.2.1.5: Enumerated Literal Values
         // How C++ does implicit enums is that they will increment after the last explicit enum
         // even if it collides with an existing enum
         // initialize to -1 so that first value is 0
         let prevEnumValue = -1;
-        const enumConstants = node.enumerators.map((m) => {
+        const enumConstants = node.enumerators.flatMap((m) => {
           const enumValue = getValueAnnotation(m.annotations) ?? (++prevEnumValue as ConstantValue);
           if (typeof enumValue !== "number") {
             throw new Error(
@@ -51,8 +52,16 @@ export function buildMap(definitions: AnyASTNode[]): Map<string, AnyIDLNode> {
             isComplex: false,
           };
         });
+        // Enum scope constants
         for (const constant of enumConstants) {
           const idlConstantNode = new ConstantIDLNode(namePath, constant, idlMap);
+          idlMap.set(idlConstantNode.scopedIdentifier, idlConstantNode);
+        }
+        // enums constants can be referred to by their Enum::VALUE or by their parent module followed by ::VALUE.
+        // Ex: Test::Colors::RED or Test::RED
+        const moduleLevelNamePath = namePath.slice(0, -1);
+        for (const constant of enumConstants) {
+          const idlConstantNode = new ConstantIDLNode(moduleLevelNamePath, constant, idlMap);
           idlMap.set(idlConstantNode.scopedIdentifier, idlConstantNode);
         }
       }
@@ -77,7 +86,6 @@ function getValueAnnotation(
 /** Convert to IDL Message Definitions for serialization and compatibility with Foxglove's Raw Message panel. Returned in order of original definitions*/
 export function toIDLMessageDefinitions(map: Map<string, AnyIDLNode>): IDLMessageDefinition[] {
   const messageDefinitions: IDLMessageDefinition[] = [];
-  const topLevelConstantDefinitions: MessageDefinitionField[] = [];
 
   // flatten for output to message definition
   // Because the map entries are in original insertion order, they should reflect the original order of the definitions
@@ -91,21 +99,13 @@ export function toIDLMessageDefinitions(map: Map<string, AnyIDLNode>): IDLMessag
         messageDefinitions.push(def);
       }
     } else if (node.declarator === "const") {
-      if (node.scopePath.length === 0) {
-        topLevelConstantDefinitions.push(node.toIDLMessageDefinitionField());
-      }
+      // Don't need constants for deserialization, all constant usage should be resolved by now.
+      // This does not omit enum constants from output because they are added under the enum toIDLMessageDefinition.
     } else if (node.declarator === "enum") {
       messageDefinitions.push(node.toIDLMessageDefinition());
     } else if (node.declarator === "union") {
       messageDefinitions.push(node.toIDLMessageDefinition());
     }
-  }
-  if (topLevelConstantDefinitions.length > 0) {
-    messageDefinitions.push({
-      name: "",
-      definitions: topLevelConstantDefinitions,
-      aggregatedKind: "module",
-    });
   }
   return messageDefinitions;
 }
