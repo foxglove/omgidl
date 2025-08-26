@@ -60,7 +60,8 @@ export type PrimitiveArrayDeserializationInfo = {
 
 export type StructDeserializationInfo = HeaderOptions & {
   type: "struct";
-  fields: FieldDeserializationInfo[];
+  fieldsInOrder: FieldDeserializationInfo[];
+  fieldsById: Map<number, FieldDeserializationInfo>;
   definition: IDLStructDefinition;
   /** optional allows for defaultValues to be calculated lazily */
   defaultValue?: Record<string, unknown>;
@@ -155,11 +156,44 @@ export class DeserializationInfoCache {
       return deserInfo;
     }
 
+    const fieldsInOrder = definition.definitions.reduce<FieldDeserializationInfo[]>(
+      (fieldsAccum, fieldDef) =>
+        fieldDef.isConstant === true
+          ? fieldsAccum
+          : fieldsAccum.concat(this.buildFieldDeserInfo(fieldDef)),
+      [],
+    );
+
+    const fieldsById = new Map<number, FieldDeserializationInfo>();
+    // handle fields with explicit ids
+    for (const field of fieldsInOrder) {
+      if (field.definitionId != undefined) {
+        fieldsById.set(field.definitionId, field);
+      }
+    }
+
+    // fields without ids are implicitly assigned ids sequentially
+    let counter = 0;
+    for (const field of fieldsInOrder) {
+      if (field.definitionId != undefined) {
+        continue;
+      }
+      while (fieldsById.get(counter) != undefined) {
+        counter++;
+      }
+      fieldsById.set(counter, {
+        ...field,
+        definitionId: counter,
+      });
+      counter++;
+    }
+
     const deserInfo: StructDeserializationInfo = {
       type: "struct",
       ...getHeaderNeeds(definition),
       definition,
-      fields: definition.definitions.reduce<FieldDeserializationInfo[]>(
+      fieldsById,
+      fieldsInOrder: definition.definitions.reduce<FieldDeserializationInfo[]>(
         (fieldsAccum, fieldDef) =>
           fieldDef.isConstant === true
             ? fieldsAccum
@@ -318,7 +352,7 @@ export class DeserializationInfoCache {
       defaultMessage[defaultCaseDeserInfo.name] = this.getFieldDefault(defaultCaseDeserInfo);
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (deserInfo.type === "struct") {
-      for (const field of deserInfo.fields) {
+      for (const field of deserInfo.fieldsInOrder) {
         if (!field.isOptional) {
           defaultMessage[field.name] = this.getFieldDefault(field);
         }
