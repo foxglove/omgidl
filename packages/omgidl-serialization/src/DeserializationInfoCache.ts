@@ -156,13 +156,20 @@ export class DeserializationInfoCache {
       return deserInfo;
     }
 
-    const fieldsInOrder = definition.definitions.reduce<FieldDeserializationInfo[]>(
-      (fieldsAccum, fieldDef) =>
-        fieldDef.isConstant === true
-          ? fieldsAccum
-          : fieldsAccum.concat(this.buildFieldDeserInfo(fieldDef)),
-      [],
-    );
+    const fieldsInOrder = [];
+    for (const field of definition.definitions) {
+      if (field.isConstant === true) {
+        continue;
+      }
+      fieldsInOrder.push(this.buildFieldDeserInfo(field));
+    }
+    // specifies the behavior of implicit ids for mutable members
+    const autoidAnnotation = definition.annotations?.["autoid"];
+    if (autoidAnnotation?.type === "const-param" && autoidAnnotation.value === "HASH") {
+      throw new Error(
+        "Hash autoid is not supported because OMGIDL docs do not specify a hashing algorithm.",
+      );
+    }
 
     const fieldsById = new Map<number, FieldDeserializationInfo>();
     // handle fields with explicit ids
@@ -173,6 +180,7 @@ export class DeserializationInfoCache {
     }
 
     // fields without ids are implicitly assigned ids sequentially
+    // assumes the implicit @autoid(SEQUENTIAL) annotation on mutable members
     let counter = 0;
     for (const field of fieldsInOrder) {
       if (field.definitionId != undefined) {
@@ -193,13 +201,7 @@ export class DeserializationInfoCache {
       ...getHeaderNeeds(definition),
       definition,
       fieldsById,
-      fieldsInOrder: definition.definitions.reduce<FieldDeserializationInfo[]>(
-        (fieldsAccum, fieldDef) =>
-          fieldDef.isConstant === true
-            ? fieldsAccum
-            : fieldsAccum.concat(this.buildFieldDeserInfo(fieldDef)),
-        [],
-      ),
+      fieldsInOrder,
     };
 
     this.#complexDeserializationInfo.set(definition.name ?? "", deserInfo);

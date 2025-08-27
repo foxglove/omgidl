@@ -1652,64 +1652,6 @@ module builtin_interfaces {
 
     expect(msgout).toEqual(data);
   });
-  it("Reads XCDR1 appendable struct with missing appended member (old schema new message)", () => {
-    const msgDef = `
-      @appendable
-      struct Message {
-        uint8 bittybyte;
-        float floaty;
-        uint32 bytier;
-      };
-    `;
-    const data = {
-      bittybyte: 5,
-      floaty: 0.5,
-      bytier: 9,
-    };
-    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
-    writer.uint8(data.bittybyte);
-    writer.float32(data.floaty);
-    writer.uint32(data.bytier);
-    writer.uint32(12);
-    writer.sentinelHeader(); // end of struct
-
-    const rootDef = "Message";
-
-    const reader = new MessageReader(rootDef, parseIDL(msgDef));
-
-    const msgout = reader.readMessage(writer.data);
-
-    expect(msgout).toEqual(data);
-  });
-  it("Reads XCDR2 appendable struct with missing appended member (old schema new message)", () => {
-    const msgDef = `
-      @appendable
-      struct Message {
-        uint8 bittybyte;
-        float floaty;
-        uint32 bytier;
-      };
-    `;
-    const data = {
-      bittybyte: 5,
-      floaty: 0.5,
-      bytier: 9,
-    };
-    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
-    writer.dHeader(1 + 4 + 4 + 4);
-    writer.uint8(data.bittybyte);
-    writer.float32(data.floaty);
-    writer.uint32(data.bytier);
-    writer.uint32(12);
-
-    const rootDef = "Message";
-
-    const reader = new MessageReader(rootDef, parseIDL(msgDef));
-
-    const msgout = reader.readMessage(writer.data);
-
-    expect(msgout).toEqual(data);
-  });
   it("Reads XCDR1 mutable struct with out of order member headers", () => {
     const msgDef = `
       @mutable
@@ -1740,6 +1682,7 @@ module builtin_interfaces {
     const msgout = reader.readMessage(writer.data);
 
     expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
   });
   it("Reads XCDR2 mutable struct with out of order member headers", () => {
     const msgDef = `
@@ -1771,6 +1714,7 @@ module builtin_interfaces {
     const msgout = reader.readMessage(writer.data);
 
     expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
   });
   it("Reads XCDR1 mutable struct with out of order member headers and a missing member", () => {
     const msgDef = `
@@ -1800,6 +1744,7 @@ module builtin_interfaces {
     const msgout = reader.readMessage(writer.data);
 
     expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
   });
   it("Reads XCDR2 mutable struct with out of order member headers and a missing member", () => {
     const msgDef = `
@@ -1829,6 +1774,7 @@ module builtin_interfaces {
     const msgout = reader.readMessage(writer.data);
 
     expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
   });
   it("Reads XCDR1 mutable struct with appended extra member header", () => {
     const msgDef = `
@@ -1862,6 +1808,7 @@ module builtin_interfaces {
     const msgout = reader.readMessage(writer.data);
 
     expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
   });
   it("Reads XCDR2 mutable struct with appended extra member header", () => {
     const msgDef = `
@@ -1895,6 +1842,7 @@ module builtin_interfaces {
     const msgout = reader.readMessage(writer.data);
 
     expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
   });
   it("Reads XCDR1 mutable struct with inserted extra member header", () => {
     const msgDef = `
@@ -1929,6 +1877,7 @@ module builtin_interfaces {
     const msgout = reader.readMessage(writer.data);
 
     expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
   });
   it("Reads XCDR2 mutable struct with inserted extra member header", () => {
     const msgDef = `
@@ -1962,5 +1911,6 @@ module builtin_interfaces {
     const msgout = reader.readMessage(writer.data);
 
     expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
   });
 });

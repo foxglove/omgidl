@@ -1,4 +1,4 @@
-import { CdrReader, EncapsulationKind } from "@foxglove/cdr";
+import { CdrReader } from "@foxglove/cdr";
 import {
   IDLMessageDefinition,
   IDLMessageDefinitionField,
@@ -19,6 +19,9 @@ import { UNION_DISCRIMINATOR_PROPERTY_KEY } from "./constants";
 export class MessageReader<T = unknown> {
   rootDeserializationInfo: ComplexDeserializationInfo;
   deserializationInfoCache: DeserializationInfoCache;
+  /** Used for debugging. We do not error if the buffer end is not reached because it is possible this could cause
+   * unexpected errors with user data. */
+  #lastMessageBufferEndReached = false;
 
   constructor(rootDefinitionName: string, definitions: IDLMessageDefinition[]) {
     const rootDefinition = definitions.find((def) => def.name === rootDefinitionName);
@@ -43,17 +46,24 @@ export class MessageReader<T = unknown> {
     const usesDelimiterHeader = reader.usesDelimiterHeader;
     const usesMemberHeader = reader.usesMemberHeader;
 
-    return this.readAggregatedType(this.rootDeserializationInfo, reader, {
+    const res = this.readAggregatedType(this.rootDeserializationInfo, reader, {
       usesDelimiterHeader,
       usesMemberHeader,
-      isCDR2: readerIsCDR2(reader),
     }) as R;
+
+    this.#lastMessageBufferEndReached = reader.isAtEnd();
+
+    return res;
+  }
+
+  public lastMessageBufferEndReached(): boolean {
+    return this.#lastMessageBufferEndReached;
   }
 
   private readAggregatedType(
     deserInfo: ComplexDeserializationInfo,
     reader: CdrReader,
-    options: HeaderOptions & { isCDR2: boolean },
+    options: HeaderOptions,
     /** The size of the struct if known (like from an emHeader). If it is known we do not read in a dHeader */
     knownTypeSize?: number,
   ): Record<string, unknown> {
@@ -79,7 +89,7 @@ export class MessageReader<T = unknown> {
   private readStructType(
     deserInfo: StructDeserializationInfo,
     reader: CdrReader,
-    options: HeaderOptions & { isCDR2: boolean },
+    options: HeaderOptions,
     /** if this is present it means that the struct is CDR2 */
     typeEndOffset: number | undefined,
   ): Record<string, unknown> {
@@ -88,16 +98,14 @@ export class MessageReader<T = unknown> {
 
     const msg: Record<string, unknown> = {};
 
-    const needsToReadSentinelHeader = !usesDelimiterHeader && usesMemberHeader; // XCDR1 mutable
-    // this keeps track of whether we've read the sentinel header to close the struct for XCDR1
-    let structIsEnded = false;
-    const fieldNamesRead = new Set<string>();
-
     // There's a few ways we should be reading structs
     // 1. Struct is mutable. It has a typeEndOffset. Read based off each EMHEADER. Meaning that we need to read the EMHEADER to determine what the field is and then use the emHeader to read the field.
     // 2. Struct is appendable. It has a typeEndOffset. Read schema definition from top to bottom, there may be unknown or missing fields that we need to account for.
     // 3. Read solely based off of the schema definition (FINAL or XCDR1). Meaning that we can assume all the fields are in the exact same order and count as the schema definition.
     if (usesMemberHeader) {
+      // this keeps track of whether we've read the sentinel header to close the struct for XCDR1
+      let structIsEnded = false;
+      const fieldNamesRead = new Set<string>();
       // HANDLE MUTABLE STRUCT
       // XCDR2 uses typeEndOffset to determine the end of the struct
       // XCDR1 uses a sentinel header to determine the end of the struct
@@ -110,7 +118,7 @@ export class MessageReader<T = unknown> {
           break;
         }
 
-        if (!options.isCDR2 && this.maybeConsumeSentinelHeader(reader)) {
+        if (!reader.isCDR2 && reader.maybeConsumeSentinelHeader()) {
           // end of struct
           structIsEnded = true;
           break;
@@ -147,11 +155,30 @@ export class MessageReader<T = unknown> {
             usesMemberHeader,
             parentName: deserInfo.definition.name ?? "<unnamed-struct>",
             emHeaderSizeBytes,
-            isCDR2: options.isCDR2,
           },
           options,
         );
       } // END OF MUTABLE FIELD LOOP
+
+      // mutable structs need to be closed with a sentinel header
+      if (!reader.isCDR2 && !structIsEnded) {
+        throw new Error(
+          `Sentinel header was not read to close the struct for ${deserInfo.definition.name ?? ""}`,
+        );
+      }
+
+      // set unread fields to defaults
+      for (const field of deserInfo.fieldsInOrder) {
+        if (fieldNamesRead.has(field.name)) {
+          continue;
+        }
+
+        if (field.isOptional) {
+          msg[field.name] = undefined;
+        } else {
+          msg[field.name] = this.deserializationInfoCache.getFieldDefault(field);
+        }
+      }
     } else {
       // HANDLE APPENDABLE OR FINAL STRUCT
       // Appendable structs are treated the same as final structs except that they have a typeEndOffset
@@ -162,17 +189,10 @@ export class MessageReader<T = unknown> {
           // end of struct
           // if this happens then it likely means that the schema we have has been appended to but the message
           // was written using a schema with fewer fields.
-          structIsEnded = true;
-          break;
-        }
-        if (!options.isCDR2 && this.maybeConsumeSentinelHeader(reader)) {
-          // end of struct
-          structIsEnded = true;
           break;
         }
 
         if (field.isOptional) {
-          fieldNamesRead.add(field.name);
           msg[field.name] = this.readOptionalFinalMember(
             field,
             reader,
@@ -183,7 +203,6 @@ export class MessageReader<T = unknown> {
         }
 
         // handles optional xcdr2 fields (from is_present=true) and all non-optional fields
-        fieldNamesRead.add(field.name);
         msg[field.name] = this.readMemberFieldValue(
           field,
           reader,
@@ -191,44 +210,23 @@ export class MessageReader<T = unknown> {
             usesDelimiterHeader,
             usesMemberHeader,
             parentName: deserInfo.definition.name ?? "<unnamed-struct>",
-            isCDR2: options.isCDR2,
           },
           options,
         );
       } // END OF FIELD FOR LOOP
-
-      // there's a chance that even after reading through all the fields that we still have more bytes to read because the message was written with a schema that has more fields than the one we have.
-      // seek to the end of the struct because we can't read in any more.
       if (typeEndOffset != undefined && reader.offset < typeEndOffset) {
-        reader.seekTo(typeEndOffset);
+        throw new Error(
+          `Appendable/Final struct ${deserInfo.definition.name ?? ""} was not read completely. This could be because the schema is missing fields that are present on the message.`,
+        );
       }
     } // END OF APPENDABLE OR FINAL STRUCT
-
-    // set unread fields to defaults
-    for (const field of deserInfo.fieldsInOrder) {
-      if (fieldNamesRead.has(field.name)) {
-        continue;
-      }
-
-      if (field.isOptional) {
-        msg[field.name] = undefined;
-      } else {
-        msg[field.name] = this.deserializationInfoCache.getFieldDefault(field);
-      }
-    }
-
-    if (needsToReadSentinelHeader && !structIsEnded) {
-      // if the sentinel header was not read to close the struct then we need to read it now
-      reader.sentinelHeader();
-    }
-
     return msg;
   }
 
   private readUnionType(
     deserInfo: UnionDeserializationInfo,
     reader: CdrReader,
-    options: HeaderOptions & { isCDR2: boolean },
+    options: HeaderOptions,
     typeEndOffset?: number,
   ): Record<string, unknown> {
     const usesMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
@@ -274,7 +272,7 @@ export class MessageReader<T = unknown> {
       if (typeEndOffset != undefined && reader.offset >= typeEndOffset) {
         // XCDR2
         unionIsEnded = true;
-      } else if (!options.isCDR2 && this.maybeConsumeSentinelHeader(reader)) {
+      } else if (!reader.isCDR2 && reader.maybeConsumeSentinelHeader()) {
         // XCDR1
         unionIsEnded = true;
       }
@@ -300,7 +298,6 @@ export class MessageReader<T = unknown> {
             usesMemberHeader,
             parentName: deserInfo.definition.name ?? "<unnamed-union>",
             emHeaderSizeBytes,
-            isCDR2: options.isCDR2,
           },
           options,
         );
@@ -310,7 +307,6 @@ export class MessageReader<T = unknown> {
       }
     } else {
       // APPENDABLE AND FINAL UNION HANDLING
-
       if (fieldDeserInfo.isOptional) {
         caseDefValue = this.readOptionalFinalMember(
           fieldDeserInfo,
@@ -326,7 +322,6 @@ export class MessageReader<T = unknown> {
             usesDelimiterHeader,
             usesMemberHeader,
             parentName: deserInfo.definition.name ?? "<unnamed-union>",
-            isCDR2: options.isCDR2,
           },
           options,
         );
@@ -350,22 +345,23 @@ export class MessageReader<T = unknown> {
   private readOptionalFinalMember(
     field: FieldDeserializationInfo,
     reader: CdrReader,
-    options: HeaderOptions & { isCDR2: boolean },
+    options: HeaderOptions,
     parentName?: string,
   ): unknown {
-    if (options.isCDR2) {
+    if (reader.isCDR2) {
       // if it's XCDR2 then it uses an is_present flag to determine if the field is present
-      const isPresent = Boolean(reader.int8());
+
+      const isPresent = reader.isPresentFlag();
       if (!isPresent) {
         return undefined;
       }
+
       return this.readMemberFieldValue(
         field,
         reader,
         {
           ...options,
           parentName: parentName ?? "<unnamed-struct>",
-          isCDR2: options.isCDR2,
         },
         options,
       );
@@ -384,7 +380,6 @@ export class MessageReader<T = unknown> {
           ...options,
           parentName: parentName ?? "<unnamed-struct>",
           emHeaderSizeBytes,
-          isCDR2: options.isCDR2,
         },
         options,
       );
@@ -399,7 +394,6 @@ export class MessageReader<T = unknown> {
       usesDelimiterHeader: boolean;
       parentName: string;
       emHeaderSizeBytes?: number;
-      isCDR2: boolean;
     },
     childOptions: HeaderOptions,
   ): unknown {
@@ -411,7 +405,7 @@ export class MessageReader<T = unknown> {
           // sequences and arrays have dHeaders only when emHeaders were not already written
           if (
             headerOptions.usesDelimiterHeader &&
-            !((!headerOptions.isCDR2 && field.isOptional) || headerOptions.usesMemberHeader)
+            !((!reader.isCDR2 && field.isOptional) || headerOptions.usesMemberHeader)
           ) {
             // return value is ignored because we don't do partial deserialization
             // in that case it would be used to skip the field if it was irrelevant
@@ -421,7 +415,7 @@ export class MessageReader<T = unknown> {
           const arrayLengths = field.arrayLengths ?? [reader.sequenceLength()];
           return this.readComplexNestedArray(
             reader,
-            { ...childOptions, isCDR2: headerOptions.isCDR2 },
+            childOptions,
             field.typeDeserInfo,
             arrayLengths,
             0,
@@ -430,7 +424,7 @@ export class MessageReader<T = unknown> {
           return this.readAggregatedType(
             field.typeDeserInfo,
             reader,
-            { ...childOptions, isCDR2: headerOptions.isCDR2 },
+            childOptions,
             emHeaderSizeBytes,
           );
         }
@@ -493,7 +487,7 @@ export class MessageReader<T = unknown> {
 
   private readComplexNestedArray(
     reader: CdrReader,
-    options: HeaderOptions & { isCDR2: boolean },
+    options: HeaderOptions,
     deserInfo: ComplexDeserializationInfo,
     arrayLengths: number[],
     depth: number,
@@ -515,32 +509,6 @@ export class MessageReader<T = unknown> {
 
     return array;
   }
-
-  /**
-   * Checks if the reader is at a sentinel header and consumes it if it is.
-   * Should only use for XCDR1 mutable structs and unions.
-   * @param reader - The reader to check.
-   * @returns true if it consumed the sentinel header, false otherwise.
-   */
-  private maybeConsumeSentinelHeader(reader: CdrReader): boolean {
-    const offsetBefore = reader.offset;
-    try {
-      reader.sentinelHeader();
-      return true;
-    } catch (err) {
-      if (err instanceof Error && err.message.includes("Expected SENTINEL_PI")) {
-        // reset the reader to the original offset
-        reader.offset = offsetBefore;
-        return false;
-      } else if (err instanceof RangeError) {
-        // it's possible that the buffer is out of bounds
-        reader.offset = offsetBefore;
-        return false;
-      } else {
-        throw err;
-      }
-    }
-  }
 }
 
 function getCaseForDiscriminator(
@@ -560,27 +528,4 @@ function getCaseForDiscriminator(
 /** Only length Codes >= 5 should allow for emHeader sizes to be used in place of other integer lengths */
 function useEmHeaderAsLength(lengthCode: number | undefined): boolean {
   return lengthCode != undefined && lengthCode >= 5;
-}
-
-function readerIsCDR2(reader: CdrReader): boolean {
-  switch (reader.kind) {
-    case EncapsulationKind.CDR_BE:
-    case EncapsulationKind.CDR_LE:
-    case EncapsulationKind.PL_CDR_BE:
-    case EncapsulationKind.PL_CDR_LE:
-      return false;
-    case EncapsulationKind.CDR2_BE:
-    case EncapsulationKind.CDR2_LE:
-    case EncapsulationKind.DELIMITED_CDR2_BE:
-    case EncapsulationKind.DELIMITED_CDR2_LE:
-    case EncapsulationKind.PL_CDR2_BE:
-    case EncapsulationKind.PL_CDR2_LE:
-    case EncapsulationKind.RTPS_CDR2_BE:
-    case EncapsulationKind.RTPS_CDR2_LE:
-    case EncapsulationKind.RTPS_DELIMITED_CDR2_BE:
-    case EncapsulationKind.RTPS_DELIMITED_CDR2_LE:
-    case EncapsulationKind.RTPS_PL_CDR2_BE:
-    case EncapsulationKind.RTPS_PL_CDR2_LE:
-      return true;
-  }
 }
