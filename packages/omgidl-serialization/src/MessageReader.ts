@@ -103,8 +103,6 @@ export class MessageReader<T = unknown> {
     // 2. Struct is appendable. It has a typeEndOffset. Read schema definition from top to bottom, there may be unknown or missing fields that we need to account for.
     // 3. Read solely based off of the schema definition (FINAL or XCDR1). Meaning that we can assume all the fields are in the exact same order and count as the schema definition.
     if (usesMemberHeader) {
-      // this keeps track of whether we've read the sentinel header to close the struct for XCDR1
-      let structIsEnded = false;
       const fieldNamesRead = new Set<string>();
       // HANDLE MUTABLE STRUCT
       // XCDR2 uses typeEndOffset to determine the end of the struct
@@ -112,36 +110,23 @@ export class MessageReader<T = unknown> {
 
       // loop until struct is ended: XCDR2 uses typeEndOffset, XCDR1 uses a sentinel header
       for (;;) {
-        if (typeEndOffset != undefined && reader.offset >= typeEndOffset) {
-          // end of struct
-          structIsEnded = true;
-          break;
-        }
-
-        if (!reader.isCDR2 && reader.maybeConsumeSentinelHeader()) {
-          // end of struct
-          structIsEnded = true;
+        const atEndOfStruct = typeEndOffset != undefined && reader.offset >= typeEndOffset;
+        if (atEndOfStruct) {
           break;
         }
 
         const { objectSize, id, readSentinelHeader, lengthCode } = reader.emHeader();
+
         // end of struct, this accounts for XCDR1 mutable structs
         if (readSentinelHeader === true) {
-          structIsEnded = true;
           break;
         }
 
         const emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSize : undefined;
         const field = deserInfo.fieldsById.get(id);
+        // if it's an unknown field then we skip reading it.
         if (field == undefined) {
-          try {
-            reader.seekTo(reader.offset + objectSize);
-          } catch (err) {
-            if (err instanceof Error && err.message.includes("outside the data range")) {
-              // end of message, cannot seek to end of byte array
-              break;
-            }
-          }
+          reader.seekTo(reader.offset + objectSize);
           continue;
         }
 
@@ -159,13 +144,6 @@ export class MessageReader<T = unknown> {
           options,
         );
       } // END OF MUTABLE FIELD LOOP
-
-      // mutable structs need to be closed with a sentinel header
-      if (!reader.isCDR2 && !structIsEnded) {
-        throw new Error(
-          `Sentinel header was not read to close the struct for ${deserInfo.definition.name ?? ""}`,
-        );
-      }
 
       // set unread fields to defaults
       for (const field of deserInfo.fieldsInOrder) {
@@ -268,15 +246,14 @@ export class MessageReader<T = unknown> {
     if (usesMemberHeader) {
       const needsToReadSentinelHeader = !usesDelimiterHeader && usesMemberHeader; // XCDR1 mutable
       // MUTABLE UNION
-      let unionIsEnded = false;
-      if (typeEndOffset != undefined && reader.offset >= typeEndOffset) {
-        // XCDR2
-        unionIsEnded = true;
-      } else if (!reader.isCDR2 && reader.maybeConsumeSentinelHeader()) {
-        // XCDR1
-        unionIsEnded = true;
+      const atEndOfUnion = typeEndOffset != undefined && reader.offset >= typeEndOffset;
+      // used to check
+      let emHeader: ReturnType<CdrReader["emHeader"]> | undefined = undefined;
+      if (!atEndOfUnion) {
+        // only read emHeader if it's not at the end of the union already
+        emHeader = reader.emHeader();
       }
-      if (unionIsEnded) {
+      if (atEndOfUnion || emHeader?.readSentinelHeader === true) {
         // if the offset is already at the end of the union then the value of the caseDef is undefined or it's default value
         if (fieldDeserInfo.isOptional) {
           caseDefValue = undefined;
@@ -284,10 +261,8 @@ export class MessageReader<T = unknown> {
           caseDefValue = this.deserializationInfoCache.getFieldDefault(fieldDeserInfo);
         }
       } else {
-        const { objectSize, readSentinelHeader, lengthCode } = reader.emHeader();
-        if (readSentinelHeader === true) {
-          throw new Error("Read sentinel header after it was already consumed for union case");
-        }
+        // should be read before
+        const { objectSize, lengthCode } = emHeader!;
 
         const emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSize : undefined;
         caseDefValue = this.readMemberFieldValue(
