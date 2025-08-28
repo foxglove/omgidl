@@ -146,6 +146,7 @@ NOTE: numbers like `7.4.1` refer to sections of the [OMG IDL specification](http
   - Parse generic annotations (only defaultValue is read in to AST)
   - unions and cases
   - enumerator overrides with `@value` annotation
+  - All XCDR extensibility types: `@final`, `@appendable`, and `@mutable`
 
 - Unsupported features
 
@@ -155,6 +156,9 @@ NOTE: numbers like `7.4.1` refer to sections of the [OMG IDL specification](http
   - unary operators
   - default value annotation type checking
   - identifiers prefixed with `::` scope
+  - aggregated type inheritance
+  - Map types
+  - `@autoid(HASH)` on mutable aggregated types
   - `7.2.6.1` - Octal integers are not supported (`014`)
   - `7.2.6.2.1` wide character and wide string has limited support
     - can be read in to schema but only considered `uint8`
