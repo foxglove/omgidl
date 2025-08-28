@@ -103,7 +103,7 @@ export class MessageReader<T = unknown> {
     // 2. Struct is appendable. It has a typeEndOffset. Read schema definition from top to bottom, there may be unknown or missing fields that we need to account for.
     // 3. Read solely based off of the schema definition (FINAL or XCDR1). Meaning that we can assume all the fields are in the exact same order and count as the schema definition.
     if (usesMemberHeader) {
-      const fieldNamesRead = new Set<string>();
+      const fieldIndexesRead = new Set<number>();
       // HANDLE MUTABLE STRUCT
       // XCDR2 uses typeEndOffset to determine the end of the struct
       // XCDR1 uses a sentinel header to determine the end of the struct
@@ -123,14 +123,15 @@ export class MessageReader<T = unknown> {
         }
 
         const emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSize : undefined;
-        const field = deserInfo.fieldsById.get(id);
+        const fieldIndex = deserInfo.fieldIndexById.get(id);
+        const field = fieldIndex != undefined ? deserInfo.fieldsInOrder[fieldIndex] : undefined;
         // if it's an unknown field then we skip reading it.
-        if (field == undefined) {
+        if (field == undefined || fieldIndex == undefined) {
           reader.seekTo(reader.offset + objectSize);
           continue;
         }
 
-        fieldNamesRead.add(field.name);
+        fieldIndexesRead.add(fieldIndex);
 
         msg[field.name] = this.readMemberFieldValue(
           field,
@@ -146,8 +147,9 @@ export class MessageReader<T = unknown> {
       } // END OF MUTABLE FIELD LOOP
 
       // set unread fields to defaults
-      for (const field of deserInfo.fieldsInOrder) {
-        if (fieldNamesRead.has(field.name)) {
+      for (let idx = 0; idx < deserInfo.fieldsInOrder.length; idx++) {
+        const field = deserInfo.fieldsInOrder[idx]!;
+        if (fieldIndexesRead.has(idx)) {
           continue;
         }
 

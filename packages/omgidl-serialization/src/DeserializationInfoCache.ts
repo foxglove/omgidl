@@ -61,7 +61,7 @@ export type PrimitiveArrayDeserializationInfo = {
 export type StructDeserializationInfo = HeaderOptions & {
   type: "struct";
   fieldsInOrder: FieldDeserializationInfo[];
-  fieldsById: Map<number, FieldDeserializationInfo>;
+  fieldIndexById: Map<number, number>;
   definition: IDLStructDefinition;
   /** optional allows for defaultValues to be calculated lazily */
   defaultValue?: Record<string, unknown>;
@@ -169,28 +169,27 @@ export class DeserializationInfoCache {
       throw new Error("Non-sequential autoid annotations are not supported.");
     }
 
-    const fieldsById = new Map<number, FieldDeserializationInfo>();
+    const fieldIndexById = new Map<number, number>();
     // handle fields with explicit ids
-    for (const field of fieldsInOrder) {
+    for (let idx = 0; idx < fieldsInOrder.length; idx++) {
+      const field = fieldsInOrder[idx]!;
       if (field.definitionId != undefined) {
-        fieldsById.set(field.definitionId, field);
+        fieldIndexById.set(field.definitionId, idx);
       }
     }
 
     // fields without ids are implicitly assigned ids sequentially
     // assumes the implicit @autoid(SEQUENTIAL) annotation on mutable members
     let counter = 0;
-    for (const field of fieldsInOrder) {
+    for (let idx = 0; idx < fieldsInOrder.length; idx++) {
+      const field = fieldsInOrder[idx]!;
       if (field.definitionId != undefined) {
         continue;
       }
-      while (fieldsById.get(counter) != undefined) {
+      while (fieldIndexById.get(counter) != undefined) {
         counter++;
       }
-      fieldsById.set(counter, {
-        ...field,
-        definitionId: counter,
-      });
+      fieldIndexById.set(counter, idx);
       counter++;
     }
 
@@ -198,7 +197,7 @@ export class DeserializationInfoCache {
       type: "struct",
       ...getHeaderNeeds(definition),
       definition,
-      fieldsById,
+      fieldIndexById,
       fieldsInOrder,
     };
 
