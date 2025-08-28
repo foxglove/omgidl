@@ -147,6 +147,7 @@ NOTE: numbers like `7.4.1` refer to sections of the [OMG IDL specification](http
   - unions and cases
   - enumerator overrides with `@value` annotation
   - All XCDR extensibility types: `@final`, `@appendable`, and `@mutable`
+  - `const Color color = RED;` and `const Color color = Color::RED;` are supported.
 
 - Unsupported features
 
@@ -167,7 +168,6 @@ NOTE: numbers like `7.4.1` refer to sections of the [OMG IDL specification](http
   - `7.2.3.1` - we do not check collision explicitly and we use case-sensitive identifiers whereas IDL requires identifiers to be case insensitive.
   - `7.4.2`-`7.4.16` extended IDL building blocks not supported
   - Composing variable-sized array typedefs with other array typedefs or struct member nodes.
-  - `const Color color = RED;` not supported. However `const Color color = Color::RED;` is supported.
 
 - Unsupported reference and type resolution features
   - numeric type checking for constant usage
