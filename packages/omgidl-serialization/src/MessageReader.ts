@@ -19,6 +19,9 @@ import { UNION_DISCRIMINATOR_PROPERTY_KEY } from "./constants";
 export class MessageReader<T = unknown> {
   rootDeserializationInfo: ComplexDeserializationInfo;
   deserializationInfoCache: DeserializationInfoCache;
+  /** Used for debugging. We do not error if the buffer end is not reached because it is possible this could cause
+   * unexpected errors with user data. */
+  #lastMessageBufferEndReached = false;
 
   constructor(rootDefinitionName: string, definitions: IDLMessageDefinition[]) {
     const rootDefinition = definitions.find((def) => def.name === rootDefinitionName);
@@ -39,13 +42,22 @@ export class MessageReader<T = unknown> {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   readMessage<R = T>(buffer: ArrayBufferView): R {
     const reader = new CdrReader(buffer);
+    // if true means that it is definitely using CDR2 (however doesn't apply to CDR2 Final (non PL_CDR and non DELIMITED_CDR2))
     const usesDelimiterHeader = reader.usesDelimiterHeader;
     const usesMemberHeader = reader.usesMemberHeader;
 
-    return this.readAggregatedType(this.rootDeserializationInfo, reader, {
+    const res = this.readAggregatedType(this.rootDeserializationInfo, reader, {
       usesDelimiterHeader,
       usesMemberHeader,
     }) as R;
+
+    this.#lastMessageBufferEndReached = reader.isAtEnd();
+
+    return res;
+  }
+
+  public lastMessageBufferEndReached(): boolean {
+    return this.#lastMessageBufferEndReached;
   }
 
   private readAggregatedType(
@@ -56,25 +68,21 @@ export class MessageReader<T = unknown> {
     knownTypeSize?: number,
   ): Record<string, unknown> {
     const readDelimiterHeader = options.usesDelimiterHeader && deserInfo.usesDelimiterHeader;
-    const readMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
 
+    let typeEndOffset: number | undefined =
+      knownTypeSize != undefined ? reader.offset + knownTypeSize : undefined;
     // Delimiter header is only read/written if the size of the type is not yet known
     // (If it hasn't already been read in from a surrounding emHeader)
     if (knownTypeSize == undefined && readDelimiterHeader) {
-      reader.dHeader();
+      const objectSize = reader.dHeader();
+      typeEndOffset = reader.offset + objectSize;
     }
 
     const msg =
       deserInfo.type === "struct"
-        ? this.readStructType(deserInfo, reader, options)
-        : this.readUnionType(deserInfo, reader, options);
+        ? this.readStructType(deserInfo, reader, options, typeEndOffset)
+        : this.readUnionType(deserInfo, reader, options, typeEndOffset);
 
-    if (readMemberHeader && this.#unusedEmHeader?.readSentinelHeader !== true) {
-      reader.sentinelHeader();
-    }
-    // clear emHeader for aggregated type, since if it was defined, it would've likely been used
-    // as the sentinel header. This prevents the next field from thinking it's already encountered a sentinel header, and returning undefined.
-    this.#unusedEmHeader = undefined;
     return msg;
   }
 
@@ -82,24 +90,116 @@ export class MessageReader<T = unknown> {
     deserInfo: StructDeserializationInfo,
     reader: CdrReader,
     options: HeaderOptions,
+    /** if this is present it means that the struct is CDR2 */
+    typeEndOffset: number | undefined,
   ): Record<string, unknown> {
-    const readMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
-    const readDelimiterHeader = options.usesDelimiterHeader && deserInfo.usesDelimiterHeader;
+    const usesMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
+    const usesDelimiterHeader = options.usesDelimiterHeader && deserInfo.usesDelimiterHeader;
 
     const msg: Record<string, unknown> = {};
-    for (const field of deserInfo.fields) {
-      msg[field.name] = this.readMemberFieldValue(
-        field,
-        reader,
-        {
-          readDelimiterHeader,
-          readMemberHeader,
-          parentName: deserInfo.definition.name ?? "<unnamed-struct>",
-        },
-        options,
-      );
-    }
 
+    // There's a few ways we should be reading structs
+    // 1. Struct is mutable. It has a typeEndOffset. Read based off each EMHEADER. Meaning that we need to read the EMHEADER to determine what the field is and then use the emHeader to read the field.
+    // 2. Struct is appendable. It has a typeEndOffset. Read schema definition from top to bottom, there may be unknown or missing fields that we need to account for.
+    // 3. Read solely based off of the schema definition (FINAL or XCDR1). Meaning that we can assume all the fields are in the exact same order and count as the schema definition.
+    if (usesMemberHeader) {
+      const fieldIndexesRead = new Set<number>();
+      // HANDLE MUTABLE STRUCT
+      // XCDR2 uses typeEndOffset to determine the end of the struct
+      // XCDR1 uses a sentinel header to determine the end of the struct
+
+      // loop until struct is ended: XCDR2 uses typeEndOffset, XCDR1 uses a sentinel header
+      for (;;) {
+        const atEndOfStruct = typeEndOffset != undefined && reader.offset >= typeEndOffset;
+        if (atEndOfStruct) {
+          break;
+        }
+
+        const { objectSize, id, readSentinelHeader, lengthCode } = reader.emHeader();
+
+        // end of struct, this accounts for XCDR1 mutable structs
+        if (readSentinelHeader === true) {
+          break;
+        }
+
+        const emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSize : undefined;
+        const fieldIndex = deserInfo.fieldIndexById.get(id);
+        const field = fieldIndex != undefined ? deserInfo.fieldsInOrder[fieldIndex] : undefined;
+        // if it's an unknown field then we skip reading it.
+        if (field == undefined || fieldIndex == undefined) {
+          reader.seekTo(reader.offset + objectSize);
+          continue;
+        }
+
+        fieldIndexesRead.add(fieldIndex);
+
+        msg[field.name] = this.readMemberFieldValue(
+          field,
+          reader,
+          {
+            usesDelimiterHeader,
+            usesMemberHeader,
+            parentName: deserInfo.definition.name ?? "<unnamed-struct>",
+            emHeaderSizeBytes,
+          },
+          options,
+        );
+      } // END OF MUTABLE FIELD LOOP
+
+      // set unread fields to defaults
+      for (let idx = 0; idx < deserInfo.fieldsInOrder.length; idx++) {
+        const field = deserInfo.fieldsInOrder[idx]!;
+        if (fieldIndexesRead.has(idx)) {
+          continue;
+        }
+
+        if (field.isOptional) {
+          msg[field.name] = undefined;
+        } else {
+          msg[field.name] = this.deserializationInfoCache.getFieldDefault(field);
+        }
+      }
+    } else {
+      // HANDLE APPENDABLE OR FINAL STRUCT
+      // Appendable structs are treated the same as final structs except that they have a typeEndOffset
+      // from the DHeader for XCDR2 (has typeEndOffset), or a sentinel header for XCDR1.
+
+      for (const field of deserInfo.fieldsInOrder) {
+        if (typeEndOffset != undefined && reader.offset >= typeEndOffset) {
+          // end of struct
+          // if this happens then it likely means that the schema we have has been appended to but the message
+          // was written using a schema with fewer fields.
+          break;
+        }
+
+        if (field.isOptional) {
+          msg[field.name] = this.readOptionalFinalMember(
+            field,
+            reader,
+            options,
+            deserInfo.definition.name,
+          );
+          continue;
+        }
+
+        // handles optional xcdr2 fields (from is_present=true) and all non-optional fields
+        msg[field.name] = this.readMemberFieldValue(
+          field,
+          reader,
+          {
+            usesDelimiterHeader,
+            usesMemberHeader,
+            parentName: deserInfo.definition.name ?? "<unnamed-struct>",
+          },
+          options,
+        );
+      } // END OF FIELD FOR LOOP
+      if (typeEndOffset != undefined && reader.offset < typeEndOffset) {
+        throw new Error(
+          `Buffer for Appendable/Final struct ${deserInfo.definition.name ?? ""} was not read completely. This could be because the schema is missing fields that are present on the message.`,
+        );
+      }
+    } // END OF APPENDABLE OR FINAL STRUCT
     return msg;
   }
 
@@ -107,12 +207,13 @@ export class MessageReader<T = unknown> {
     deserInfo: UnionDeserializationInfo,
     reader: CdrReader,
     options: HeaderOptions,
+    typeEndOffset?: number,
   ): Record<string, unknown> {
-    const shouldReadEmHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
-    const shouldReadDHeader = options.usesDelimiterHeader && deserInfo.usesDelimiterHeader;
+    const usesMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
+    const usesDelimiterHeader = options.usesDelimiterHeader && deserInfo.usesDelimiterHeader;
 
-    // looks like unions print an emHeader for the switchType
-    if (shouldReadEmHeader) {
+    // unions print an emHeader for the switchType
+    if (usesMemberHeader) {
       const { objectSize: objectSizeBytes } = reader.emHeader();
       if (objectSizeBytes !== deserInfo.switchTypeLength) {
         throw new Error(
@@ -141,86 +242,143 @@ export class MessageReader<T = unknown> {
       };
     }
 
+    let caseDefValue: unknown = undefined;
+
+    // even if the union is ended we need to set the defaults
+    if (usesMemberHeader) {
+      const needsToReadSentinelHeader = !usesDelimiterHeader && usesMemberHeader; // XCDR1 mutable
+      // MUTABLE UNION
+      const atEndOfUnion = typeEndOffset != undefined && reader.offset >= typeEndOffset;
+      const emHeader = !atEndOfUnion ? reader.emHeader() : undefined;
+      if (atEndOfUnion || emHeader?.readSentinelHeader === true) {
+        // if the offset is already at the end of the union then the value of the caseDef is undefined or it's default value
+        if (fieldDeserInfo.isOptional) {
+          caseDefValue = undefined;
+        } else {
+          caseDefValue = this.deserializationInfoCache.getFieldDefault(fieldDeserInfo);
+        }
+      } else {
+        // should be read before
+        const { objectSize, lengthCode } = emHeader!;
+
+        const emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSize : undefined;
+        caseDefValue = this.readMemberFieldValue(
+          fieldDeserInfo,
+          reader,
+          {
+            usesDelimiterHeader,
+            usesMemberHeader,
+            parentName: deserInfo.definition.name ?? "<unnamed-union>",
+            emHeaderSizeBytes,
+          },
+          options,
+        );
+        if (needsToReadSentinelHeader) {
+          reader.sentinelHeader();
+        }
+      }
+    } else {
+      // APPENDABLE AND FINAL UNION HANDLING
+      if (fieldDeserInfo.isOptional) {
+        caseDefValue = this.readOptionalFinalMember(
+          fieldDeserInfo,
+          reader,
+          options,
+          deserInfo.definition.name,
+        );
+      } else {
+        caseDefValue = this.readMemberFieldValue(
+          fieldDeserInfo,
+          reader,
+          {
+            usesDelimiterHeader,
+            usesMemberHeader,
+            parentName: deserInfo.definition.name ?? "<unnamed-union>",
+          },
+          options,
+        );
+      }
+    }
+
     return {
       [UNION_DISCRIMINATOR_PROPERTY_KEY]: discriminatorValue,
-      [caseDefType.name]: this.readMemberFieldValue(
-        fieldDeserInfo,
-        reader,
-        {
-          readDelimiterHeader: shouldReadDHeader,
-          readMemberHeader: shouldReadEmHeader,
-          parentName: deserInfo.definition.name ?? "<unnamed-union>",
-        },
-        options,
-      ),
+      [caseDefType.name]: caseDefValue,
     };
   }
 
-  /** Holds the return value of the previously unused emHeader.
-   * emHeaders remain unused if their return ID does not match the field ID.
-   * They become used if a field is encountered that uses the unusedEmHeader.id or
-   * if the unusedEmheader is a sentinel header.
-   **/
-  #unusedEmHeader?: ReturnType<CdrReader["emHeader"]>;
+  /**
+   * Reads an optional final member of a struct or union.
+   * Check for sentinel header before using.
+   * @param field - The field to read.
+   * @param reader - The reader to read from.
+   * @param options - The options to use.
+   * @returns The value of the field.
+   */
+  private readOptionalFinalMember(
+    field: FieldDeserializationInfo,
+    reader: CdrReader,
+    options: HeaderOptions,
+    parentName?: string,
+  ): unknown {
+    if (reader.isCDR2) {
+      // if it's XCDR2 then it uses an is_present flag to determine if the field is present
+
+      const isPresent = reader.isPresentFlag();
+      if (!isPresent) {
+        return undefined;
+      }
+
+      return this.readMemberFieldValue(
+        field,
+        reader,
+        {
+          ...options,
+          parentName: parentName ?? "<unnamed-struct>",
+        },
+        options,
+      );
+    } else {
+      // XCDR1 treats optional fields as mutable members
+      const { objectSize, lengthCode } = reader.emHeader();
+
+      if (objectSize === 0) {
+        return undefined;
+      }
+      const emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSize : undefined;
+      return this.readMemberFieldValue(
+        field,
+        reader,
+        {
+          ...options,
+          parentName: parentName ?? "<unnamed-struct>",
+          emHeaderSizeBytes,
+        },
+        options,
+      );
+    }
+  }
 
   private readMemberFieldValue(
     field: FieldDeserializationInfo,
     reader: CdrReader,
-    headerOptions: { readMemberHeader: boolean; readDelimiterHeader: boolean; parentName: string },
+    headerOptions: {
+      usesMemberHeader: boolean;
+      usesDelimiterHeader: boolean;
+      parentName: string;
+      emHeaderSizeBytes?: number;
+    },
     childOptions: HeaderOptions,
   ): unknown {
-    let emHeaderSizeBytes;
-
-    // if a field is marked as optional it gets an emHeader regardless of emHeaderOptions
-    // that would be set by the struct's mutability.
-    const readEmHeader = headerOptions.readMemberHeader || field.isOptional;
+    const emHeaderSizeBytes = headerOptions.emHeaderSizeBytes;
 
     try {
-      if (readEmHeader) {
-        /** If the unusedEmHeader is a sentinel header, then all remaining fields in the struct are absent. */
-        if (this.#unusedEmHeader?.readSentinelHeader === true) {
-          return undefined;
-        }
-
-        let emHeader;
-        try {
-          emHeader = this.#unusedEmHeader ?? reader.emHeader();
-        } catch (err: unknown) {
-          if (err instanceof RangeError && field.isOptional) {
-            // If we get a RangeError, it means we've reached the end of the buffer
-            // This is expected if the field is optional
-            return undefined;
-          }
-          throw err;
-        }
-
-        const definitionId = field.definitionId;
-
-        if (definitionId != undefined && emHeader.id !== definitionId) {
-          // ID mismatch, save emHeader for next field. Could also be a sentinel header
-          this.#unusedEmHeader = emHeader;
-          if (field.isOptional) {
-            return undefined;
-          } else {
-            return this.deserializationInfoCache.getFieldDefault(field);
-          }
-        }
-
-        // emHeader is now being used and should be cleared
-        this.#unusedEmHeader = undefined;
-        const { objectSize: objectSizeBytes, lengthCode } = emHeader;
-
-        if (field.isOptional && objectSizeBytes === 0) {
-          return undefined;
-        }
-
-        emHeaderSizeBytes = useEmHeaderAsLength(lengthCode) ? objectSizeBytes : undefined;
-      }
-
       if (field.typeDeserInfo.type === "struct" || field.typeDeserInfo.type === "union") {
         if (field.isArray === true) {
           // sequences and arrays have dHeaders only when emHeaders were not already written
-          if (headerOptions.readDelimiterHeader && !readEmHeader) {
+          if (
+            headerOptions.usesDelimiterHeader &&
+            !((!reader.isCDR2 && field.isOptional) || headerOptions.usesMemberHeader)
+          ) {
             // return value is ignored because we don't do partial deserialization
             // in that case it would be used to skip the field if it was irrelevant
             reader.dHeader();
@@ -256,7 +414,11 @@ export class MessageReader<T = unknown> {
           // since they are the only type that we call "primitive" here but are not "primitive" to XCDR
           // P_ARRAY and P_SEQUENCE types -- never have a dHeader (anything that's not a string here)
           // sequences and arrays have dHeaders only when emHeaders were not already written
-          if (headerOptions.readDelimiterHeader && !readEmHeader && field.type === "string") {
+          if (
+            headerOptions.usesDelimiterHeader &&
+            headerSpecifiedLength == undefined &&
+            field.type === "string"
+          ) {
             // return value is ignored because we don't do partial deserialization
             // in that case it would be used to skip the field if it was irrelevant
             reader.dHeader();

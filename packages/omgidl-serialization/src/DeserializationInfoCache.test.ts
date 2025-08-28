@@ -69,7 +69,7 @@ describe("DeserializationInfoCache", () => {
     const timeDeserInfo = deserializationInfoCache.getComplexDeserializationInfo(TIME_DEFINITION);
     expect(timeDeserInfo).toMatchObject({
       type: "struct",
-      fields: [
+      fieldsInOrder: [
         {
           name: "sec",
           type: "int32",
@@ -102,13 +102,13 @@ describe("DeserializationInfoCache", () => {
       deserializationInfoCache.getComplexDeserializationInfo(TRANSFORM_DEFINITION);
     expect(timeDeserInfo).toMatchObject({
       type: "struct",
-      fields: [
+      fieldsInOrder: [
         {
           name: "translation",
           type: "geometry_msgs::msg::Vector3",
           typeDeserInfo: {
             type: "struct",
-            fields: [
+            fieldsInOrder: [
               {
                 name: "x",
                 ...FLOAT64_PRIMITIVE_DESER_INFO,
@@ -129,7 +129,7 @@ describe("DeserializationInfoCache", () => {
           type: "geometry_msgs::msg::Quaternion",
           typeDeserInfo: {
             type: "struct",
-            fields: [
+            fieldsInOrder: [
               {
                 name: "x",
                 ...FLOAT64_PRIMITIVE_DESER_INFO,
@@ -196,7 +196,7 @@ describe("DeserializationInfoCache", () => {
       type: "builtin_interfaces::Time",
       typeDeserInfo: {
         type: "struct",
-        fields: [
+        fieldsInOrder: [
           {
             name: "sec",
             type: "int32",
@@ -234,7 +234,7 @@ describe("DeserializationInfoCache", () => {
       isArray: true,
       typeDeserInfo: {
         type: "struct",
-        fields: [
+        fieldsInOrder: [
           {
             name: "x",
             ...FLOAT64_PRIMITIVE_DESER_INFO,

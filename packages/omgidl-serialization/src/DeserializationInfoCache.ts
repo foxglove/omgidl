@@ -60,7 +60,8 @@ export type PrimitiveArrayDeserializationInfo = {
 
 export type StructDeserializationInfo = HeaderOptions & {
   type: "struct";
-  fields: FieldDeserializationInfo[];
+  fieldsInOrder: FieldDeserializationInfo[];
+  fieldIndexById: Map<number, number>;
   definition: IDLStructDefinition;
   /** optional allows for defaultValues to be calculated lazily */
   defaultValue?: Record<string, unknown>;
@@ -155,17 +156,59 @@ export class DeserializationInfoCache {
       return deserInfo;
     }
 
+    const fieldsInOrder = [];
+    for (const field of definition.definitions) {
+      if (field.isConstant === true) {
+        continue;
+      }
+      fieldsInOrder.push(this.buildFieldDeserInfo(field));
+    }
+
+    /**
+     * By default if autoid is not present, then mutable structs get their ids assigned from according to
+     * `@autoid(SEQUENTIAL)`.
+     * If `@autoid` is present, it defaults to the `HASH` method, which we cannot support. We would only support SEQUENTIAL.
+     * Also we don't have a notion of built-in annotations with enums (ie: `@autoid(SEQUENTIAL)`) so we'll actually fail at parsing this.
+     * So for now we're just going to fail if the annotation is present.
+     */
+    // specifies the behavior of implicit ids for mutable members
+    const autoidAnnotation = definition.annotations?.["autoid"];
+    if (autoidAnnotation != undefined) {
+      throw new Error(
+        `@autoid annotations are not supported. If you are using @autoid(SEQUENTIAL) then remove the annotation. @autoid(HASH) is not supported.`,
+      );
+    }
+
+    const fieldIndexById = new Map<number, number>();
+    // handle fields with explicit ids
+    for (let idx = 0; idx < fieldsInOrder.length; idx++) {
+      const field = fieldsInOrder[idx]!;
+      if (field.definitionId != undefined) {
+        fieldIndexById.set(field.definitionId, idx);
+      }
+    }
+
+    // fields without ids are implicitly assigned ids sequentially
+    // assumes the implicit @autoid(SEQUENTIAL) annotation on mutable members
+    let counter = 0;
+    for (let idx = 0; idx < fieldsInOrder.length; idx++) {
+      const field = fieldsInOrder[idx]!;
+      if (field.definitionId != undefined) {
+        continue;
+      }
+      while (fieldIndexById.get(counter) != undefined) {
+        counter++;
+      }
+      fieldIndexById.set(counter, idx);
+      counter++;
+    }
+
     const deserInfo: StructDeserializationInfo = {
       type: "struct",
       ...getHeaderNeeds(definition),
       definition,
-      fields: definition.definitions.reduce<FieldDeserializationInfo[]>(
-        (fieldsAccum, fieldDef) =>
-          fieldDef.isConstant === true
-            ? fieldsAccum
-            : fieldsAccum.concat(this.buildFieldDeserInfo(fieldDef)),
-        [],
-      ),
+      fieldIndexById,
+      fieldsInOrder,
     };
 
     this.#complexDeserializationInfo.set(definition.name ?? "", deserInfo);
@@ -318,7 +361,7 @@ export class DeserializationInfoCache {
       defaultMessage[defaultCaseDeserInfo.name] = this.getFieldDefault(defaultCaseDeserInfo);
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (deserInfo.type === "struct") {
-      for (const field of deserInfo.fields) {
+      for (const field of deserInfo.fieldsInOrder) {
         if (!field.isOptional) {
           defaultMessage[field.name] = this.getFieldDefault(field);
         }
