@@ -447,8 +447,8 @@ module builtin_interfaces {
     `;
 
     const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
-    writer.dHeader(1); // first writes dHeader for struct object - not taken into consideration for objects
-    writer.emHeader(true, 1, 1); // then writes emHeader for struct object
+    writer.dHeader(4); // first writes dHeader for struct object
+    writer.emHeader(true, 0, 1); // then writes emHeader for struct object
     writer.uint8(0x0f); // then writes the octet
 
     const rootDef = "Address";
@@ -480,14 +480,14 @@ module builtin_interfaces {
       age: 30,
     };
 
-    writer.dHeader(1);
-    writer.emHeader(true, 1, 8); // heightMeters emHeader
+    writer.dHeader(4 + 8 + 8 + 4 + 1 + 4 + 1);
+    writer.emHeader(true, 0, 8); // heightMeters emHeader
     writer.float64(data.heightMeters);
-    writer.emHeader(true, 2, 4 + 4 + 1); // address emHeader
+    writer.emHeader(true, 1, 4 + 1, 5); // address emHeader, use LC=5 so that NEXTINT is used as the length of the next member
     // dHeader for inner object not written again because the object size is already specified in the emHeader and the lengthCode of 5 allows it to not be written again
-    writer.emHeader(true, 1, 1, 5); // pointer emHeader
+    writer.emHeader(true, 0, 1); // pointer emHeader
     writer.uint8(data.address.pointer);
-    writer.emHeader(true, 3, 1); // age emHeader
+    writer.emHeader(true, 2, 1); // age emHeader
     writer.uint8(data.age);
 
     const rootDef = "Person";
@@ -510,7 +510,7 @@ module builtin_interfaces {
 
     // PL_CDRv1 does not have dHeaders and uses sentinel headers
     const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
-    writer.emHeader(true, 1, 1); // then writes emHeader for struct object
+    writer.emHeader(true, 0, 1); // then writes emHeader for struct object
     writer.uint8(0x0f); // then writes the octet
     writer.sentinelHeader();
 
@@ -544,14 +544,14 @@ module builtin_interfaces {
       age: 30,
     };
 
-    writer.emHeader(true, 1, 8); // heightMeters emHeader
+    writer.emHeader(true, 0, 8); // heightMeters emHeader
     writer.float64(data.heightMeters);
-    writer.emHeader(true, 2, 4 + 4 + 1); // address emHeader
+    writer.emHeader(true, 1, 4 + 4 + 1); // address emHeader
     // dHeader for inner object not written again because the object size is already specified in the emHeader
-    writer.emHeader(true, 1, 1); // pointer emHeader
+    writer.emHeader(true, 0, 1); // pointer emHeader
     writer.uint8(data.address.pointer);
     writer.sentinelHeader();
-    writer.emHeader(true, 3, 1); // age emHeader
+    writer.emHeader(true, 2, 1); // age emHeader
     writer.uint8(data.age);
     writer.sentinelHeader();
 
@@ -585,18 +585,18 @@ module builtin_interfaces {
       count: 3,
     };
 
-    writer.dHeader(1);
-    writer.emHeader(true, 1, data.name.length + 1, 2); // "name" field emHeader. add 1 for null terminator
+    writer.dHeader(data.name.length + 1 + 4 + 4 + (3 * 8 + 8) + (3 * 8 + 8) + 8);
+    writer.emHeader(true, 0, data.name.length + 1 + 4, 3); // "name" field emHeader. add 1 for null terminator
     writer.string(data.name, true); // need to write length because lengthCode < 5
 
-    writer.emHeader(true, 2, 3 * 8, 7); // xValues emHeader
+    writer.emHeader(true, 1, 3 * 8, 7); // xValues emHeader
     writer.float64Array(data.xValues, false); // do not write length of array again. Already included in emHeader when lengthCode is 7
 
     // size in only emheader means that lengthcode > 4
-    writer.emHeader(true, 3, 3 * 8, 7); // yValues emHeader, lengthCode = 7 means we don't have to write sequenceLength
+    writer.emHeader(true, 2, 3 * 8, 7); // yValues emHeader, lengthCode = 7 means we don't have to write sequenceLength
     writer.float64Array(data.yValues, false); // do not write length of array again. Already included in emHeader
 
-    writer.emHeader(true, 4, 4); // count emHeader
+    writer.emHeader(true, 3, 4); // count emHeader
     writer.uint32(data.count);
 
     const rootDef = "Plot";
@@ -629,16 +629,18 @@ module builtin_interfaces {
       count: 3,
     };
 
-    writer.dHeader(1);
-    writer.emHeader(true, 1, data.name.length + 1, 2); // "name" field emHeader. add 1 for null terminator
+    writer.dHeader(
+      4 + data.name.length + 1 + 4 + (4 + 4 + 4 + 3 * 8) + (4 + 4 + 4 + 3 * 8) + (4 + 4),
+    ); // (4 + 4 + 4 + 3 * 8) for arrays because emHeader is writing NEXTINT
+    writer.emHeader(true, 0, data.name.length + 1 + 4, 3); // "name" field emHeader. add 1 for null terminator
     writer.string(data.name, true); // need to write length because lengthCode < 5
-    writer.emHeader(true, 2, 3 * 8 + 1, 4); // xValues emHeader
+    writer.emHeader(true, 1, 3 * 8 + 4, 4); // xValues emHeader
     writer.float64Array(data.xValues, /*writeLength:*/ true); // write length because lengthCode < 5
 
-    writer.emHeader(true, 3, 3 * 8 + 1, 4); // yValues emHeader
+    writer.emHeader(true, 2, 3 * 8 + 4, 4); // yValues emHeader
     writer.float64Array(data.yValues, /*writeLength:*/ true); // write length because lengthCode < 5
 
-    writer.emHeader(true, 4, 4); // count emHeader
+    writer.emHeader(true, 3, 4); // count emHeader
     writer.uint32(data.count);
 
     const rootDef = "Plot";
@@ -667,7 +669,8 @@ module builtin_interfaces {
       ],
     };
     const writer = new CdrWriter({ size: 1028, kind: EncapsulationKind.PL_CDR2_LE });
-    writer.emHeader(true, 1, data.grid.length * data.grid[0]!.length * 4); // size of grid
+    writer.dHeader(4 + data.grid.length * data.grid[0]!.length * 4);
+    writer.emHeader(true, 0, data.grid.length * data.grid[0]!.length * 4, 7); // size of grid
     for (const row of data.grid) {
       writer.float32Array(row, false); // do not write length for fixed-size arrays
     }
@@ -693,7 +696,7 @@ module builtin_interfaces {
     };
 
     writer.dHeader(1); // dHeader of struct
-    writer.emHeader(true, 1, data.numbers.length + 4, 2); // writes 4 because the sequence length is after it
+    writer.emHeader(true, 0, data.numbers.length + 4, 2); // writes 4 because the sequence length is after it
     writer.sequenceLength(0); // Because its lengthCode < 5
 
     const rootDef = "Array";
@@ -895,7 +898,7 @@ module builtin_interfaces {
     writer.emHeader(true, 10, 26); // writes emHeader for arr field sequence
     writer.sequenceLength(data.arr.length);
     for (const inner of data.arr) {
-      writer.dHeader(8); // write dHeader for Inner struct
+      writer.dHeader(5); // write dHeader for Inner struct
       writer.emHeader(true, 100, 1); // writes emHeader for a field
       writer.uint8(inner.a);
     }
@@ -1033,7 +1036,7 @@ module builtin_interfaces {
     };
     const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
     writer.emHeader(false, 100, 1, 0);
-    writer.uint32(data.bittybyte);
+    writer.uint8(data.bittybyte);
     writer.emHeader(false, 200, 4, 0);
     writer.uint32(data.bytier);
     writer.sentinelHeader(); // end of struct
@@ -1592,5 +1595,384 @@ module builtin_interfaces {
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
     const msgout = reader.readMessage(writer.data);
     expect(msgout).toEqual(data);
+  });
+  it("Reads XCDR1 appendable struct", () => {
+    const msgDef = `
+      @appendable
+      struct Message {
+        uint8 bittybyte;
+        float floaty;
+        uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0.5,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.uint8(data.bittybyte);
+    writer.float32(data.floaty);
+    writer.uint32(data.bytier);
+    writer.sentinelHeader(); // end of struct
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+  it("Reads XCDR2 appendable struct", () => {
+    const msgDef = `
+      @appendable
+      struct Message {
+        uint8 bittybyte;
+        float floaty;
+        uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0.5,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(4 + 4 + 1);
+    writer.uint8(data.bittybyte);
+    writer.float32(data.floaty);
+    writer.uint32(data.bytier);
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+  });
+  it("Reads XCDR1 mutable struct with out of order member headers", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @id(100) uint8 bittybyte;
+        @id(200) float floaty;
+        @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0.5,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 200, 4);
+    writer.float32(data.floaty);
+    writer.emHeader(false, 300, 4);
+    writer.uint32(data.bytier);
+    writer.emHeader(false, 100, 1);
+    writer.uint8(data.bittybyte);
+    writer.sentinelHeader(); // end of struct
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
+  });
+  it("Reads XCDR2 mutable struct with out of order member headers", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @id(100) uint8 bittybyte;
+        @id(200) float floaty;
+        @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0.5,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(4 + 4 + 4 + 4 + 4 + 1);
+    writer.emHeader(false, 200, 4);
+    writer.float32(data.floaty);
+    writer.emHeader(false, 300, 4);
+    writer.uint32(data.bytier);
+    writer.emHeader(false, 100, 1);
+    writer.uint8(data.bittybyte);
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
+  });
+  it("Reads XCDR1 mutable struct with out of order member headers and a missing member", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @id(100) uint8 bittybyte;
+        @id(200) float floaty;
+        @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 300, 4);
+    writer.uint32(data.bytier);
+    writer.emHeader(false, 100, 1);
+    writer.uint8(data.bittybyte);
+    writer.sentinelHeader(); // end of struct
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
+  });
+  it("Reads XCDR2 mutable struct with out of order member headers and a missing member", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @id(100) uint8 bittybyte;
+        @id(200) float floaty;
+        @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(4 + 4 + 4 + 1);
+    writer.emHeader(false, 300, 4);
+    writer.uint32(data.bytier);
+    writer.emHeader(false, 100, 1);
+    writer.uint8(data.bittybyte);
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
+  });
+  it("Reads XCDR1 mutable struct with appended extra member header", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @id(100) uint8 bittybyte;
+        @id(200) float floaty;
+        @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0.5,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 100, 1);
+    writer.uint8(data.bittybyte);
+    writer.emHeader(false, 200, 4);
+    writer.float32(data.floaty);
+    writer.emHeader(false, 300, 4);
+    writer.uint32(data.bytier);
+    writer.emHeader(false, 400, 4); // doesn't exist on schema
+    writer.uint32(12);
+    writer.sentinelHeader(); // end of struct
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
+  });
+  it("Reads XCDR2 mutable struct with appended extra member header", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @id(100) uint8 bittybyte;
+        @id(200) float floaty;
+        @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0.5,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(4 + 4 + 4 + 4 + 4 + 1 + 4 + 4);
+    writer.emHeader(false, 100, 1);
+    writer.uint8(data.bittybyte);
+    writer.emHeader(false, 200, 4);
+    writer.float32(data.floaty);
+    writer.emHeader(false, 300, 4);
+    writer.uint32(data.bytier);
+    writer.emHeader(false, 400, 4); // doesn't exist on schema
+    writer.uint32(12);
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
+  });
+  it("Reads XCDR1 mutable struct with inserted extra member header", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @id(100) uint8 bittybyte;
+        @id(200) float floaty;
+        @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0.5,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 100, 1);
+    writer.uint8(data.bittybyte);
+    writer.emHeader(false, 200, 4);
+    writer.float32(data.floaty);
+    writer.emHeader(false, 250, 4); // doesn't exist on schema
+    writer.uint32(12);
+    writer.emHeader(false, 300, 4);
+    writer.uint32(data.bytier);
+
+    writer.sentinelHeader(); // end of struct
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
+  });
+  it("Reads XCDR2 mutable struct with inserted extra member header", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @id(100) uint8 bittybyte;
+        @id(200) float floaty;
+        @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0.5,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(4 + 4 + 4 + 4 + 4 + 1 + 4 + 4);
+    writer.emHeader(false, 100, 1);
+    writer.uint8(data.bittybyte);
+    writer.emHeader(false, 200, 4);
+    writer.float32(data.floaty);
+    writer.emHeader(false, 250, 4); // doesn't exist on schema
+    writer.uint32(12);
+    writer.emHeader(false, 300, 4);
+    writer.uint32(data.bytier);
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
+  });
+  it("Reads XCDR2 mutable struct with out of order member headers while using a mix of explicit and implicit ids", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @id(100) uint8 bittybyte;
+        float floaty;
+        @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0.5,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(4 + 4 + 4 + 4 + 4 + 1);
+    writer.emHeader(false, 0, 4);
+    writer.float32(data.floaty);
+    writer.emHeader(false, 300, 4);
+    writer.uint32(data.bytier);
+    writer.emHeader(false, 100, 1);
+    writer.uint8(data.bittybyte);
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
+  });
+  it("Does not allow for defining of implicit ids using @autoid(HASH)", () => {
+    const msgDef = `
+      @mutable
+      @autoid
+      struct Message {
+        @id(100) uint8 bittybyte;
+        float floaty;
+        @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0.5,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(4 + 4 + 4 + 4 + 4 + 1);
+    writer.emHeader(false, 0, 4);
+    writer.float32(data.floaty);
+    writer.emHeader(false, 300, 4);
+    writer.uint32(data.bytier);
+    writer.emHeader(false, 100, 1);
+    writer.uint8(data.bittybyte);
+
+    const rootDef = "Message";
+
+    expect(() => new MessageReader(rootDef, parseIDL(msgDef))).toThrow(
+      /@autoid annotations are not supported/i,
+    );
   });
 });
