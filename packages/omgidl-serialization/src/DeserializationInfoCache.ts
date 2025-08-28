@@ -165,10 +165,8 @@ export class DeserializationInfoCache {
     }
     // specifies the behavior of implicit ids for mutable members
     const autoidAnnotation = definition.annotations?.["autoid"];
-    if (autoidAnnotation?.type === "const-param" && autoidAnnotation.value === "HASH") {
-      throw new Error(
-        "Hash autoid is not supported because OMGIDL docs do not specify a hashing algorithm.",
-      );
+    if (autoidAnnotation?.type === "const-param" && autoidAnnotation.value !== "SEQUENTIAL") {
+      throw new Error("Non-sequential autoid annotations are not supported.");
     }
 
     const fieldsById = new Map<number, FieldDeserializationInfo>();
