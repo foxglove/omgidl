@@ -194,7 +194,7 @@ export class MessageReader<T = unknown> {
       } // END OF FIELD FOR LOOP
       if (typeEndOffset != undefined && reader.offset < typeEndOffset) {
         throw new Error(
-          `Appendable/Final struct ${deserInfo.definition.name ?? ""} was not read completely. This could be because the schema is missing fields that are present on the message.`,
+          `Buffer for Appendable/Final struct ${deserInfo.definition.name ?? ""} was not read completely. This could be because the schema is missing fields that are present on the message.`,
         );
       }
     } // END OF APPENDABLE OR FINAL STRUCT
@@ -247,12 +247,7 @@ export class MessageReader<T = unknown> {
       const needsToReadSentinelHeader = !usesDelimiterHeader && usesMemberHeader; // XCDR1 mutable
       // MUTABLE UNION
       const atEndOfUnion = typeEndOffset != undefined && reader.offset >= typeEndOffset;
-      // used to check
-      let emHeader: ReturnType<CdrReader["emHeader"]> | undefined = undefined;
-      if (!atEndOfUnion) {
-        // only read emHeader if it's not at the end of the union already
-        emHeader = reader.emHeader();
-      }
+      const emHeader = !atEndOfUnion ? reader.emHeader() : undefined;
       if (atEndOfUnion || emHeader?.readSentinelHeader === true) {
         // if the offset is already at the end of the union then the value of the caseDef is undefined or it's default value
         if (fieldDeserInfo.isOptional) {
