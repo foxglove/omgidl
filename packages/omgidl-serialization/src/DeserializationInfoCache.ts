@@ -163,10 +163,20 @@ export class DeserializationInfoCache {
       }
       fieldsInOrder.push(this.buildFieldDeserInfo(field));
     }
+
+    /**
+     * By default if autoid is not present, then mutable structs get their ids assigned from according to
+     * `@autoid(SEQUENTIAL)`.
+     * If `@autoid` is present, it defaults to the `HASH` method, which we cannot support. We would only support SEQUENTIAL.
+     * Also we don't have a notion of built-in annotations with enums (ie: `@autoid(SEQUENTIAL)`) so we'll actually fail at parsing this.
+     * So for now we're just going to fail if the annotation is present.
+     */
     // specifies the behavior of implicit ids for mutable members
     const autoidAnnotation = definition.annotations?.["autoid"];
-    if (autoidAnnotation?.type === "const-param" && autoidAnnotation.value !== "SEQUENTIAL") {
-      throw new Error("Non-sequential autoid annotations are not supported.");
+    if (autoidAnnotation != undefined) {
+      throw new Error(
+        `@autoid annotations are not supported. If you are using @autoid(SEQUENTIAL) then remove the annotation. @autoid(HASH) is not supported.`,
+      );
     }
 
     const fieldIndexById = new Map<number, number>();

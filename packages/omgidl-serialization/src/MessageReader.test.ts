@@ -1913,4 +1913,66 @@ module builtin_interfaces {
     expect(msgout).toEqual(data);
     expect(reader.lastMessageBufferEndReached()).toBe(true);
   });
+  it("Reads XCDR2 mutable struct with out of order member headers while using a mix of explicit and implicit ids", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @id(100) uint8 bittybyte;
+        float floaty;
+        @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0.5,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(4 + 4 + 4 + 4 + 4 + 1);
+    writer.emHeader(false, 0, 4);
+    writer.float32(data.floaty);
+    writer.emHeader(false, 300, 4);
+    writer.uint32(data.bytier);
+    writer.emHeader(false, 100, 1);
+    writer.uint8(data.bittybyte);
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(data);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
+  });
+  it("Does not allow for defining of implicit ids using @autoid(HASH)", () => {
+    const msgDef = `
+      @mutable
+      @autoid
+      struct Message {
+        @id(100) uint8 bittybyte;
+        float floaty;
+        @id(300) uint32 bytier;
+      };
+    `;
+    const data = {
+      bittybyte: 5,
+      floaty: 0.5,
+      bytier: 9,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(4 + 4 + 4 + 4 + 4 + 1);
+    writer.emHeader(false, 0, 4);
+    writer.float32(data.floaty);
+    writer.emHeader(false, 300, 4);
+    writer.uint32(data.bytier);
+    writer.emHeader(false, 100, 1);
+    writer.uint8(data.bittybyte);
+
+    const rootDef = "Message";
+
+    expect(() => new MessageReader(rootDef, parseIDL(msgDef))).toThrow(
+      /@autoid annotations are not supported/i,
+    );
+  });
 });
