@@ -146,25 +146,31 @@ NOTE: numbers like `7.4.1` refer to sections of the [OMG IDL specification](http
   - Parse generic annotations (only defaultValue is read in to AST)
   - unions and cases
   - enumerator overrides with `@value` annotation
+  - All XCDR extensibility types: `@final`, `@appendable`, and `@mutable`
+  - `const Color color = RED;` and `const Color color = Color::RED;` are supported.
 
 - Unsupported features
 
   - `native` declarations
   - forward declarations
   - Constant expressions
-  - unary operators
+  - unary operators (outside of positive/negative numbers)
   - default value annotation type checking
   - identifiers prefixed with `::` scope
+  - aggregated type inheritance
+  - Annotation definitions
+  - Built-in enums from annotations (like `@autoid`'s `HASH` and `SEQUENTIAL` enums)
+  - Map types
+  - `@autoid(HASH)` on mutable aggregated types
   - `7.2.6.1` - Octal integers are not supported (`014`)
   - `7.2.6.2.1` wide character and wide string has limited support
     - can be read in to schema but only considered `uint8`
     - wide character and string literals are not supported (`L'X'`)
   - `7.2.6.3` - wide string literals are not supported
-  - `7.2.3.1` - we do not check collision explicitly and we use case-sensitive identifiers whereas IDL requires identifiers to be case insensitive.
+  - `7.2.3.1` - we do not check collision explicitly and we use case-sensitive identifiers whereas IDL requires identifiers to be case insensitive. WARNING: This can cause incorrect reading of messages.
   - `7.4.2`-`7.4.16` extended IDL building blocks not supported
   - Composing variable-sized array typedefs with other array typedefs or struct member nodes.
-  - `const Color color = RED;` not supported. However `const Color color = Color::RED;` is supported.
 
 - Unsupported reference and type resolution features
-  - numeric type checking for constant usage
+  - numeric type checking for constant usage. This means that if you use a mis-typed constant it could cause message read errors or the mismatched type will show up in the deserialized message.
   - we do not enforce type-based value ranges on constants in schema
