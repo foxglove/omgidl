@@ -376,4 +376,116 @@ describe("DeserializationInfoCache", () => {
       }),
     ).toThrow();
   });
+
+  it("assigns field ids sequentially from the last explicitly-specified id", () => {
+    const fieldsInOrder = [
+      { name: "a", ...FLOAT64_PRIMITIVE_DESER_INFO },
+      { name: "b", ...FLOAT64_PRIMITIVE_DESER_INFO },
+      { name: "c", ...FLOAT64_PRIMITIVE_DESER_INFO },
+      { name: "d", ...FLOAT64_PRIMITIVE_DESER_INFO },
+      { name: "e", ...FLOAT64_PRIMITIVE_DESER_INFO },
+    ];
+    expect(
+      new DeserializationInfoCache([]).getComplexDeserializationInfo({
+        name: "test_pkg::Foo",
+        definitions: [
+          { name: "a", type: "float64", isComplex: false },
+          { name: "b", type: "float64", isComplex: false },
+          { name: "c", type: "float64", isComplex: false },
+          { name: "d", type: "float64", isComplex: false },
+          { name: "e", type: "float64", isComplex: false },
+        ],
+        aggregatedKind: "struct",
+      }),
+    ).toMatchObject({
+      type: "struct",
+      fieldsInOrder,
+      fieldIndexById: new Map([
+        [0, 0],
+        [1, 1],
+        [2, 2],
+        [3, 3],
+        [4, 4],
+      ]),
+    });
+
+    expect(
+      new DeserializationInfoCache([]).getComplexDeserializationInfo({
+        name: "test_pkg::Foo",
+        definitions: [
+          {
+            name: "a",
+            type: "float64",
+            isComplex: false,
+            annotations: { id: { type: "const-param", name: "id", value: 42 } },
+          },
+          { name: "b", type: "float64", isComplex: false },
+          { name: "c", type: "float64", isComplex: false },
+          { name: "d", type: "float64", isComplex: false },
+          { name: "e", type: "float64", isComplex: false },
+        ],
+        aggregatedKind: "struct",
+      }),
+    ).toMatchObject({
+      type: "struct",
+      fieldsInOrder,
+      fieldIndexById: new Map([
+        [42, 0],
+        [43, 1],
+        [44, 2],
+        [45, 3],
+        [46, 4],
+      ]),
+    });
+
+    expect(
+      new DeserializationInfoCache([]).getComplexDeserializationInfo({
+        name: "test_pkg::Foo",
+        definitions: [
+          { name: "a", type: "float64", isComplex: false },
+          {
+            name: "b",
+            type: "float64",
+            isComplex: false,
+            annotations: { id: { type: "const-param", name: "id", value: 42 } },
+          },
+          { name: "c", type: "float64", isComplex: false },
+          {
+            name: "d",
+            type: "float64",
+            isComplex: false,
+            annotations: { id: { type: "const-param", name: "id", value: 100 } },
+          },
+          { name: "e", type: "float64", isComplex: false },
+        ],
+        aggregatedKind: "struct",
+      }),
+    ).toMatchObject({
+      type: "struct",
+      fieldsInOrder,
+      fieldIndexById: new Map([
+        [0, 0],
+        [42, 1],
+        [43, 2],
+        [100, 3],
+        [101, 4],
+      ]),
+    });
+
+    expect(() =>
+      new DeserializationInfoCache([]).getComplexDeserializationInfo({
+        name: "test_pkg::Foo",
+        definitions: [
+          { name: "a", type: "float64", isComplex: false },
+          {
+            name: "b",
+            type: "float64",
+            isComplex: false,
+            annotations: { id: { type: "const-param", name: "id", value: 0 } },
+          },
+        ],
+        aggregatedKind: "struct",
+      }),
+    ).toThrow("struct test_pkg::Foo has multiple fields with id 0: a and b");
+  });
 });
