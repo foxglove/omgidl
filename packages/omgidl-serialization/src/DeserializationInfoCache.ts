@@ -179,28 +179,24 @@ export class DeserializationInfoCache {
       );
     }
 
-    const fieldIndexById = new Map<number, number>();
-    // handle fields with explicit ids
-    for (let idx = 0; idx < fieldsInOrder.length; idx++) {
-      const field = fieldsInOrder[idx]!;
-      if (field.definitionId != undefined) {
-        fieldIndexById.set(field.definitionId, idx);
-      }
-    }
+    // 7.3.1.2.1.1
+    // Fields without explicit ids are implicitly assigned ids sequentially from the last explicit id.
+    // Assumes the implicit @autoid(SEQUENTIAL) annotation on mutable members.
+    // Also assumes the type does not inherit from a base type, which we currently don't support in this package.
+    let nextSequentialId = 0;
 
-    // fields without ids are implicitly assigned ids sequentially
-    // assumes the implicit @autoid(SEQUENTIAL) annotation on mutable members
-    let counter = 0;
+    const fieldIndexById = new Map<number, number>();
     for (let idx = 0; idx < fieldsInOrder.length; idx++) {
       const field = fieldsInOrder[idx]!;
-      if (field.definitionId != undefined) {
-        continue;
+      const id = field.definitionId ?? nextSequentialId;
+      const existingFieldIdx = fieldIndexById.get(id);
+      if (existingFieldIdx != undefined) {
+        throw new Error(
+          `struct ${definition.name ?? "(unnamed)"} has multiple fields with id ${id}: ${fieldsInOrder[existingFieldIdx]!.name} and ${field.name}`,
+        );
       }
-      while (fieldIndexById.get(counter) != undefined) {
-        counter++;
-      }
-      fieldIndexById.set(counter, idx);
-      counter++;
+      fieldIndexById.set(id, idx);
+      nextSequentialId = id + 1;
     }
 
     const deserInfo: StructDeserializationInfo = {

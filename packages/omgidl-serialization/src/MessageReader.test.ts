@@ -1929,7 +1929,7 @@ module builtin_interfaces {
     };
     const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
     writer.dHeader(4 + 4 + 4 + 4 + 4 + 1);
-    writer.emHeader(false, 0, 4);
+    writer.emHeader(false, 101, 4);
     writer.float32(data.floaty);
     writer.emHeader(false, 300, 4);
     writer.uint32(data.bytier);
