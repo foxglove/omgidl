@@ -1,6 +1,6 @@
 {
   "name": "@foxglove/ros2idl-parser",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "Parser for ROS 2 IDL message definitions",
   "license": "MIT",
   "repository": {
