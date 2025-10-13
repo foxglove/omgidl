@@ -559,10 +559,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@foxglove/message-definition@npm:^0.4.0":
-  version: 0.4.0
-  resolution: "@foxglove/message-definition@npm:0.4.0"
-  checksum: 10/0e05a0c9de744625ef19e0afab4db927e8240131102c301479cf187d9fafc4bef5984509a666726cc5fc63cbd8302b154558ca7daea455b6308c6076abc461ca
+"@foxglove/message-definition@npm:^0.5.0":
+  version: 0.5.0
+  resolution: "@foxglove/message-definition@npm:0.5.0"
+  checksum: 10/679ecc3416a153f4aee969e4031fdd4ccf0c63b04c46da74e9c8c78e72284a83dd2d4a3ee9786962f0394711635256dfc1bc69330206da7fec224447b2c7ff09
   languageName: node
   linkType: hard
 
@@ -586,7 +586,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@foxglove/omgidl-parser@workspace:packages/omgidl-parser"
   dependencies:
-    "@foxglove/message-definition": "npm:^0.4.0"
+    "@foxglove/message-definition": "npm:^0.5.0"
     "@foxglove/tsconfig": "npm:2.0.0"
     "@types/jest": "npm:29.5.14"
     "@types/nearley": "npm:^2.11.5"
@@ -610,7 +610,7 @@ __metadata:
   resolution: "@foxglove/omgidl-serialization@workspace:packages/omgidl-serialization"
   dependencies:
     "@foxglove/cdr": "npm:3.5.0"
-    "@foxglove/message-definition": "npm:^0.4.0"
+    "@foxglove/message-definition": "npm:^0.5.0"
     "@foxglove/omgidl-parser": "workspace:*"
     "@sounisi5011/jest-binary-data-matchers": "npm:1.2.1"
     jest: "npm:29.7.0"
@@ -622,7 +622,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@foxglove/ros2idl-parser@workspace:packages/ros2idl-parser"
   dependencies:
-    "@foxglove/message-definition": "npm:^0.4.0"
+    "@foxglove/message-definition": "npm:^0.5.0"
     "@foxglove/omgidl-parser": "workspace:*"
     "@types/jest": "npm:^29.5.14"
     jest: "npm:29.7.0"
