@@ -1975,4 +1975,26 @@ module builtin_interfaces {
       /@autoid annotations are not supported/i,
     );
   });
+  it("uses the value of a @default annotation for the default value of a missing non-optional member", () => {
+    const msgDef = `
+      @mutable
+      struct Message {
+        @default(5) uint8 bittybyte;
+      };
+    `;
+    const expected = {
+      bittybyte: 5,
+    };
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.sentinelHeader();
+
+    const rootDef = "Message";
+
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual(expected);
+    expect(reader.lastMessageBufferEndReached()).toBe(true);
+  });
 });
