@@ -283,6 +283,7 @@ export class DeserializationInfoCache {
       arrayLengths,
       definitionId: getDefinitionId(definition),
       isOptional: isOptional(definition),
+      defaultValue: definition.defaultValue,
     };
   }
 
