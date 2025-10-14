@@ -1,6 +1,6 @@
 {
   "name": "@foxglove/omgidl-serialization",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "OMG IDL Schema message serializers and deserializer",
   "license": "MIT",
   "keywords": [
