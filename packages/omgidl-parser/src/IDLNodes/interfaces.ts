@@ -42,8 +42,9 @@ export interface IStructIDLNode extends IIDLNode<StructASTNode> {
   definitions: IStructMemberIDLNode[];
   toIDLMessageDefinition(): IDLMessageDefinition;
 }
-export interface IReferenceTypeIDLNode<T extends TypedefASTNode | StructMemberASTNode>
-  extends IIDLNode<T> {
+export interface IReferenceTypeIDLNode<
+  T extends TypedefASTNode | StructMemberASTNode,
+> extends IIDLNode<T> {
   type: string;
   isComplex: boolean;
   enumType: string | undefined;
