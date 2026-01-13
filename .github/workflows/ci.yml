@@ -40,14 +40,14 @@ jobs:
       - run: yarn workspace @foxglove/omgidl-parser pack
       - name: Publish `omgidl-parser` to NPM
         if: ${{ startsWith(github.ref, 'refs/tags/omgidl-parser/v') }}
-        run: npx npm@latest publish packages/omgidl-parser/package.tgz --provenance --access public
+        run: npx npm@11.7.0 publish packages/omgidl-parser/package.tgz --provenance --access public
 
       - run: yarn workspace @foxglove/omgidl-serialization pack
       - name: Publish `omgidl-serialization` to NPM
         if: ${{ startsWith(github.ref, 'refs/tags/omgidl-serialization/v') }}
-        run: npx npm@latest publish packages/omgidl-serialization/package.tgz --provenance --access public
+        run: npx npm@11.7.0 publish packages/omgidl-serialization/package.tgz --provenance --access public
 
       - run: yarn workspace @foxglove/ros2idl-parser pack
       - name: Publish `ros2idl-parser` to NPM
         if: ${{ startsWith(github.ref, 'refs/tags/ros2idl-parser/v') }}
-        run: npx npm@latest publish packages/ros2idl-parser/package.tgz --provenance --access public
+        run: npx npm@11.7.0 publish packages/ros2idl-parser/package.tgz --provenance --access public
