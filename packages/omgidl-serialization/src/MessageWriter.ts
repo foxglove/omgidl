@@ -94,7 +94,7 @@ export class MessageWriter {
    * be equal or greater to the result of `calculateByteSize(message)`. If not
    * provided, a new Uint8Array will be allocated.
    */
-  writeMessage(message: unknown, output?: Uint8Array): Uint8Array {
+  writeMessage(message: unknown, output?: ArrayBuffer): Uint8Array {
     const writer = new CdrWriter({
       ...this.cdrOptions,
       buffer: output,
