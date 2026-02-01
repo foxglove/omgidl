@@ -587,7 +587,7 @@ __metadata:
   resolution: "@foxglove/omgidl-parser@workspace:packages/omgidl-parser"
   dependencies:
     "@foxglove/message-definition": "npm:^0.5.0"
-    "@foxglove/tsconfig": "npm:2.0.0"
+    "@foxglove/tsconfig": "npm:3.2.0"
     "@types/jest": "npm:29.5.14"
     "@types/nearley": "npm:^2.11.5"
     jest: "npm:29.7.0"
@@ -637,10 +637,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@foxglove/tsconfig@npm:2.0.0":
-  version: 2.0.0
-  resolution: "@foxglove/tsconfig@npm:2.0.0"
-  checksum: 10/c6d581ff4e6e75e4c22d909a51f377b6f9b296805234009ca6950f86c76bbefc5f4f95eef92e24ede3134cb411c0d08e73d484a30c448d8e248414dcc98c1400
+"@foxglove/tsconfig@npm:3.2.0":
+  version: 3.2.0
+  resolution: "@foxglove/tsconfig@npm:3.2.0"
+  checksum: 10/219cb78e9dd0c174acc5ddcbd9324345f648ecf8ac8c4930d494ba3c08fdc3fccd19dcd6f6c6d8e1afce0d3b34c4f4045d6e8e7a3179c0e965840d6fa23514ca
   languageName: node
   linkType: hard
 
