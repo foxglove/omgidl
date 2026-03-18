@@ -38,7 +38,15 @@
   },
   "packageManager": "yarn@4.12.0",
   "resolutions": {
-    "tar": ">=7.5.10"
+    "tar": ">=7.5.10",
+    "minimatch": ">=10.2.3",
+    "glob@7/minimatch": "3.1.5",
+    "@eslint/config-array/minimatch": "3.1.5",
+    "@eslint/eslintrc/minimatch": "3.1.5",
+    "eslint-plugin-import/minimatch": "3.1.5",
+    "eslint-plugin-react/minimatch": "3.1.5",
+    "glob@10/minimatch": "9.0.9",
+    "@typescript-eslint/typescript-estree/minimatch": "9.0.9"
   },
   "devDependencies": {
     "@foxglove/eslint-plugin": "2.1.0",
