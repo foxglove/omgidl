@@ -38,7 +38,6 @@
   },
   "packageManager": "yarn@4.12.0",
   "resolutions": {
-    "flatted": "3.4.2",
     "tar": ">=7.5.10"
   },
   "devDependencies": {
