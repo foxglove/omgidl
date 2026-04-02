@@ -38,8 +38,6 @@
   },
   "packageManager": "yarn@4.12.0",
   "resolutions": {
-    "handlebars": ">=4.7.9",
-    "picomatch": ">=2.3.2",
     "tar": ">=7.5.10"
   },
   "devDependencies": {
@@ -49,7 +47,7 @@
     "globals": "17.3.0",
     "jest": "29.7.0",
     "prettier": "3.7.4",
-    "ts-jest": "29.4.5",
+    "ts-jest": "29.4.9",
     "typescript": "5.9.3",
     "typescript-eslint": "8.57.2"
   }
