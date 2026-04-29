@@ -41,7 +41,7 @@
     "tar": ">=7.5.10"
   },
   "devDependencies": {
-    "@foxglove/eslint-plugin": "2.1.0",
+    "@foxglove/eslint-plugin": "2.1.2",
     "@types/jest": "29.5.14",
     "eslint": "9.29.0",
     "globals": "17.3.0",
