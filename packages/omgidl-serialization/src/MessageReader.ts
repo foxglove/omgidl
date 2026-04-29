@@ -237,6 +237,7 @@ export class MessageReader<T = unknown> {
 
     // if no matching case and no default case, only return discriminator value
     if (!fieldDeserInfo || !caseDefType) {
+      this.finishUnionWithoutCase(reader, { usesMemberHeader, usesDelimiterHeader }, typeEndOffset);
       return {
         [UNION_DISCRIMINATOR_PROPERTY_KEY]: discriminatorValue,
       };
@@ -304,6 +305,21 @@ export class MessageReader<T = unknown> {
       [UNION_DISCRIMINATOR_PROPERTY_KEY]: discriminatorValue,
       [caseDefType.name]: caseDefValue,
     };
+  }
+
+  /**
+   * Advances the reader past a union that has no active member for its discriminator.
+   */
+  private finishUnionWithoutCase(
+    reader: CdrReader,
+    headerOptions: HeaderOptions,
+    typeEndOffset: number | undefined,
+  ): void {
+    if (typeEndOffset != undefined) {
+      reader.seekTo(typeEndOffset);
+    } else if (headerOptions.usesMemberHeader && !headerOptions.usesDelimiterHeader) {
+      reader.sentinelHeader();
+    }
   }
 
   /**

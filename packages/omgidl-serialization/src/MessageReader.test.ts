@@ -836,6 +836,134 @@ module builtin_interfaces {
       },
     });
   });
+
+  it("continues reading a mutable struct after a union discriminator has no matching case or default", () => {
+    const msgDef = `
+        @mutable
+        union ColorOrGray switch (uint8) {
+          case 0:
+            @id(100)
+            uint8 rgb[3];
+          case 3:
+            @id(200)
+            uint8 gray;
+        };
+        @mutable
+        struct Fence {
+            @id(5) ColorOrGray color;
+            @id(6) uint8 marker;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(true, 5, 6); // writes emHeader for color field
+
+    writer.emHeader(true, 1, 1); // emHeader for discriminator (switch type)
+    writer.uint8(0x09); // discriminator has no matching case
+
+    // absent value because discriminator doesn't exist
+
+    writer.sentinelHeader(); // end union
+
+    writer.emHeader(true, 6, 1); // writes emHeader for marker field
+    writer.uint8(77);
+
+    writer.sentinelHeader(); // end struct
+
+    const rootDef = "Fence";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual({
+      color: {
+        [UNION_DISCRIMINATOR_PROPERTY_KEY]: 9,
+      },
+      marker: 77,
+    });
+  });
+
+  it("continues reading an XCDR2 mutable struct after a union discriminator has no matching case or default", () => {
+    const msgDef = `
+        @mutable
+        union ColorOrGray switch (uint8) {
+          case 0:
+            @id(100)
+            uint8 rgb[3];
+          case 3:
+            @id(200)
+            uint8 gray;
+        };
+        @mutable
+        struct Fence {
+            @id(5) ColorOrGray color;
+            @id(6) uint8 marker;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(21); // color header + union body + marker alignment/header/value
+    writer.emHeader(true, 5, 5, 5); // writes emHeader for color field
+
+    writer.emHeader(true, 1, 1); // emHeader for discriminator (switch type)
+    writer.uint8(0x09); // discriminator has no matching case
+
+    // absent value because discriminator doesn't exist
+
+    writer.emHeader(true, 6, 1); // writes emHeader for marker field
+    writer.uint8(77);
+
+    const rootDef = "Fence";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual({
+      color: {
+        [UNION_DISCRIMINATOR_PROPERTY_KEY]: 9,
+      },
+      marker: 77,
+    });
+  });
+
+  it("uses a discriminator-only default for a missing non-optional union with no matching case or default", () => {
+    const msgDef = `
+        @mutable
+        union ColorOrGray switch (uint8) {
+          case 1:
+            @id(100)
+            uint8 red;
+          case 3:
+            @id(200)
+            uint8 gray;
+        };
+        @mutable
+        struct Fence {
+            @id(5) ColorOrGray color;
+            @id(6) uint8 marker;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+
+    writer.emHeader(true, 6, 1); // writes emHeader for marker field
+    writer.uint8(77);
+
+    writer.sentinelHeader(); // end struct
+
+    const rootDef = "Fence";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual({
+      marker: 77,
+      color: {
+        [UNION_DISCRIMINATOR_PROPERTY_KEY]: 0,
+      },
+    });
+  });
+
   it("Reads array from mutable union field", () => {
     const msgDef = `
         @mutable
