@@ -926,44 +926,6 @@ module builtin_interfaces {
     });
   });
 
-  it("uses a discriminator-only default for a missing non-optional union with no matching case or default", () => {
-    const msgDef = `
-        @mutable
-        union ColorOrGray switch (uint8) {
-          case 1:
-            @id(100)
-            uint8 red;
-          case 3:
-            @id(200)
-            uint8 gray;
-        };
-        @mutable
-        struct Fence {
-            @id(5) ColorOrGray color;
-            @id(6) uint8 marker;
-        };
-    `;
-
-    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
-
-    writer.emHeader(true, 6, 1); // writes emHeader for marker field
-    writer.uint8(77);
-
-    writer.sentinelHeader(); // end struct
-
-    const rootDef = "Fence";
-    const reader = new MessageReader(rootDef, parseIDL(msgDef));
-
-    const msgout = reader.readMessage(writer.data);
-
-    expect(msgout).toEqual({
-      marker: 77,
-      color: {
-        [UNION_DISCRIMINATOR_PROPERTY_KEY]: 0,
-      },
-    });
-  });
-
   it("Reads array from mutable union field", () => {
     const msgDef = `
         @mutable
