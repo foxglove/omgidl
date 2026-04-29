@@ -837,7 +837,7 @@ module builtin_interfaces {
     });
   });
 
-  it("continues reading a mutable struct after a union discriminator has no matching case or default", () => {
+  it("skips over body of an XCDR1 mutable union after finding an unknown discriminator", () => {
     const msgDef = `
         @mutable
         union ColorOrGray switch (uint8) {
@@ -856,7 +856,16 @@ module builtin_interfaces {
     `;
 
     const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
-    writer.emHeader(true, 5, 6); // writes emHeader for color field
+    // emheader for color field
+    writer.emHeader(
+      true,
+      5,
+      4 /* discriminator emheader */ +
+        1 /* discriminator */ +
+        1 /* padding */ +
+        2 /* sentinel start */ +
+        2 /* sentinel length */,
+    );
 
     writer.emHeader(true, 1, 1); // emHeader for discriminator (switch type)
     writer.uint8(0x09); // discriminator has no matching case
@@ -883,7 +892,7 @@ module builtin_interfaces {
     });
   });
 
-  it("continues reading an XCDR2 mutable struct after a union discriminator has no matching case or default", () => {
+  it("skips over body of an XCDR2 mutable union after finding an unknown discriminator", () => {
     const msgDef = `
         @mutable
         union ColorOrGray switch (uint8) {
@@ -891,27 +900,32 @@ module builtin_interfaces {
             @id(100)
             uint8 rgb[3];
           case 3:
-            @id(200)
+            @id(500)
             uint8 gray;
         };
         @mutable
         struct Fence {
-            @id(5) ColorOrGray color;
-            @id(6) uint8 marker;
+            @id(100) ColorOrGray color;
+            @id(200) uint8 marker;
         };
     `;
 
     const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
-    writer.dHeader(21); // color header + union body + marker alignment/header/value
-    writer.emHeader(true, 5, 5, 5); // writes emHeader for color field
+    const colorSize =
+      4 /* discriminator emheader */ +
+      1 /* discriminator */ +
+      3 /* padding */ +
+      4 /* unknown field emheader */ +
+      1; /* unknown field */
+    writer.dHeader(4 /* color emheader */ + colorSize);
 
+    // color field
+    writer.emHeader(true, 100, colorSize, 5); // emHeader for color field
+    // union
     writer.emHeader(true, 1, 1); // emHeader for discriminator (switch type)
     writer.uint8(0x09); // discriminator has no matching case
-
-    // absent value because discriminator doesn't exist
-
-    writer.emHeader(true, 6, 1); // writes emHeader for marker field
-    writer.uint8(77);
+    writer.emHeader(true, 200, 1); // emHeader for unknown field
+    writer.uint8(100); // unknown field value
 
     const rootDef = "Fence";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
@@ -922,7 +936,7 @@ module builtin_interfaces {
       color: {
         [UNION_DISCRIMINATOR_PROPERTY_KEY]: 9,
       },
-      marker: 77,
+      marker: 0,
     });
   });
 

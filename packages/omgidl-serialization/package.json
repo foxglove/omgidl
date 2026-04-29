@@ -36,7 +36,7 @@
     "build": "tsc -b ./tsconfig.build.json",
     "lint:ci": "eslint .",
     "lint": "eslint --fix .",
-    "prepack": "yarn workspace @foxglove/omgidl-parser build && yarn build",
+    "prepack": "yarn build",
     "prepublishOnly": "yarn lint:ci && yarn test",
     "test": "jest"
   },
