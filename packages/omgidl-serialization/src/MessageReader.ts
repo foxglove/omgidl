@@ -251,7 +251,7 @@ export class MessageReader<T = unknown> {
           // > Unlike it is stated in [RTPS] Sub Clause 9.4.2.11
           // > “ParameterList”, the value of the parameter length is the exact
           // > length of the serialized member.
-          reader.seek(objectSize); //
+          reader.seek(objectSize);
           if (readSentinelHeader === true) {
             break;
           }
