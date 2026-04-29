@@ -346,15 +346,16 @@ export class DeserializationInfoCache {
         const switchValue = switchTypeDefaultGetter() as number | boolean;
 
         defaultCase = unionDef.cases.find((c) => c.predicates.includes(switchValue))?.type;
+        if (!defaultCase) {
+          throw new Error(`Failed to find default case for union ${unionDef.name ?? ""}`);
+        }
         defaultMessage[UNION_DISCRIMINATOR_PROPERTY_KEY] = switchValue;
       } else {
         // default exists, default value of switch case type is not needed
         defaultMessage[UNION_DISCRIMINATOR_PROPERTY_KEY] = undefined;
       }
-      if (defaultCase != undefined) {
-        const defaultCaseDeserInfo = this.buildFieldDeserInfo(defaultCase);
-        defaultMessage[defaultCaseDeserInfo.name] = this.getFieldDefault(defaultCaseDeserInfo);
-      }
+      const defaultCaseDeserInfo = this.buildFieldDeserInfo(defaultCase);
+      defaultMessage[defaultCaseDeserInfo.name] = this.getFieldDefault(defaultCaseDeserInfo);
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (deserInfo.type === "struct") {
       for (const field of deserInfo.fieldsInOrder) {
