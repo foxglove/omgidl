@@ -836,6 +836,144 @@ module builtin_interfaces {
       },
     });
   });
+
+  it("skips over body of an XCDR1 mutable union after finding an unknown discriminator", () => {
+    const msgDef = `
+        @mutable
+        union ColorOrGray switch (uint8) {
+          case 0:
+            @id(100)
+            uint8 rgb[3];
+          case 3:
+            @id(500)
+            uint8 gray;
+        };
+        @mutable
+        struct Fence {
+            @id(100) ColorOrGray color;
+            @id(200) uint8 marker;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    // emheader for color field
+    writer.emHeader(
+      true,
+      100,
+      4 /* discriminator emheader */ +
+        1 /* discriminator */ +
+        3 /* padding */ +
+        4 /* unknown field emheader */ +
+        1 /* unknown field */ +
+        3 /* padding */ +
+        2 /* sentinel start */ +
+        2 /* sentinel length */,
+    );
+
+    writer.emHeader(true, 1, 1); // emHeader for discriminator (switch type)
+    writer.uint8(0x09); // discriminator has no matching case
+
+    writer.emHeader(true, 200, 1); // emHeader for unknown field
+    writer.uint8(100); // unknown field value
+
+    writer.sentinelHeader(); // end union
+
+    writer.emHeader(true, 200, 1); // writes emHeader for marker field
+    writer.uint8(77);
+
+    writer.sentinelHeader(); // end struct
+
+    const rootDef = "Fence";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual({
+      color: {
+        [UNION_DISCRIMINATOR_PROPERTY_KEY]: 9,
+      },
+      marker: 77,
+    });
+  });
+
+  it("skips over body of an XCDR2 mutable union after finding an unknown discriminator", () => {
+    const msgDef = `
+        @mutable
+        union ColorOrGray switch (uint8) {
+          case 0:
+            @id(100)
+            uint8 rgb[3];
+          case 3:
+            @id(500)
+            uint8 gray;
+        };
+        @mutable
+        struct Fence {
+            @id(100) ColorOrGray color;
+            @id(200) uint8 marker;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    const colorSize =
+      4 /* discriminator emheader */ +
+      1 /* discriminator */ +
+      3 /* padding */ +
+      4 /* unknown field emheader */ +
+      1; /* unknown field */
+    writer.dHeader(4 /* color emheader */ + colorSize);
+
+    // color field
+    writer.emHeader(true, 100, colorSize, 5); // emHeader for color field
+    // union
+    writer.emHeader(true, 1, 1); // emHeader for discriminator (switch type)
+    writer.uint8(0x09); // discriminator has no matching case
+    writer.emHeader(true, 200, 1); // emHeader for unknown field
+    writer.uint8(100); // unknown field value
+
+    // don't emit marker, to see that the above field with same ID is skipped
+
+    const rootDef = "Fence";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual({
+      color: {
+        [UNION_DISCRIMINATOR_PROPERTY_KEY]: 9,
+      },
+      marker: 0,
+    });
+  });
+
+  it("throws if union's case is unknown and its length is indeterminate", () => {
+    const msgDef = `
+        @final
+        union ColorOrGray switch (uint8) {
+          case 0:
+            uint8 rgb[3];
+        };
+
+        @final
+        struct Fence {
+            ColorOrGray color;
+            uint8 marker;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.CDR_LE });
+    writer.uint8(0x09); // discriminator has no matching case
+    writer.uint8(100); // unknown field value
+    writer.uint8(77); // marker value
+
+    const rootDef = "Fence";
+    const reader = new MessageReader(rootDef, parseIDL(msgDef));
+
+    expect(() => reader.readMessage(writer.data)).toThrow(
+      "union's case is unknown, but cannot skip its body because its length is indeterminate",
+    );
+  });
+
   it("Reads array from mutable union field", () => {
     const msgDef = `
         @mutable
