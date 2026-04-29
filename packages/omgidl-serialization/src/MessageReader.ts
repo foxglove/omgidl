@@ -116,7 +116,6 @@ export class MessageReader<T = unknown> {
         }
 
         const { objectSize, id, readSentinelHeader, lengthCode } = reader.emHeader();
-        console.log("emHeader", { objectSize, id, readSentinelHeader, lengthCode });
 
         // end of struct, this accounts for XCDR1 mutable structs
         if (readSentinelHeader === true) {
@@ -216,10 +215,6 @@ export class MessageReader<T = unknown> {
     // unions print an emHeader for the switchType
     if (usesMemberHeader) {
       const { objectSize: objectSizeBytes } = reader.emHeader();
-      console.log("emHeader", {
-        objectSize: objectSizeBytes,
-        switchTypeLength: deserInfo.switchTypeLength,
-      });
       if (objectSizeBytes !== deserInfo.switchTypeLength) {
         throw new Error(
           `Expected switchType length of ${
@@ -229,7 +224,6 @@ export class MessageReader<T = unknown> {
       }
     }
     const discriminatorValue = deserInfo.switchTypeDeser(reader) as number | boolean;
-    console.log("discriminatorValue", discriminatorValue);
     // Discriminator case determination: Section 7.4.1.4.4.4.2 of https://www.omg.org/spec/IDL/4.2/PDF
     // get case for switchtype value based on matching predicate
     let caseDefType = getCaseForDiscriminator(deserInfo.definition, discriminatorValue);
