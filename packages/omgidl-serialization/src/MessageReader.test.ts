@@ -927,6 +927,8 @@ module builtin_interfaces {
     writer.emHeader(true, 200, 1); // emHeader for unknown field
     writer.uint8(100); // unknown field value
 
+    // don't emit marker, to see that the above field with same ID is skipped
+
     const rootDef = "Fence";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
