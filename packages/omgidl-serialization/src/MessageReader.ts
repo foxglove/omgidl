@@ -116,6 +116,7 @@ export class MessageReader<T = unknown> {
         }
 
         const { objectSize, id, readSentinelHeader, lengthCode } = reader.emHeader();
+        console.log("emHeader", { objectSize, id, readSentinelHeader, lengthCode });
 
         // end of struct, this accounts for XCDR1 mutable structs
         if (readSentinelHeader === true) {
@@ -215,6 +216,10 @@ export class MessageReader<T = unknown> {
     // unions print an emHeader for the switchType
     if (usesMemberHeader) {
       const { objectSize: objectSizeBytes } = reader.emHeader();
+      console.log("emHeader", {
+        objectSize: objectSizeBytes,
+        switchTypeLength: deserInfo.switchTypeLength,
+      });
       if (objectSizeBytes !== deserInfo.switchTypeLength) {
         throw new Error(
           `Expected switchType length of ${
@@ -224,7 +229,7 @@ export class MessageReader<T = unknown> {
       }
     }
     const discriminatorValue = deserInfo.switchTypeDeser(reader) as number | boolean;
-
+    console.log("discriminatorValue", discriminatorValue);
     // Discriminator case determination: Section 7.4.1.4.4.4.2 of https://www.omg.org/spec/IDL/4.2/PDF
     // get case for switchtype value based on matching predicate
     let caseDefType = getCaseForDiscriminator(deserInfo.definition, discriminatorValue);
@@ -235,9 +240,34 @@ export class MessageReader<T = unknown> {
       ? this.deserializationInfoCache.buildFieldDeserInfo(caseDefType)
       : undefined;
 
+    const hasSentinelHeader = !usesDelimiterHeader && usesMemberHeader; // XCDR1 mutable
+
     // if no matching case and no default case, only return discriminator value
     if (!fieldDeserInfo || !caseDefType) {
-      this.finishUnionWithoutCase(reader, { usesMemberHeader, usesDelimiterHeader }, typeEndOffset);
+      if (typeEndOffset != undefined) {
+        reader.seekTo(typeEndOffset);
+      } else if (hasSentinelHeader) {
+        for (;;) {
+          const { objectSize, readSentinelHeader } = reader.emHeader();
+          // This is PL_CDR, so objectSize is the byte length of the member
+          // body.
+          //
+          // From DDS-XTypes v1.3, section 7.4.1.2 Parameterized CDR Encoding:
+          //
+          // > Unlike it is stated in [RTPS] Sub Clause 9.4.2.11
+          // > “ParameterList”, the value of the parameter length is the exact
+          // > length of the serialized member.
+          reader.seek(objectSize); //
+          if (readSentinelHeader === true) {
+            break;
+          }
+        }
+      } else {
+        throw new Error(
+          "union's case is unknown, but cannot skip its body because its length is indeterminate",
+        );
+      }
+
       return {
         [UNION_DISCRIMINATOR_PROPERTY_KEY]: discriminatorValue,
       };
@@ -247,7 +277,6 @@ export class MessageReader<T = unknown> {
 
     // even if the union is ended we need to set the defaults
     if (usesMemberHeader) {
-      const needsToReadSentinelHeader = !usesDelimiterHeader && usesMemberHeader; // XCDR1 mutable
       // MUTABLE UNION
       const atEndOfUnion = typeEndOffset != undefined && reader.offset >= typeEndOffset;
       const emHeader = !atEndOfUnion ? reader.emHeader() : undefined;
@@ -274,7 +303,7 @@ export class MessageReader<T = unknown> {
           },
           options,
         );
-        if (needsToReadSentinelHeader) {
+        if (hasSentinelHeader) {
           reader.sentinelHeader();
         }
       }
@@ -305,21 +334,6 @@ export class MessageReader<T = unknown> {
       [UNION_DISCRIMINATOR_PROPERTY_KEY]: discriminatorValue,
       [caseDefType.name]: caseDefValue,
     };
-  }
-
-  /**
-   * Advances the reader past a union that has no active member for its discriminator.
-   */
-  private finishUnionWithoutCase(
-    reader: CdrReader,
-    headerOptions: HeaderOptions,
-    typeEndOffset: number | undefined,
-  ): void {
-    if (typeEndOffset != undefined) {
-      reader.seekTo(typeEndOffset);
-    } else if (headerOptions.usesMemberHeader && !headerOptions.usesDelimiterHeader) {
-      reader.sentinelHeader();
-    }
   }
 
   /**
