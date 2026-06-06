@@ -77,7 +77,7 @@ function getValueAnnotation(
     return undefined;
   }
   const valueAnnotation = annotations["value"];
-  if (valueAnnotation && valueAnnotation.type === "const-param") {
+  if (valueAnnotation?.type === "const-param") {
     return valueAnnotation.value;
   }
   return undefined;
