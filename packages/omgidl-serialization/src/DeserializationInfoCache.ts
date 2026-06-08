@@ -522,7 +522,7 @@ function getDefinitionId(definition: IDLMessageDefinitionField): number | undefi
 
   const id = annotations.id;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (id != undefined && id.type === "const-param" && typeof id.value === "number") {
+  if (id?.type === "const-param" && typeof id.value === "number") {
     return id.value;
   }
 
