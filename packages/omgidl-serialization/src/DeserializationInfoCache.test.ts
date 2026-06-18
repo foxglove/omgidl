@@ -341,6 +341,25 @@ describe("DeserializationInfoCache", () => {
       b: 0,
     });
   });
+  it("returns discriminator-only default for a union without a default case when the discriminator's natural default matches no case", () => {
+    const unionDefinition: IDLMessageDefinition = {
+      name: "test::MaybeValue",
+      aggregatedKind: "union",
+      switchType: "uint8",
+      cases: [
+        {
+          predicates: [1], // natural default 0 for uint8 matches no case and there is no default
+          type: { name: "value", type: "uint32", isComplex: false },
+        },
+      ],
+    };
+    const deserializationInfoCache = new DeserializationInfoCache([unionDefinition]);
+    const fieldDeserInfo = makeFieldDeserFromComplexDef(unionDefinition, deserializationInfoCache);
+    expect(() => deserializationInfoCache.getFieldDefault(fieldDeserInfo)).not.toThrow();
+    expect(deserializationInfoCache.getFieldDefault(fieldDeserInfo)).toEqual({
+      [UNION_DISCRIMINATOR_PROPERTY_KEY]: 0,
+    });
+  });
   it("creates correct default for a struct field with optional and non-optional members", () => {
     const unionDefinition: IDLMessageDefinition = {
       name: "test::Message",
