@@ -350,7 +350,7 @@ export class DeserializationInfoCache {
         if (!defaultCase) {
           // No `default:` case and the discriminator's natural default value
           // matches no case label, so no union member is selected (DDS-Xtypes
-          // v1.3 Section 7.2.2.4.4.4, p. 44). The default value of the union is
+          // v1.3 Section 7.2.2.4.4.4, p. 45). The default value of the union is
           // the discriminator alone. This mirrors MessageReader.readUnionType's
           // no-match path so the absent-member default and the present-member
           // read produce the same shape.
