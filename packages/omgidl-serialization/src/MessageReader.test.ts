@@ -837,6 +837,70 @@ module builtin_interfaces {
     });
   });
 
+  it("default-fills an absent mutable union member with discriminator-only when no case matches and there is no default (XCDR1)", () => {
+    const msgDef = `
+        @mutable
+        union MaybeValue switch (uint8) {
+          case 1:
+            @id(10)
+            uint32 value;
+        };
+        @mutable
+        struct Root {
+            @id(1) uint8 marker;
+            @id(2) MaybeValue maybe;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(true, 1, 1); // marker emHeader
+    writer.uint8(42);
+    // maybe (id 2) omitted -> default-filled
+    writer.sentinelHeader(); // end struct
+
+    const reader = new MessageReader("Root", parseIDL(msgDef));
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual({
+      marker: 42,
+      maybe: {
+        [UNION_DISCRIMINATOR_PROPERTY_KEY]: 0,
+      },
+    });
+  });
+
+  it("default-fills an absent mutable union member with discriminator-only when no case matches and there is no default (XCDR2)", () => {
+    const msgDef = `
+        @mutable
+        union MaybeValue switch (uint8) {
+          case 1:
+            @id(10)
+            uint32 value;
+        };
+        @mutable
+        struct Root {
+            @id(1) uint8 marker;
+            @id(2) MaybeValue maybe;
+        };
+    `;
+
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+    writer.dHeader(4 /* marker emHeader */ + 1 /* marker value */);
+    writer.emHeader(true, 1, 1); // marker emHeader
+    writer.uint8(42);
+    // maybe (id 2) omitted -> default-filled
+
+    const reader = new MessageReader("Root", parseIDL(msgDef));
+    const msgout = reader.readMessage(writer.data);
+
+    expect(msgout).toEqual({
+      marker: 42,
+      maybe: {
+        [UNION_DISCRIMINATOR_PROPERTY_KEY]: 0,
+      },
+    });
+  });
+
   it("skips over body of an XCDR1 mutable union after finding an unknown discriminator", () => {
     const msgDef = `
         @mutable
