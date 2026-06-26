@@ -15,6 +15,17 @@ const float32Buffer = (floats: number[]): Uint8Array => {
   return new Uint8Array(Float32Array.from(floats).buffer);
 };
 
+// Routes every read through the debugging path (readMessageDebug) so these tests also exercise the
+// partial-state capture. On success it returns the decoded message; on failure it rethrows the
+// captured error so error-path assertions (e.g. toThrow) behave exactly like readMessage.
+function readMessageWithDebug(reader: MessageReader, buffer: ArrayBufferView): unknown {
+  const result = reader.readMessageDebug(buffer);
+  if (!result.ok) {
+    throw result.error;
+  }
+  return result.message;
+}
+
 describe("MessageReader", () => {
   it("simple test", () => {
     const msgDef = `module a {
@@ -307,7 +318,7 @@ describe("MessageReader", () => {
     (msgDef: string, rootDef: string, arr: Iterable<number>, expected: Record<string, unknown>) => {
       const buffer = Uint8Array.from([0, 1, 0, 0, ...arr]);
       const reader = new MessageReader(rootDef, parseIDL(msgDef));
-      const read = reader.readMessage(buffer);
+      const read = readMessageWithDebug(reader, buffer);
 
       // check that our message matches the object
       expect(read).toEqual(expected);
@@ -391,7 +402,7 @@ module builtin_interfaces {
 };
     `;
     const reader = new MessageReader("geometry_msgs::msg::Transforms", parseIDL(msgDef));
-    const read = reader.readMessage(buffer);
+    const read = readMessageWithDebug(reader, buffer);
 
     expect(read).toEqual({
       transforms: [
@@ -454,7 +465,7 @@ module builtin_interfaces {
     const rootDef = "Address";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    expect(reader.readMessage(writer.data)).toEqual({ pointer: 15 });
+    expect(readMessageWithDebug(reader, writer.data)).toEqual({ pointer: 15 });
   });
 
   it("reads simple nested mutable struct", () => {
@@ -493,7 +504,7 @@ module builtin_interfaces {
     const rootDef = "Person";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    expect(reader.readMessage(writer.data)).toEqual({
+    expect(readMessageWithDebug(reader, writer.data)).toEqual({
       heightMeters: 1.8,
       address: { pointer: 15 },
       age: 30,
@@ -517,7 +528,7 @@ module builtin_interfaces {
     const rootDef = "Address";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    expect(reader.readMessage(writer.data)).toEqual({ pointer: 15 });
+    expect(readMessageWithDebug(reader, writer.data)).toEqual({ pointer: 15 });
   });
 
   it("PL_CDRv1: reads simple nested mutable struct", () => {
@@ -558,7 +569,7 @@ module builtin_interfaces {
     const rootDef = "Person";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    expect(reader.readMessage(writer.data)).toEqual({
+    expect(readMessageWithDebug(reader, writer.data)).toEqual({
       heightMeters: 1.8,
       address: { pointer: 15 },
       age: 30,
@@ -602,7 +613,7 @@ module builtin_interfaces {
     const rootDef = "Plot";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    expect(reader.readMessage(writer.data)).toEqual({
+    expect(readMessageWithDebug(reader, writer.data)).toEqual({
       name: "MPG",
       xValues: new Float64Array([1, 2, 3]),
       yValues: new Float64Array([4, 5, 6]),
@@ -646,7 +657,7 @@ module builtin_interfaces {
     const rootDef = "Plot";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    expect(reader.readMessage(writer.data)).toEqual({
+    expect(readMessageWithDebug(reader, writer.data)).toEqual({
       name: "MPG",
       xValues: new Float64Array([1, 2, 3]),
       yValues: new Float64Array([4, 5, 6]),
@@ -677,7 +688,7 @@ module builtin_interfaces {
 
     const rootDef = "Grid";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
-    expect(reader.readMessage(writer.data)).toEqual({
+    expect(readMessageWithDebug(reader, writer.data)).toEqual({
       table: [new Float32Array([1, 2, 3]), new Float32Array([4, 5, 6])],
     });
   });
@@ -702,7 +713,7 @@ module builtin_interfaces {
     const rootDef = "Array";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    expect(reader.readMessage(writer.data)).toEqual({
+    expect(readMessageWithDebug(reader, writer.data)).toEqual({
       numbers: new Float64Array([]),
     });
   });
@@ -746,7 +757,7 @@ module builtin_interfaces {
     const rootDef = "Fence";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual({
       color: {
@@ -788,7 +799,7 @@ module builtin_interfaces {
     const rootDef = "Fence";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual({
       color: {
@@ -828,7 +839,7 @@ module builtin_interfaces {
     const rootDef = "Fence";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual({
       color: {
@@ -950,7 +961,7 @@ module builtin_interfaces {
     const rootDef = "Fence";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual({
       color: {
@@ -1000,7 +1011,7 @@ module builtin_interfaces {
     const rootDef = "Fence";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual({
       color: {
@@ -1033,7 +1044,7 @@ module builtin_interfaces {
     const rootDef = "Fence";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    expect(() => reader.readMessage(writer.data)).toThrow(
+    expect(() => readMessageWithDebug(reader, writer.data)).toThrow(
       "union's case is unknown, but cannot skip its body because its length is indeterminate",
     );
   });
@@ -1070,7 +1081,7 @@ module builtin_interfaces {
     const rootDef = "Fence";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual({
       color: {
@@ -1109,7 +1120,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1135,7 +1146,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1161,7 +1172,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1187,7 +1198,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1213,7 +1224,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1247,7 +1258,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1280,7 +1291,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1313,7 +1324,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1350,7 +1361,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1387,7 +1398,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1422,7 +1433,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1457,7 +1468,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1494,7 +1505,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1531,7 +1542,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1566,7 +1577,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1601,7 +1612,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1615,7 +1626,7 @@ module builtin_interfaces {
 
     const rootDef = "Message";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
     expect(msgout).toEqual(data);
   });
   it("Reads mutable struct with absent inner struct member at the end using PL_CDR2", () => {
@@ -1647,7 +1658,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1679,7 +1690,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1710,7 +1721,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1726,7 +1737,7 @@ module builtin_interfaces {
 
     const rootDef = "Message";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
     expect(msgout).toEqual(data);
   });
   it("Reads appendable struct with complex inner sequence", () => {
@@ -1755,7 +1766,7 @@ module builtin_interfaces {
 
     const rootDef = "Outer";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
-    const msgout = reader.readMessage(buffer);
+    const msgout = readMessageWithDebug(reader, buffer);
     expect(msgout).toEqual(data);
   });
   it("Reads appendable struct with primitive inner sequence", () => {
@@ -1778,7 +1789,7 @@ module builtin_interfaces {
 
     const rootDef = "Outer";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
-    const msgout = reader.readMessage(buffer);
+    const msgout = readMessageWithDebug(reader, buffer);
     expect(msgout).toEqual(data);
   });
   it("Reads an XCDR2-encoded struct with unspecified extensibility as if it were appendable", () => {
@@ -1795,7 +1806,7 @@ module builtin_interfaces {
     writer.uint8(data.a);
     const rootDef = "X";
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
     expect(msgout).toEqual(data);
   });
   it("Reads XCDR1 appendable struct", () => {
@@ -1822,7 +1833,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1850,7 +1861,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
   });
@@ -1881,7 +1892,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
     expect(reader.lastMessageBufferEndReached()).toBe(true);
@@ -1913,7 +1924,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
     expect(reader.lastMessageBufferEndReached()).toBe(true);
@@ -1943,7 +1954,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
     expect(reader.lastMessageBufferEndReached()).toBe(true);
@@ -1973,7 +1984,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
     expect(reader.lastMessageBufferEndReached()).toBe(true);
@@ -2007,7 +2018,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
     expect(reader.lastMessageBufferEndReached()).toBe(true);
@@ -2041,7 +2052,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
     expect(reader.lastMessageBufferEndReached()).toBe(true);
@@ -2076,7 +2087,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
     expect(reader.lastMessageBufferEndReached()).toBe(true);
@@ -2110,7 +2121,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
     expect(reader.lastMessageBufferEndReached()).toBe(true);
@@ -2142,7 +2153,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(data);
     expect(reader.lastMessageBufferEndReached()).toBe(true);
@@ -2194,7 +2205,7 @@ module builtin_interfaces {
 
     const reader = new MessageReader(rootDef, parseIDL(msgDef));
 
-    const msgout = reader.readMessage(writer.data);
+    const msgout = readMessageWithDebug(reader, writer.data);
 
     expect(msgout).toEqual(expected);
     expect(reader.lastMessageBufferEndReached()).toBe(true);
