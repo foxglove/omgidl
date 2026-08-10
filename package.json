@@ -1,13 +1,21 @@
 {
   "name": "@foxglove/omg-support",
-  "private": true,
   "version": "0.0.1",
+  "private": true,
   "description": "",
   "license": "MIT",
+  "author": {
+    "name": "Foxglove",
+    "email": "contact@foxglove.dev",
+    "url": "https://foxglove.dev/"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/foxglove/omgidl.git"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "clean": "yarn workspaces foreach --all run clean",
     "test": "yarn workspaces foreach --all run test --color",
@@ -21,26 +29,6 @@
     "ros2idl:test": "yarn workspace @foxglove/ros2idl-parser test",
     "ros2idl:build": "yarn workspace @foxglove/ros2idl-parser build"
   },
-  "workspaces": [
-    "packages/*"
-  ],
-  "jest": {
-    "projects": [
-      "packages/omgidl-parser/jest.config.js",
-      "packages/omgidl-serialization/jest.config.js",
-      "packages/ros2idl-parser/jest.config.js"
-    ]
-  },
-  "author": {
-    "name": "Foxglove",
-    "email": "contact@foxglove.dev",
-    "url": "https://foxglove.dev/"
-  },
-  "packageManager": "yarn@4.12.0",
-  "resolutions": {
-    "tar": ">=7.5.10",
-    "undici": "^6.27.0"
-  },
   "devDependencies": {
     "@foxglove/eslint-plugin": "2.1.0",
     "@types/jest": "29.5.14",
@@ -51,5 +39,17 @@
     "ts-jest": "29.4.9",
     "typescript": "5.9.3",
     "typescript-eslint": "8.57.2"
-  }
+  },
+  "resolutions": {
+    "tar": ">=7.5.21",
+    "undici": "^6.27.0"
+  },
+  "jest": {
+    "projects": [
+      "packages/omgidl-parser/jest.config.js",
+      "packages/omgidl-serialization/jest.config.js",
+      "packages/ros2idl-parser/jest.config.js"
+    ]
+  },
+  "packageManager": "yarn@4.12.0"
 }
