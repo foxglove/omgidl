@@ -16,12 +16,50 @@ import {
 } from "./DeserializationInfoCache";
 import { UNION_DISCRIMINATOR_PROPERTY_KEY } from "./constants";
 
+/**
+ * A single level of type nesting captured while decoding, ordered from the root type down to the
+ * type being decoded when an error occurred. `value` is a live reference to the partially-filled
+ * message object, so it reflects every field that was decoded before the failure.
+ */
+export type DecodeDebugFrame = {
+  /** Name of the struct or union definition being decoded at this level. */
+  type: string;
+  /** The partially-decoded message object for this level. */
+  value: Record<string, unknown>;
+};
+
+/** Result of {@link MessageReader.readMessageDebug}. */
+export type DecodeDebugResult<R> =
+  | { ok: true; message: R }
+  | {
+      ok: false;
+      /** The error that stopped decoding. */
+      error: Error;
+      /** Byte offset within the buffer where decoding stopped, if known. */
+      offset?: number;
+      /** Type nesting from the root type to the deepest type being decoded, each with its partial value. */
+      stack: DecodeDebugFrame[];
+    };
+
+/**
+ * Opt-in debugging state. Holds the stack of partially-decoded messages so it can be inspected if
+ * decoding throws. Debugging aid only; populated solely by {@link MessageReader.readMessageDebug}.
+ */
+type DecodeDebugState = {
+  stack: DecodeDebugFrame[];
+  /** CDR reader that is reading the current message. Needs to store it to report the offset information. */
+  reader?: CdrReader;
+};
+
 export class MessageReader<T = unknown> {
   rootDeserializationInfo: ComplexDeserializationInfo;
   deserializationInfoCache: DeserializationInfoCache;
   /** Used for debugging. We do not error if the buffer end is not reached because it is possible this could cause
    * unexpected errors with user data. */
   #lastMessageBufferEndReached = false;
+  /** Opt-in debugging state, only set while {@link readMessageDebug} is running. When undefined
+   * (the production path) all debug bookkeeping is skipped and deserialization is unaffected. */
+  #debug?: DecodeDebugState;
 
   constructor(rootDefinitionName: string, definitions: IDLMessageDefinition[]) {
     const rootDefinition = definitions.find((def) => def.name === rootDefinitionName);
@@ -42,6 +80,9 @@ export class MessageReader<T = unknown> {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   readMessage<R = T>(buffer: ArrayBufferView): R {
     const reader = new CdrReader(buffer);
+    if (this.#debug != undefined) {
+      this.#debug.reader = reader;
+    }
     // if true means that it is definitely using CDR2 (however doesn't apply to CDR2 Final (non PL_CDR and non DELIMITED_CDR2))
     const usesDelimiterHeader = reader.usesDelimiterHeader;
     const usesMemberHeader = reader.usesMemberHeader;
@@ -56,8 +97,45 @@ export class MessageReader<T = unknown> {
     return res;
   }
 
+  /**
+   * Decodes a message like {@link readMessage}, but if decoding throws it returns the partial decode
+   * state instead of discarding it. The result reports how far decoding progressed: the
+   * partially-decoded message tree at each level of type nesting, the byte offset where decoding
+   * stopped, and the error.
+   *
+   * This is strictly a debugging aid. It does not change deserialization behavior and is not meant
+   * for production decode paths.
+   */
+  readMessageDebug<R = T>(buffer: ArrayBufferView): DecodeDebugResult<R> {
+    this.#debug = { stack: [] };
+    try {
+      const message = this.readMessage<R>(buffer);
+      return { ok: true, message };
+    } catch (err: unknown) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err : new Error(String(err)),
+        offset: this.#debug.reader?.offset,
+        stack: this.#debug.stack,
+      };
+    } finally {
+      this.#debug = undefined;
+    }
+  }
+
   public lastMessageBufferEndReached(): boolean {
     return this.#lastMessageBufferEndReached;
+  }
+
+  /** Pushes a partial message onto the debug stack. No-op unless debugging is enabled. */
+  #debugEnter(deserInfo: ComplexDeserializationInfo, value: Record<string, unknown>): void {
+    this.#debug?.stack.push({ type: deserInfo.definition.name ?? "<unnamed>", value });
+  }
+
+  /** Pops the current partial message off the debug stack on a successful read. No-op unless
+   * debugging is enabled. On an error the frame is intentionally left in place for inspection. */
+  #debugExit(): void {
+    this.#debug?.stack.pop();
   }
 
   private readAggregatedType(
@@ -97,6 +175,7 @@ export class MessageReader<T = unknown> {
     const usesDelimiterHeader = options.usesDelimiterHeader && deserInfo.usesDelimiterHeader;
 
     const msg: Record<string, unknown> = {};
+    this.#debugEnter(deserInfo, msg);
 
     // There's a few ways we should be reading structs
     // 1. Struct is mutable. It has a typeEndOffset. Read based off each EMHEADER. Meaning that we need to read the EMHEADER to determine what the field is and then use the emHeader to read the field.
@@ -200,6 +279,7 @@ export class MessageReader<T = unknown> {
         );
       }
     } // END OF APPENDABLE OR FINAL STRUCT
+    this.#debugExit();
     return msg;
   }
 
@@ -211,6 +291,13 @@ export class MessageReader<T = unknown> {
   ): Record<string, unknown> {
     const usesMemberHeader = options.usesMemberHeader && deserInfo.usesMemberHeader;
     const usesDelimiterHeader = options.usesDelimiterHeader && deserInfo.usesDelimiterHeader;
+
+    // Debug-only running view of the union, populated with the discriminator as it is decoded so the
+    // partial state is meaningful if a later read throws. Not created on the production path.
+    const debugValue: Record<string, unknown> | undefined = this.#debug ? {} : undefined;
+    if (debugValue) {
+      this.#debugEnter(deserInfo, debugValue);
+    }
 
     // unions print an emHeader for the switchType
     if (usesMemberHeader) {
@@ -229,6 +316,10 @@ export class MessageReader<T = unknown> {
     let caseDefType = getCaseForDiscriminator(deserInfo.definition, discriminatorValue);
     // If no case is found, use the default case
     caseDefType ??= deserInfo.definition.defaultCase;
+
+    if (debugValue) {
+      debugValue[UNION_DISCRIMINATOR_PROPERTY_KEY] = discriminatorValue;
+    }
 
     const fieldDeserInfo = caseDefType
       ? this.deserializationInfoCache.buildFieldDeserInfo(caseDefType)
@@ -262,6 +353,7 @@ export class MessageReader<T = unknown> {
         );
       }
 
+      this.#debugExit();
       return {
         [UNION_DISCRIMINATOR_PROPERTY_KEY]: discriminatorValue,
       };
@@ -324,6 +416,7 @@ export class MessageReader<T = unknown> {
       }
     }
 
+    this.#debugExit();
     return {
       [UNION_DISCRIMINATOR_PROPERTY_KEY]: discriminatorValue,
       [caseDefType.name]: caseDefValue,
