@@ -1,6 +1,6 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`ros2idl large autoware message (TrackedMessages) should parse the message without failing: autoware-TrackedObjects 1`] = `
+exports[`ros2idl large autoware message (TrackedMessages) > should parse the message without failing > autoware-TrackedObjects 1`] = `
 [
   {
     "definitions": [

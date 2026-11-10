@@ -1,4 +1,5 @@
 import { IDLMessageDefinition, IDLMessageDefinitionField } from "@foxglove/omgidl-parser";
+import { describe, expect, it } from "vitest";
 
 import {
   DeserializationInfoCache,

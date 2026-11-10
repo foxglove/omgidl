@@ -1,6 +1,7 @@
 // @ts-check
 
 const foxglove = require("@foxglove/eslint-plugin");
+const vitest = require("@vitest/eslint-plugin");
 const globals = require("globals");
 const tseslint = require("typescript-eslint");
 
@@ -25,7 +26,14 @@ module.exports = tseslint.config(
     },
   },
   ...foxglove.configs.base,
-  ...foxglove.configs.jest,
+  {
+    ...vitest.configs.recommended,
+    files: ["**/*.test.ts"],
+    rules: {
+      ...vitest.configs.recommended.rules,
+      "vitest/consistent-test-it": ["error", { fn: "it" }],
+    },
+  },
   ...foxglove.configs.typescript.map((config) => ({
     ...config,
     files: ["**/*.ts", "**/*.tsx"],

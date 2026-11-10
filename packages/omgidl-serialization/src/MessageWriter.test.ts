@@ -1,4 +1,5 @@
 import { parseIDL } from "@foxglove/omgidl-parser";
+import { describe, expect, it } from "vitest";
 
 import { MessageWriter } from "./MessageWriter";
 
@@ -284,7 +285,7 @@ describe("MessageWriter", () => {
       const writer = new MessageWriter(rootDef, parseIDL(msgDef));
       const written = writer.writeMessage(message);
 
-      expect(written).toBytesEqual(expected);
+      expect(written).toEqual(expected);
       expect(writer.calculateByteSize(message)).toEqual(expected.byteLength);
     },
   );
@@ -383,7 +384,7 @@ module builtin_interfaces {
       ],
     };
     const written = writer.writeMessage(message);
-    expect(written).toBytesEqual(expected);
+    expect(written).toEqual(expected);
     expect(writer.calculateByteSize(message)).toEqual(expected.byteLength);
   });
   it("throws if rootDef is not found", () => {

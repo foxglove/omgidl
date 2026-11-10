@@ -16,9 +16,5 @@
       "name": "ros2idl-parser",
       "path": "packages/ros2idl-parser"
     }
-  ],
-  "settings": {
-    "jest.disabledWorkspaceFolders": ["omgidl-mono"],
-    "jest.autoRevealOutput": "on-exec-error"
-  }
+  ]
 }

@@ -1,3 +1,5 @@
+import { describe, expect, it } from "vitest";
+
 import { parseRos2idl as parse } from "./parseRos2idl";
 
 const trackedObjectSchema = `================================================================================

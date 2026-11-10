@@ -1,3 +1,5 @@
+import { describe, expect, it } from "vitest";
+
 import { parseIDLToAST } from "./parseIDLToAST";
 
 describe("IDL grammar", () => {
