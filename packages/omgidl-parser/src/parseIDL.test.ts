@@ -1,3 +1,5 @@
+import { describe, expect, it } from "vitest";
+
 import { parseIDL as parse, parseIDL } from "./parseIDL";
 
 describe("omgidl parser tests", () => {
